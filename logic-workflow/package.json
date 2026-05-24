@@ -4,18 +4,17 @@
   "description": "A TypeScript library for defining, executing, and visualizing logic workflows",
   "type": "module",
   "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
     },
     "./visualization": {
       "types": "./dist/visualization/index.d.ts",
-      "import": "./dist/visualization/index.mjs",
-      "require": "./dist/visualization/index.js"
+      "import": "./dist/visualization/index.js",
+      "require": "./dist/visualization/index.cjs"
     }
   },
   "scripts": {
@@ -29,6 +28,10 @@
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs"
   },
+  "files": [
+    "dist",
+    "src"
+  ],
   "dependencies": {
     "zod": "^3.23.8"
   },

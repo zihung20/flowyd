@@ -1,0 +1,82 @@
+import { z } from 'zod';
+import { WorkflowBuilder, StepState, Guard } from 'logic-workflow';
+import type { WorkflowInstance } from 'logic-workflow';
+
+const SeverityEnum = z.enum(['P1', 'P2', 'P3', 'P4']);
+
+const DetectSchema = z.object({
+  reportedBy: z.string().min(1),
+  severity:   SeverityEnum,
+  summary:    z.string().min(1),
+});
+
+const TriageSchema = z.object({
+  assignedTo: z.string().min(1),
+  confirmed:  SeverityEnum,
+});
+
+const InvestigateSchema = z.object({
+  leadEngineer: z.string().min(1),
+  teamSize:     z.number().int().min(1),
+});
+
+const ContainSchema = z.object({
+  actionsTaken: z.string().min(1),
+});
+
+const EradicateSchema = z.object({
+  rootCause:  z.string().min(10),
+  fixApplied: z.string().min(1),
+});
+
+const RecoverSchema = z.object({
+  recoveredBy:  z.string().min(1),
+  verifiedAt:   z.string().min(1),
+});
+
+const CloseSchema = z.object({
+  closedBy:     z.string().min(1),
+  postMortemUrl: z.string().min(1),
+});
+
+export const incidentWorkflow = new WorkflowBuilder('it-incident-response')
+  .defineAction('DETECT',      DetectSchema)
+  .defineAction('TRIAGE',      TriageSchema)
+  .defineAction('INVESTIGATE', InvestigateSchema)
+  .defineAction('CONTAIN',     ContainSchema)
+  .defineAction('ERADICATE',   EradicateSchema)
+  .defineAction('RECOVER',     RecoverSchema)
+  .defineAction('CLOSE',       CloseSchema)
+
+  .addState(new StepState('detected',     { label: 'Detected' }))
+  .addState(new StepState('triaged',      { label: 'Triaged' }))
+  .addState(new StepState('investigating',{ label: 'Investigating' }))
+  .addState(new StepState('contained',    { label: 'Contained' }))
+  .addState(new StepState('eradicated',   { label: 'Eradicated' }))
+  .addState(new StepState('recovered',    { label: 'Recovered' }))
+  .addState(new StepState('closed',       { label: 'Closed' }))
+
+  .setInitial('detected')
+  .setTerminal(['closed'])
+
+  .addTransition({ from: 'detected',     to: 'triaged',      on: 'TRIAGE' })
+  .addTransition({ from: 'triaged',      to: 'investigating',on: 'INVESTIGATE' })
+  .addTransition({ from: 'investigating',to: 'contained',    on: 'CONTAIN',
+    guard: (ctx) => ctx.payload.actionsTaken.trim().length >= 5 })
+  .addTransition({ from: 'contained',    to: 'eradicated',   on: 'ERADICATE',
+    guard: (ctx) => ctx.payload.rootCause.trim().length >= 10 })
+  .addTransition({ from: 'eradicated',   to: 'recovered',    on: 'RECOVER',
+    guard: Guard.inject('management-sign-off') })
+  .addTransition({ from: 'recovered',    to: 'closed',       on: 'CLOSE' })
+
+  .build();
+
+export type IncidentInstance = WorkflowInstance<{
+  DETECT:      z.infer<typeof DetectSchema>;
+  TRIAGE:      z.infer<typeof TriageSchema>;
+  INVESTIGATE: z.infer<typeof InvestigateSchema>;
+  CONTAIN:     z.infer<typeof ContainSchema>;
+  ERADICATE:   z.infer<typeof EradicateSchema>;
+  RECOVER:     z.infer<typeof RecoverSchema>;
+  CLOSE:       z.infer<typeof CloseSchema>;
+}>;

@@ -306,3 +306,89 @@ pnpm docs:preview  # preview the production build
 ```
 
 **No source code changes.** All existing tests pass. `pnpm docs:build` exits clean.
+
+### 2026-05-24 — Phase 2: React Web Runner SPA
+
+- `pnpm-workspace.yaml` — created at the repo root; lists `.` and `web-runner` as workspace packages. Required because pnpm excludes `.gitignore`d files (including `dist/`) from `file:` deps; workspace symlinks bypass this.
+- `package.json` — fixed `exports` map: `.mjs` → `.js` and `.cjs` (tsup with `type: "module"` emits `.js` for ESM, not `.mjs`). Also removed the stale `"module"` field.
+- `web-runner/` — standalone SPA (React 19, Vite 6, Tailwind v4, @xyflow/react v12):
+  - `package.json` — `"logic-workflow": "workspace:*"`; own `pnpm-lock.yaml`
+  - `vite.config.ts` — `@vitejs/plugin-react` + `@tailwindcss/vite`; `optimizeDeps.include` for both library entry points
+  - `tsconfig.json` — full strict mode matching parent (`exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`, `noImplicitOverride`)
+  - `src/index.css` — `@import "tailwindcss"` + `@import "@xyflow/react/dist/style.css"`
+  - `src/workflow/demo-workflow.ts` — engineer pre-departure checklist compiled workflow + `wireGuards`
+  - `src/lib/zod-introspect.ts` — pure schema walker (`ZodObject/String/Number/Boolean/Enum/Literal/Optional/Default`) → `FieldDescriptor[]`
+  - `src/App.tsx` — context provider; holds `InstanceSnapshot` in `useState`, instance in `useRef`; exposes `dispatch` + `lastError` + `availableActions`
+  - `src/components/StateNode.tsx` — custom @xyflow node card; colour by status, icon by kind
+  - `src/components/WorkflowGraph.tsx` — BFS layout + `JsonGraphExporter` → React Flow canvas; animated edges on active states; dashed edges for guarded transitions
+  - `src/components/DynamicForm.tsx` — SDUI: action selector → `describeSchema()` → controlled inputs → dispatch
+  - `src/components/HistoryPanel.tsx` — scrollable audit log from `snapshot.history`
+- `.gitignore` — added `web-runner/node_modules/`, `web-runner/dist/`, `web-runner/.vite/`
+
+**Run the web runner:**
+```sh
+pnpm build                     # build logic-workflow first (always required after src/ changes)
+cd web-runner && pnpm dev      # → http://localhost:5174
+```
+
+`tsc --noEmit` and `vite build` both exit clean.
+
+### 2026-05-24 — web-runner relocated to sibling of logic-workflow
+
+`web-runner/` was nested inside `logic-workflow/` (wrong). Moved to sibling position at the git root:
+
+```
+/Users/zihung20/Desktop/workflow/
+├── logic-workflow/    ← core library
+└── web-runner/        ← SPA (now here)
+```
+
+Changes made:
+- Moved `logic-workflow/web-runner/` → `../web-runner/` (same git repo)
+- `logic-workflow/package.json` — added `"files": ["dist", "src"]` so pnpm's `file:` dep resolution includes the built output (pnpm excludes `.gitignore`d paths without this)
+- `web-runner/package.json` — dep changed from `"workspace:*"` → `"file:../logic-workflow"`
+- `logic-workflow/pnpm-workspace.yaml` — deleted (workspace approach no longer needed; `files` field solves the dist inclusion problem cleanly)
+- `logic-workflow/.gitignore` — removed `web-runner/` entries (no longer a subdirectory)
+- `web-runner/` — deleted stale `node_modules/`, `dist/`, `pnpm-lock.yaml`; ran `pnpm install` fresh
+
+**Run the web runner (from git root):**
+```sh
+cd logic-workflow && pnpm build   # rebuild library after src/ changes
+cd ../web-runner && pnpm install  # only needed once, or after dep changes
+pnpm dev                          # → http://localhost:5173
+```
+
+`tsc --noEmit` and `vite build` both exit clean after the move.
+
+### 2026-05-24 — EWCR demo + dagre layout + auto-fill form
+
+- `web-runner/src/workflow/demo-workflow.ts` — replaced engineer pre-departure workflow with a
+  full **40-section EWCR (Electrical Work Clearance Request)** demo (5 rows × 8 cols grid).
+  Each section has 7 states: `idle → isolation-requested → isolated → clearance-issued →
+  work-in-progress → work-completed → power-restored`. Two cross-section guards:
+  - `neighbors-safe` (blocks `CONFIRM_ISOLATION`) — all adjacent sections must have left `idle`
+  - `neighbors-clear` (blocks `RESTORE_POWER`) — no adjacent section in `clearance-issued` or `work-in-progress`
+  Guards are wired via `Guard.inject()` + `instance.injectGuard()`, closing over the shared
+  instances map so each section checks its live neighbours at dispatch time.
+
+- `web-runner/package.json` — added `@dagrejs/dagre ^3.0.0` for graph layout.
+
+- `web-runner/src/components/WorkflowGraph.tsx` — replaced hand-rolled BFS layout with
+  **dagre** (`rankdir: LR`). Nodes are now properly ordered left-to-right with no crossing chaos.
+  The `any` casts are isolated to the `dagreLayout` function body (dagre v3 bundles its own
+  graphlib copy whose types reference an uninstalled peer package).
+
+- `web-runner/src/components/DynamicForm.tsx` — added `autoDefault()` which pre-fills every
+  field with a sensible value (name-based heuristics: `*By` → `ENG-001`, `*At` → ISO datetime,
+  `reason` → "Scheduled maintenance", etc.). Fields are pre-populated whenever the selected
+  action changes so users can dispatch with a single click.
+
+- `web-runner/src/components/SectionGrid.tsx` — **new component**: 5 × 8 grid of coloured
+  section tiles. Colour encodes current state. Selected section gets a white ring; its
+  neighbours get a grey ring (shows which sections are interdependent for the guard logic).
+
+- `web-runner/src/App.tsx` — rewritten to manage 40 workflow instances. Holds
+  `Map<string, InstanceSnapshot>` in state (re-built after every dispatch so the grid
+  re-renders). Selected-section snapshot and available actions are derived from that map.
+
+`tsc --noEmit` and `vite build` both exit clean.
