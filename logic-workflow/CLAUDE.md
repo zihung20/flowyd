@@ -439,3 +439,47 @@ pnpm dev                          # → http://localhost:5173
 
 **Test count: 74 → 141 (all passing). No API surface changes.**
 **Verification:** `pnpm typecheck && pnpm test && pnpm build` all exit clean.
+
+### 2026-05-24 — Config-First WorkflowBuilder + typed state factory methods
+
+#### Breaking API change: constructor signature
+- `src/core/builder.ts` — `WorkflowBuilder` constructor changed from `(name: string)` to
+  `({ name, states })`. The `states` array (with `as const`) establishes `TStates` upfront so
+  every subsequent call is constrained to that union, replacing the per-`addState` accumulation.
+
+#### Typed factory methods on WorkflowBuilder
+- `addStep(id, options?)` — creates + registers a `StepState`. `id` is constrained to `TStates`.
+- `addFork(id, options)` — creates + registers a `ForkState`. **`targets` autocompletes to
+  `TStates`** — no valid state can be referenced unless it was declared in the constructor.
+- `addJoin(id, options)` — creates + registers a `JoinState`. **`requires` autocompletes to
+  `TStates`** — same constraint as `addFork`.
+- `addSubWorkflow(id, options)` — creates + registers a `SubWorkflowState`. `id: TStates`.
+- `addState(state)` — retained as an escape hatch for externally-constructed state objects
+  (e.g. in tests that bypass type constraints to verify runtime behaviour).
+
+#### ForkState / JoinState generic extension
+- `src/states/fork-state.ts` — added `TValidStates extends string = string` generic.
+  Constructor `options.targets` typed as `[TValidStates, ...TValidStates[]]` (non-empty tuple):
+  compile-time proof that targets are non-empty; constraint flows from builder factory methods.
+- `src/states/join-state.ts` — same pattern for `options.requires`.
+- `src/states/fork-state.test.ts`, `src/states/join-state.test.ts` — added `@ts-expect-error`
+  for the empty-array runtime tests (now also a compile-time error); fixed `string[]` variable
+  declarations to `[string, string]` tuples.
+
+#### All call sites updated (breaking change — no backward compat shim)
+- `src/core/builder.test.ts`, `src/core/engine.test.ts`, `src/core/instance.test.ts`
+- `tests/integration/linear-sop.test.ts`, `parallel-join.test.ts`, `sub-workflow.test.ts`
+- `tests/e2e/workflow-invariants.test.ts`
+- `examples/engineer-predeparture-checklist.ts` (primary showcase), `station-opening-checklist.ts`,
+  `occ-disruption-sop.ts`
+
+**Invariant introduced:** The builder no longer accepts `new WorkflowBuilder('name')`. Pass
+`{ name, states }` with `as const` so TypeScript infers the literal union.
+
+**`addState` removed** — no escape hatch; every state must go through `addStep`, `addFork`,
+`addJoin`, or `addSubWorkflow`. Tests that verify runtime `build()` validation use
+`@ts-expect-error` on `addFork`/`addJoin` directly (more honest than bypassing via a raw
+state constructor). `AnyState` import removed from `builder.ts` as a result.
+
+**Test count: 141 → 143 (all passing).** Two new tests cover `addFork`/`addJoin` type-safety.
+**Verification:** `pnpm typecheck && pnpm test` both exit clean.

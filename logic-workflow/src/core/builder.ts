@@ -1,44 +1,90 @@
 import { type ZodSchema } from 'zod';
-import type { AnyState, TransitionDefinition, ActionPayloadMap, WorkflowDefinition, IGuard, GuardFn } from '../types/index.js';
+import type { TransitionDefinition, ActionPayloadMap, WorkflowDefinition, IGuard, GuardFn } from '../types/index.js';
+import type { JoinMode } from '../types/state.js';
 import { StateKind } from '../types/index.js';
 import { StateRegistry } from './registry.js';
 import { Workflow } from './workflow.js';
 import { FnGuard } from '../guards/index.js';
+import { StepState } from '../states/step-state.js';
+import { ForkState } from '../states/fork-state.js';
+import { JoinState } from '../states/join-state.js';
+import { SubWorkflowState } from '../states/sub-workflow-state.js';
 
 /**
  * Fluent builder for composing and validating a workflow definition.
  *
- * Call order:
- * 1. `defineAction()` — register each action and its Zod payload schema.
- * 2. `addState()` — register every state in the graph.
- * 3. `setInitial()` / `setTerminal()` — declare entry and exit points.
- * 4. `addTransition()` — wire states together with named, optionally-guarded arcs.
- * 5. `build()` — validate and compile into an immutable `Workflow`.
+ * ## Config-First construction
  *
- * Both `defineAction()` and `addState()` return new builder instances so that
- * the `TActions` and `TStates` generics accumulate correctly across calls.
- * All other methods return `this` for chaining.
+ * Pass all valid state IDs upfront in the constructor. This establishes the
+ * `TStates` union at the point of instantiation, so every subsequent call
+ * (`addStep`, `addFork`, `addJoin`, `setInitial`, `setTerminal`,
+ * `addTransition`) is constrained to that fixed set of names. IDEs will
+ * autocomplete state IDs throughout the chain without the caller maintaining a
+ * separate type union.
+ *
+ * ```ts
+ * const builder = new WorkflowBuilder({
+ *   name: 'my-workflow',
+ *   states: ['pending', 'fork', 'branch-a', 'branch-b', 'joined', 'done'] as const,
+ * });
+ * ```
+ *
+ * ## Typical call order
+ *
+ * 1. Constructor — declare the name and all state IDs.
+ * 2. `defineAction()` — register each action and its Zod payload schema.
+ * 3. `addStep()` / `addFork()` / `addJoin()` / `addSubWorkflow()` — register states.
+ * 4. `setInitial()` / `setTerminal()` — declare entry and exit points.
+ * 5. `addTransition()` — wire states together with named, optionally-guarded arcs.
+ * 6. `build()` — validate and compile into an immutable `Workflow`.
+ *
+ * `defineAction()` returns a new builder instance so that the `TActions`
+ * generic accumulates correctly across calls. All other methods return `this`.
+ *
+ * `addState()` is an escape hatch for externally-constructed state objects when
+ * the typed factory methods are not suitable.
  *
  * @template TActions - Accumulated map of action names → payload types.
  *                      Starts as `Record<never, never>` and grows with each
  *                      `defineAction()` call.
- * @template TStates  - Union of all registered state IDs as string literals.
- *                      Starts as `never` and grows with each `addState()` call.
- *                      Constrains `setInitial`, `setTerminal`, and `addTransition`
- *                      to only accept IDs that have been registered.
+ * @template TStates  - Union of all declared state IDs, inferred from the
+ *                      `states` array passed to the constructor. Constrains
+ *                      all state-ID arguments throughout the chain.
  */
 export class WorkflowBuilder<
   TActions extends ActionPayloadMap = Record<never, never>,
   TStates extends string = never,
 > {
+  private readonly name: string;
   private readonly stateRegistry = new StateRegistry();
   private readonly transitions: TransitionDefinition[] = [];
   private readonly actionSchemas = new Map<string, ZodSchema<unknown>>();
   private initialStateId: string | null = null;
   private terminalStateIds: string[] = [];
 
-  constructor(private readonly name: string) {
-    if (!name.trim()) throw new Error('Workflow name must be non-empty');
+  /**
+   * Creates a new `WorkflowBuilder` with the full set of state IDs declared
+   * upfront. TypeScript infers `TStates` from the `states` array, constraining
+   * every subsequent call to that union.
+   *
+   * Use `as const` on the `states` array so that TypeScript infers literal
+   * types rather than `string`:
+   *
+   * ```ts
+   * new WorkflowBuilder({
+   *   name: 'inspection',
+   *   states: ['pending', 'fork', 'mechanical', 'electrical', 'joined', 'done'] as const,
+   * })
+   * ```
+   *
+   * @param config.name   - Workflow name. Must be non-empty.
+   * @param config.states - Non-empty array of every state ID in the graph.
+   *                        Must satisfy `as const` to preserve literal types.
+   * @throws {Error} If `name` is empty.
+   */
+  constructor(config: { name: string; states: readonly [TStates, ...TStates[]] }) {
+    if (!config.name.trim()) throw new Error('Workflow name must be non-empty');
+    this.name = config.name;
   }
 
   /**
@@ -64,27 +110,78 @@ export class WorkflowBuilder<
   }
 
   /**
-   * Registers a state in the workflow graph and extends the compile-time union
-   * of known state IDs (`TStates`).
+   * Creates and registers a `StepState` — the fundamental SOP milestone that
+   * waits for an explicit dispatched action before advancing.
    *
-   * Accepts any concrete state class: `StepState`, `ForkState`, `JoinState`,
-   * or `SubWorkflowState`. The state's `kind` is used by the engine to select
-   * the correct entry behaviour.
-   *
-   * @param state - A state instance with a unique `id`.
-   * @returns A new `WorkflowBuilder` generic extended with the new state ID.
+   * @param id      - Must be one of the state IDs declared in the constructor.
+   * @param options - Optional display label (defaults to `id`).
+   * @returns `this` for chaining.
    * @throws {Error} If a state with the same `id` is already registered.
    */
-  addState<S extends AnyState>(state: S): WorkflowBuilder<TActions, TStates | S['id']> {
-    this.stateRegistry.register(state);
-    // Builder identity preserved; the TStates ID union grows.
-    return this as unknown as WorkflowBuilder<TActions, TStates | S['id']>;
+  addStep(id: TStates, options: { label?: string } = {}): this {
+    this.stateRegistry.register(new StepState(id, options));
+    return this;
+  }
+
+  /**
+   * Creates and registers a `ForkState` that atomically activates one or more
+   * downstream states in parallel when entered.
+   *
+   * The `targets` array is constrained to `TStates`, so IDEs will autocomplete
+   * only the state IDs declared in the constructor.
+   *
+   * @param id      - Must be one of the state IDs declared in the constructor.
+   * @param options - `targets`: non-empty array of state IDs to activate in parallel.
+   *                  `label`: optional display label.
+   * @returns `this` for chaining.
+   * @throws {Error} If `targets` is empty or if the `id` is already registered.
+   */
+  addFork(id: TStates, options: { label?: string; targets: [TStates, ...TStates[]] }): this {
+    this.stateRegistry.register(new ForkState(id, options));
+    return this;
+  }
+
+  /**
+   * Creates and registers a `JoinState` — a synchronisation barrier that
+   * becomes `active` automatically once the completion threshold is met.
+   *
+   * The `requires` array is constrained to `TStates`, so IDEs will autocomplete
+   * only the state IDs declared in the constructor.
+   *
+   * @param id      - Must be one of the state IDs declared in the constructor.
+   * @param options - `requires`: non-empty array of prerequisite state IDs.
+   *                  `mode`:    `'all'` (default) | `'any'` | a quorum number.
+   *                  `label`:   optional display label.
+   * @returns `this` for chaining.
+   * @throws {Error} If `requires` is empty or if the `id` is already registered.
+   */
+  addJoin(
+    id: TStates,
+    options: { label?: string; requires: [TStates, ...TStates[]]; mode?: JoinMode },
+  ): this {
+    this.stateRegistry.register(new JoinState(id, options));
+    return this;
+  }
+
+  /**
+   * Creates and registers a `SubWorkflowState` that blocks the parent workflow
+   * while an external `WorkflowInstance` is in progress.
+   *
+   * @param id      - Must be one of the state IDs declared in the constructor.
+   * @param options - `subWorkflowName`: name of the external workflow definition.
+   *                  `label`:           optional display label.
+   * @returns `this` for chaining.
+   * @throws {Error} If a state with the same `id` is already registered.
+   */
+  addSubWorkflow(id: TStates, options: { label?: string; subWorkflowName: string }): this {
+    this.stateRegistry.register(new SubWorkflowState(id, options));
+    return this;
   }
 
   /**
    * Declares the single state that will be `active` when a new instance is created.
    *
-   * @param stateId - Must be a registered state ID (`TStates`).
+   * @param stateId - Must be a declared state ID (`TStates`).
    * @throws {Error} If called more than once.
    */
   setInitial(stateId: TStates): this {
@@ -109,7 +206,7 @@ export class WorkflowBuilder<
   /**
    * Adds a directed transition arc to the workflow graph.
    *
-   * `from` and `to` are constrained to `TStates` — the union of registered state
+   * `from` and `to` are constrained to `TStates` — the union of declared state
    * IDs — and `on` is constrained to `keyof TActions`, preventing typos at
    * compile time for both state IDs and action names.
    *
@@ -119,10 +216,6 @@ export class WorkflowBuilder<
    *   explicit type annotation.
    * - Any `IGuard` instance (e.g. `Guard.and([...])`, `Guard.inject('name')`).
    * Raw functions are wrapped in `FnGuard` internally; the engine sees only `IGuard`.
-   *
-   * Multiple transitions from the same state on the same action are allowed
-   * (e.g. to model parallel fan-out or mutually exclusive guards). The engine
-   * applies all passing transitions in the order they were added.
    *
    * @param transition - The transition definition. `from`, `to`, and `on` are required.
    */

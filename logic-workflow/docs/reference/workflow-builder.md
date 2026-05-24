@@ -10,14 +10,24 @@ import { WorkflowBuilder } from 'logic-workflow';
 ## Constructor
 
 ```ts
-new WorkflowBuilder(name: string)
+new WorkflowBuilder(config: { name: string; states: readonly [S, ...S[]] })
 ```
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `name` | `string` | Human-readable name for the workflow. Must be non-empty. |
+| `config.name` | `string` | Human-readable name for the workflow. Must be non-empty. |
+| `config.states` | `readonly [S, ...S[]]` | Non-empty array of every state ID. Use `as const` so TypeScript infers literal types. |
 
 **Throws** `Error` if `name` is empty or whitespace.
+
+Passing the full set of state IDs upfront establishes the `TStates` generic at instantiation time. Every subsequent call — `addStep`, `addFork`, `addJoin`, `addSubWorkflow`, `setInitial`, `setTerminal`, `addTransition` — is constrained to that union. IDEs autocomplete state IDs throughout the chain without any manual type annotations.
+
+```ts
+new WorkflowBuilder({
+  name: 'my-workflow',
+  states: ['draft', 'fork', 'branch-a', 'branch-b', 'joined', 'done'] as const,
+})
+```
 
 
 ## Call order
@@ -25,7 +35,7 @@ new WorkflowBuilder(name: string)
 The builder is a fluent chain. Methods must be called in this order:
 
 1. `defineAction()` — register each action and its payload schema
-2. `addState()` — register every state in the graph
+2. `addStep()` / `addFork()` / `addJoin()` / `addSubWorkflow()` — register every state
 3. `setInitial()` / `setTerminal()` — declare entry and exit points
 4. `addTransition()` — wire states together
 5. `build()` — validate and compile
@@ -50,13 +60,62 @@ Registers an action and binds a Zod schema to its payload. Returns a new builder
 Must be called before any `addTransition` that uses this action name.
 
 
-## `.addState(state)`
+## `.addStep(id, options?)`
 
 ```ts
-addState<S extends IState>(state: S): WorkflowBuilder<TActions, TStates | S['id']>
+addStep(id: TStates, options?: { label?: string }): this
 ```
 
-Registers a state and extends the compile-time union of known state IDs. Accepts `StepState`, `ForkState`, `JoinState`, or `SubWorkflowState`.
+Creates and registers a `StepState`. The `id` is constrained to `TStates`.
+
+**Throws** `Error` if a state with the same `id` is already registered.
+
+
+## `.addFork(id, options)`
+
+```ts
+addFork(id: TStates, options: {
+  label?: string;
+  targets: [TStates, ...TStates[]];
+}): this
+```
+
+Creates and registers a `ForkState`. Both `id` and every entry in `targets` are constrained to `TStates` — IDEs autocomplete to the declared state union.
+
+**Throws** `Error` if `targets` is empty or if `id` is already registered.
+
+
+## `.addJoin(id, options)`
+
+```ts
+addJoin(id: TStates, options: {
+  label?: string;
+  requires: [TStates, ...TStates[]];
+  mode?: 'all' | 'any' | number;
+}): this
+```
+
+Creates and registers a `JoinState`. Both `id` and every entry in `requires` are constrained to `TStates` — IDEs autocomplete to the declared state union.
+
+| `mode` | Meaning |
+|--------|---------|
+| `'all'` (default) | Every state in `requires` must complete |
+| `'any'` | At least one state in `requires` must complete |
+| `number` | At least N states must complete (quorum) |
+
+**Throws** `Error` if `requires` is empty or if `id` is already registered.
+
+
+## `.addSubWorkflow(id, options)`
+
+```ts
+addSubWorkflow(id: TStates, options: {
+  label?: string;
+  subWorkflowName: string;
+}): this
+```
+
+Creates and registers a `SubWorkflowState`. The `id` is constrained to `TStates`.
 
 **Throws** `Error` if a state with the same `id` is already registered.
 

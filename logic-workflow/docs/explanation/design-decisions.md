@@ -65,8 +65,10 @@ The `MermaidExporter` and `JsonGraphExporter` live in `logic-workflow/visualizat
 The physical separation enforces the architectural rule at the toolchain level, not just by convention.
 
 
-## WorkflowBuilder returns new instances on defineAction and addState
+## WorkflowBuilder: Config-First state declaration
 
-`defineAction` and `addState` return `WorkflowBuilder<TActions & Record<K, T>, TStates | S['id']>` — a new generic specialization, not `this`. This is required to accumulate the `TActions` and `TStates` generics across the fluent chain.
+All state IDs are passed to the constructor as `states: [...] as const`. TypeScript infers the `TStates` union at the point of instantiation, so `addStep`, `addFork`, `addJoin`, `addSubWorkflow`, `setInitial`, `setTerminal`, and `addTransition` are all constrained to that fixed set of names for the entire chain.
 
-At runtime, the same object is returned (via `as unknown as …` casts). Only the TypeScript type changes. This design gives you compile-time safety on `addTransition`, `setInitial`, `setTerminal`, `dispatch`, and `canExecute` — all of which are constrained to only accept action names and state IDs that have been registered, catching typos at compile time rather than at `build()` time.
+`addFork` and `addJoin` go further: their `targets` and `requires` arrays are also typed as `TStates[]`, giving IDE autocomplete for prerequisite state names without any manual type annotations.
+
+`defineAction` still returns `WorkflowBuilder<TActions & Record<K, T>, TStates>` — a new generic specialization — because `TActions` must accumulate across calls. At runtime the same object is returned (via `as unknown as …` casts); only the TypeScript type changes. This design gives compile-time safety on `addTransition`, `dispatch`, and `canExecute`, which are constrained to registered action names and state IDs, catching typos at compile time rather than at `build()` time.

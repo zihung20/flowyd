@@ -23,11 +23,10 @@ import { BaseState } from './base.js';
  *
  * @example
  * ```ts
- * .addState(new SubWorkflowState('vendor-approval', {
- *   subWorkflowName: 'vendor-kyc',
- * }))
- * .addTransition({ from: 'vendor-approval', to: 'approved', on: 'KYC_PASSED' })
- * .addTransition({ from: 'vendor-approval', to: 'rejected', on: 'KYC_FAILED' })
+ * new WorkflowBuilder({ name: 'vendor', states: ['draft', 'vendor-approval', 'approved', 'rejected'] as const })
+ *   .addSubWorkflow('vendor-approval', { subWorkflowName: 'vendor-kyc' })
+ *   .addTransition({ from: 'vendor-approval', to: 'approved', on: 'KYC_PASSED' })
+ *   .addTransition({ from: 'vendor-approval', to: 'rejected', on: 'KYC_FAILED' })
  * ```
  */
 export class SubWorkflowState<TId extends string = string> extends BaseState<TId> implements ISubWorkflowState {

@@ -22,20 +22,23 @@ The fork fires the moment `START` is dispatched — no extra action is needed. B
 
 ```ts
 import { z } from 'zod';
-import { WorkflowBuilder, StepState, ForkState, JoinState } from 'logic-workflow';
+import { WorkflowBuilder } from 'logic-workflow';
 
-const procurement = new WorkflowBuilder('procurement')
+const procurement = new WorkflowBuilder({
+  name: 'procurement',
+  states: ['start', 'fork', 'legal', 'finance', 'join', 'approved'] as const,
+})
   .defineAction('START',        z.object({}))
   .defineAction('LEGAL_DONE',   z.object({ reviewedBy: z.string() }))
   .defineAction('FINANCE_DONE', z.object({ reviewedBy: z.string() }))
   .defineAction('FINALIZE',     z.object({}))
 
-  .addState(new StepState('start'))
-  .addState(new ForkState('fork', { targets: ['legal', 'finance'] }))
-  .addState(new StepState('legal',   { label: 'Legal Review' }))
-  .addState(new StepState('finance', { label: 'Finance Review' }))
-  .addState(new JoinState('join', { requires: ['legal', 'finance'], mode: 'all' }))
-  .addState(new StepState('approved'))
+  .addStep('start')
+  .addFork('fork', { targets: ['legal', 'finance'] })
+  .addStep('legal',   { label: 'Legal Review' })
+  .addStep('finance', { label: 'Finance Review' })
+  .addJoin('join', { requires: ['legal', 'finance'], mode: 'all' })
+  .addStep('approved')
 
   .setInitial('start')
   .setTerminal(['approved'])
@@ -84,7 +87,7 @@ await inst.dispatch('FINALIZE', {});
 
 ```ts
 // Quorum: 2 of 3 reviewers are enough
-new JoinState('quorum-join', {
+builder.addJoin('quorum-join', {
   requires: ['legal', 'finance', 'compliance'],
   mode: 2,
 })

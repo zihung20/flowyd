@@ -1,9 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import { WorkflowBuilder } from '../../src/core/builder.js';
-import { StepState } from '../../src/states/step-state.js';
-import { ForkState } from '../../src/states/fork-state.js';
-import { JoinState } from '../../src/states/join-state.js';
 
 const Empty = z.object({});
 
@@ -13,17 +10,20 @@ const Empty = z.object({});
  *   start ──START──▶ fork ──▶ legal ──LEGAL_DONE──▶ ┐
  *                         └──▶ finance ──FINANCE_DONE──▶ join(all) ──FINALIZE──▶ approved
  */
-const procurement = new WorkflowBuilder('procurement')
+const procurement = new WorkflowBuilder({
+  name: 'procurement',
+  states: ['start', 'fork', 'legal', 'finance', 'join', 'approved'] as const,
+})
   .defineAction('START', Empty)
   .defineAction('LEGAL_DONE', Empty)
   .defineAction('FINANCE_DONE', Empty)
   .defineAction('FINALIZE', Empty)
-  .addState(new StepState('start'))
-  .addState(new ForkState('fork', { targets: ['legal', 'finance'] }))
-  .addState(new StepState('legal'))
-  .addState(new StepState('finance'))
-  .addState(new JoinState('join', { requires: ['legal', 'finance'], mode: 'all' }))
-  .addState(new StepState('approved'))
+  .addStep('start')
+  .addFork('fork', { targets: ['legal', 'finance'] })
+  .addStep('legal')
+  .addStep('finance')
+  .addJoin('join', { requires: ['legal', 'finance'], mode: 'all' })
+  .addStep('approved')
   .setInitial('start')
   .setTerminal(['approved'])
   .addTransition({ from: 'start', to: 'fork', on: 'START' })
@@ -98,17 +98,20 @@ describe('Parallel-join SOP — procurement', () => {
  *   start ──GO──▶ fork ──▶ branch-a ──DONE_A──▶ ┐
  *                       └──▶ branch-b ──DONE_B──▶ join(any) ──PROCEED──▶ end
  */
-const anyJoin = new WorkflowBuilder('any-join')
+const anyJoin = new WorkflowBuilder({
+  name: 'any-join',
+  states: ['start', 'fork', 'branch-a', 'branch-b', 'join', 'end'] as const,
+})
   .defineAction('GO', Empty)
   .defineAction('DONE_A', Empty)
   .defineAction('DONE_B', Empty)
   .defineAction('PROCEED', Empty)
-  .addState(new StepState('start'))
-  .addState(new ForkState('fork', { targets: ['branch-a', 'branch-b'] }))
-  .addState(new StepState('branch-a'))
-  .addState(new StepState('branch-b'))
-  .addState(new JoinState('join', { requires: ['branch-a', 'branch-b'], mode: 'any' }))
-  .addState(new StepState('end'))
+  .addStep('start')
+  .addFork('fork', { targets: ['branch-a', 'branch-b'] })
+  .addStep('branch-a')
+  .addStep('branch-b')
+  .addJoin('join', { requires: ['branch-a', 'branch-b'], mode: 'any' })
+  .addStep('end')
   .setInitial('start')
   .setTerminal(['end'])
   .addTransition({ from: 'start', to: 'fork', on: 'GO' })

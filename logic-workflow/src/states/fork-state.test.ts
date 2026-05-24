@@ -8,13 +8,14 @@ describe('ForkState', () => {
   });
 
   it('stores targets as a frozen copy', () => {
-    const orig = ['a', 'b'];
+    const orig: [string, string] = ['a', 'b'];
     const f = new ForkState('f', { targets: orig });
     orig.push('c');
     expect(f.targets).toEqual(['a', 'b']);
   });
 
   it('throws when targets is empty', () => {
+    // @ts-expect-error — intentional: verifying runtime guard for empty array
     expect(() => new ForkState('f', { targets: [] })).toThrow('at least one target');
   });
 

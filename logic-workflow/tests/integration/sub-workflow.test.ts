@@ -1,8 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import { WorkflowBuilder } from '../../src/core/builder.js';
-import { StepState } from '../../src/states/step-state.js';
-import { SubWorkflowState } from '../../src/states/sub-workflow-state.js';
 import { StateStatus } from '../../src/types/index.js';
 
 const Empty = z.object({});
@@ -14,14 +12,17 @@ const Empty = z.object({});
  *
  * The kyc-check state blocks until the service layer calls resolveSubWorkflow.
  */
-const vendorOnboarding = new WorkflowBuilder('vendor-onboarding')
+const vendorOnboarding = new WorkflowBuilder({
+  name: 'vendor-onboarding',
+  states: ['draft', 'kyc-check', 'approved', 'rejected'] as const,
+})
   .defineAction('SUBMIT', Empty)
   .defineAction('KYC_PASSED', Empty)
   .defineAction('KYC_FAILED', Empty)
-  .addState(new StepState('draft'))
-  .addState(new SubWorkflowState('kyc-check', { subWorkflowName: 'vendor-kyc' }))
-  .addState(new StepState('approved'))
-  .addState(new StepState('rejected'))
+  .addStep('draft')
+  .addSubWorkflow('kyc-check', { subWorkflowName: 'vendor-kyc' })
+  .addStep('approved')
+  .addStep('rejected')
   .setInitial('draft')
   .setTerminal(['approved', 'rejected'])
   .addTransition({ from: 'draft', to: 'kyc-check', on: 'SUBMIT' })

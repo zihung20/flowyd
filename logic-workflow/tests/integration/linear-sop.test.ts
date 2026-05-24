@@ -1,21 +1,23 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import { WorkflowBuilder } from '../../src/core/builder.js';
-import { StepState } from '../../src/states/step-state.js';
 import { Guard } from '../../src/guards/factory.js';
 
 const SubmitSchema = z.object({ submitterId: z.string() });
 const ApproveSchema = z.object({ reason: z.string(), approverId: z.string() });
 const RejectSchema = z.object({ reason: z.string() });
 
-const purchaseOrder = new WorkflowBuilder('purchase-order')
+const purchaseOrder = new WorkflowBuilder({
+  name: 'purchase-order',
+  states: ['draft', 'pending-approval', 'approved', 'rejected'] as const,
+})
   .defineAction('SUBMIT', SubmitSchema)
   .defineAction('APPROVE', ApproveSchema)
   .defineAction('REJECT', RejectSchema)
-  .addState(new StepState('draft', { label: 'Draft' }))
-  .addState(new StepState('pending-approval', { label: 'Pending Approval' }))
-  .addState(new StepState('approved', { label: 'Approved' }))
-  .addState(new StepState('rejected', { label: 'Rejected' }))
+  .addStep('draft', { label: 'Draft' })
+  .addStep('pending-approval', { label: 'Pending Approval' })
+  .addStep('approved', { label: 'Approved' })
+  .addStep('rejected', { label: 'Rejected' })
   .setInitial('draft')
   .setTerminal(['approved', 'rejected'])
   .addTransition({ from: 'draft', to: 'pending-approval', on: 'SUBMIT' })

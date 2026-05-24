@@ -20,17 +20,20 @@ The engine has **no polling, no callbacks, no I/O**. The `subWorkflowName` strin
 
 ```ts
 import { z } from 'zod';
-import { WorkflowBuilder, StepState, SubWorkflowState } from 'logic-workflow';
+import { WorkflowBuilder } from 'logic-workflow';
 
-const vendorOnboarding = new WorkflowBuilder('vendor-onboarding')
+const vendorOnboarding = new WorkflowBuilder({
+  name: 'vendor-onboarding',
+  states: ['draft', 'kyc-check', 'approved', 'rejected'] as const,
+})
   .defineAction('SUBMIT',     z.object({ vendorId: z.string() }))
   .defineAction('KYC_PASSED', z.object({}))
   .defineAction('KYC_FAILED', z.object({ reason: z.string() }))
 
-  .addState(new StepState('draft'))
-  .addState(new SubWorkflowState('kyc-check', { subWorkflowName: 'vendor-kyc' }))
-  .addState(new StepState('approved'))
-  .addState(new StepState('rejected'))
+  .addStep('draft')
+  .addSubWorkflow('kyc-check', { subWorkflowName: 'vendor-kyc' })
+  .addStep('approved')
+  .addStep('rejected')
 
   .setInitial('draft')
   .setTerminal(['approved', 'rejected'])

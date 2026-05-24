@@ -47,10 +47,6 @@
 import { z } from 'zod';
 import {
   WorkflowBuilder,
-  StepState,
-  ForkState,
-  JoinState,
-  SubWorkflowState,
   Guard,
 } from '../src/index.js';
 import { MermaidExporter, JsonGraphExporter } from '../src/visualization/index.js';
@@ -137,7 +133,24 @@ const isSupervisor   = Guard.inject('isSupervisor');
 
 // ─── Workflow definition ──────────────────────────────────────────────────────
 
-const occDisruptionSop = new WorkflowBuilder('occ-service-disruption')
+const occDisruptionSop = new WorkflowBuilder({
+  name: 'occ-service-disruption',
+  states: [
+    'incident-detected',
+    'incident-verified',
+    'duty-manager-notified',
+    'response-authorised',
+    'notification-fork',
+    'ops-team',
+    'stn-masters',
+    'public-comms',
+    'notification-join',
+    'bus-bridging',
+    'service-disrupted',
+    'service-restored',
+    'incident-closed',
+  ] as const,
+})
   .defineAction('VERIFY',              IncidentVerifySchema)
   .defineAction('ESCALATE_TO_DM',      EscalateSchema)
   .defineAction('AUTHORISE_RESPONSE',  AuthoriseSchema)
@@ -150,19 +163,19 @@ const occDisruptionSop = new WorkflowBuilder('occ-service-disruption')
   .defineAction('FILE_REPORT',         FileReportSchema)
 
   // States
-  .addState(new StepState('incident-detected',      { label: 'Incident Detected' }))
-  .addState(new StepState('incident-verified',      { label: 'Incident Verified' }))
-  .addState(new StepState('duty-manager-notified',  { label: 'DM Notified' }))
-  .addState(new StepState('response-authorised',    { label: 'Response Authorised' }))
-  .addState(new ForkState('notification-fork',      { label: 'Notification Fork', targets: ['ops-team', 'stn-masters', 'public-comms'] }))
-  .addState(new StepState('ops-team',               { label: 'Ops Team Notified' }))
-  .addState(new StepState('stn-masters',            { label: 'Station Masters Notified' }))
-  .addState(new StepState('public-comms',           { label: 'Public Comms Notified' }))
-  .addState(new JoinState('notification-join',      { label: 'All Parties Notified', requires: ['ops-team', 'stn-masters', 'public-comms'], mode: 'all' }))
-  .addState(new SubWorkflowState('bus-bridging',    { label: 'Bus Bridging', subWorkflowName: 'bus-bridging-sop' }))
-  .addState(new StepState('service-disrupted',      { label: 'Disruption Active' }))
-  .addState(new StepState('service-restored',       { label: 'Service Restored' }))
-  .addState(new StepState('incident-closed',        { label: 'Incident Closed' }))
+  .addStep('incident-detected',     { label: 'Incident Detected' })
+  .addStep('incident-verified',     { label: 'Incident Verified' })
+  .addStep('duty-manager-notified', { label: 'DM Notified' })
+  .addStep('response-authorised',   { label: 'Response Authorised' })
+  .addFork('notification-fork',     { label: 'Notification Fork', targets: ['ops-team', 'stn-masters', 'public-comms'] })
+  .addStep('ops-team',              { label: 'Ops Team Notified' })
+  .addStep('stn-masters',           { label: 'Station Masters Notified' })
+  .addStep('public-comms',          { label: 'Public Comms Notified' })
+  .addJoin('notification-join',     { label: 'All Parties Notified', requires: ['ops-team', 'stn-masters', 'public-comms'], mode: 'all' })
+  .addSubWorkflow('bus-bridging',   { label: 'Bus Bridging', subWorkflowName: 'bus-bridging-sop' })
+  .addStep('service-disrupted',     { label: 'Disruption Active' })
+  .addStep('service-restored',      { label: 'Service Restored' })
+  .addStep('incident-closed',       { label: 'Incident Closed' })
 
   .setInitial('incident-detected')
   .setTerminal(['incident-closed'])

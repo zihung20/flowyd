@@ -1,15 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import { WorkflowBuilder } from './builder.js';
-import { StepState } from '../states/step-state.js';
-import { ForkState } from '../states/fork-state.js';
-import { JoinState } from '../states/join-state.js';
 
 function minimalBuilder() {
-  return new WorkflowBuilder('test')
+  return new WorkflowBuilder({ name: 'test', states: ['start', 'end'] as const })
     .defineAction('GO', z.object({}))
-    .addState(new StepState('start'))
-    .addState(new StepState('end'))
+    .addStep('start')
+    .addStep('end')
     .setInitial('start')
     .setTerminal(['end'])
     .addTransition({ from: 'start', to: 'end', on: 'GO' });
@@ -21,25 +18,25 @@ describe('WorkflowBuilder', () => {
   });
 
   it('throws when no initial state is declared', () => {
-    const b = new WorkflowBuilder('test')
+    const b = new WorkflowBuilder({ name: 'test', states: ['start'] as const })
       .defineAction('GO', z.object({}))
-      .addState(new StepState('start'))
+      .addStep('start')
       .setTerminal(['start']);
     expect(() => b.build()).toThrow('initial state');
   });
 
   it('throws when no terminal state is declared', () => {
-    const b = new WorkflowBuilder('test')
+    const b = new WorkflowBuilder({ name: 'test', states: ['start'] as const })
       .defineAction('GO', z.object({}))
-      .addState(new StepState('start'))
+      .addStep('start')
       .setInitial('start');
     expect(() => b.build()).toThrow('terminal state');
   });
 
   it('throws when a transition references an unregistered state', () => {
-    const b = new WorkflowBuilder('test')
+    const b = new WorkflowBuilder({ name: 'test', states: ['start'] as const })
       .defineAction('GO', z.object({}))
-      .addState(new StepState('start'))
+      .addStep('start')
       .setInitial('start')
       .setTerminal(['start'])
       // @ts-expect-error — intentional: verifying runtime fallback for a type-bypassed invalid state ID
@@ -48,9 +45,9 @@ describe('WorkflowBuilder', () => {
   });
 
   it('throws when a transition uses an undeclared action', () => {
-    const b = new WorkflowBuilder('test')
-      .addState(new StepState('start'))
-      .addState(new StepState('end'))
+    const b = new WorkflowBuilder({ name: 'test', states: ['start', 'end'] as const })
+      .addStep('start')
+      .addStep('end')
       .setInitial('start')
       .setTerminal(['end'])
       // @ts-expect-error — intentional: verifying runtime fallback for a type-bypassed undeclared action
@@ -59,10 +56,11 @@ describe('WorkflowBuilder', () => {
   });
 
   it('throws when a ForkState target is unregistered', () => {
-    const b = new WorkflowBuilder('test')
+    const b = new WorkflowBuilder({ name: 'test', states: ['start', 'fork'] as const })
       .defineAction('GO', z.object({}))
-      .addState(new StepState('start'))
-      .addState(new ForkState('fork', { targets: ['ghost'] }))
+      .addStep('start')
+      // @ts-expect-error — intentional: 'ghost' is not in TStates; verifies build() runtime check
+      .addFork('fork', { targets: ['ghost'] })
       .setInitial('start')
       .setTerminal(['start'])
       .addTransition({ from: 'start', to: 'fork', on: 'GO' });
@@ -70,10 +68,11 @@ describe('WorkflowBuilder', () => {
   });
 
   it('throws when a JoinState requires an unregistered state', () => {
-    const b = new WorkflowBuilder('test')
+    const b = new WorkflowBuilder({ name: 'test', states: ['start', 'join'] as const })
       .defineAction('GO', z.object({}))
-      .addState(new StepState('start'))
-      .addState(new JoinState('join', { requires: ['ghost'] }))
+      .addStep('start')
+      // @ts-expect-error — intentional: 'ghost' is not in TStates; verifies build() runtime check
+      .addJoin('join', { requires: ['ghost'] })
       .setInitial('start')
       .setTerminal(['join'])
       .addTransition({ from: 'start', to: 'join', on: 'GO' });
@@ -81,11 +80,11 @@ describe('WorkflowBuilder', () => {
   });
 
   it('accumulates TActions generics correctly', () => {
-    const workflow = new WorkflowBuilder('typed')
+    const workflow = new WorkflowBuilder({ name: 'typed', states: ['draft', 'done'] as const })
       .defineAction('SUBMIT', z.object({ submitterId: z.string() }))
       .defineAction('APPROVE', z.object({ reason: z.string() }))
-      .addState(new StepState('draft'))
-      .addState(new StepState('done'))
+      .addStep('draft')
+      .addStep('done')
       .setInitial('draft')
       .setTerminal(['done'])
       .addTransition({ from: 'draft', to: 'done', on: 'SUBMIT' })
@@ -96,13 +95,13 @@ describe('WorkflowBuilder', () => {
     expect(instance).toBeDefined();
   });
 
-  it('accumulates TStates generics and constrains setInitial/setTerminal/addTransition', () => {
-    // Compile-time proof: if TStates accumulation is broken, the calls below
-    // produce TypeScript errors because the literal IDs are not in TStates.
-    const workflow = new WorkflowBuilder('typed-states')
+  it('declared states constrain setInitial/setTerminal/addTransition', () => {
+    // Compile-time proof: if TStates is not correctly inferred from the constructor,
+    // the calls below produce TypeScript errors because the literal IDs are unknown.
+    const workflow = new WorkflowBuilder({ name: 'typed-states', states: ['alpha', 'beta'] as const })
       .defineAction('GO', z.object({}))
-      .addState(new StepState('alpha'))
-      .addState(new StepState('beta'))
+      .addStep('alpha')
+      .addStep('beta')
       .setInitial('alpha')
       .setTerminal(['beta'])
       .addTransition({ from: 'alpha', to: 'beta', on: 'GO' })
@@ -111,12 +110,61 @@ describe('WorkflowBuilder', () => {
     expect(workflow).toBeDefined();
   });
 
+  it('addFork constrains targets to declared state IDs', () => {
+    const workflow = new WorkflowBuilder({
+      name: 'fork-typed',
+      states: ['start', 'fork', 'branch-a', 'branch-b', 'done'] as const,
+    })
+      .defineAction('GO', z.object({}))
+      .addStep('start')
+      .addFork('fork', { targets: ['branch-a', 'branch-b'] })
+      .addStep('branch-a')
+      .addStep('branch-b')
+      .addStep('done')
+      .setInitial('start')
+      .setTerminal(['done'])
+      .addTransition({ from: 'start', to: 'fork', on: 'GO' })
+      .build();
+
+    expect(workflow).toBeDefined();
+  });
+
+  it('addJoin constrains requires to declared state IDs', () => {
+    const workflow = new WorkflowBuilder({
+      name: 'join-typed',
+      states: ['start', 'fork', 'mechanical', 'electrical', 'safety-systems', 'all-clear', 'done'] as const,
+    })
+      .defineAction('START', z.object({}))
+      .defineAction('MECH_OK', z.object({}))
+      .defineAction('ELEC_OK', z.object({}))
+      .defineAction('SAFETY_OK', z.object({}))
+      .defineAction('SIGN_OFF', z.object({}))
+      .addStep('start')
+      .addFork('fork', { targets: ['mechanical', 'electrical', 'safety-systems'] })
+      .addStep('mechanical')
+      .addStep('electrical')
+      .addStep('safety-systems')
+      // requires autocompletes to the declared state union:
+      .addJoin('all-clear', { requires: ['mechanical', 'electrical', 'safety-systems'], mode: 'all' })
+      .addStep('done')
+      .setInitial('start')
+      .setTerminal(['done'])
+      .addTransition({ from: 'start', to: 'fork', on: 'START' })
+      .addTransition({ from: 'mechanical', to: 'all-clear', on: 'MECH_OK' })
+      .addTransition({ from: 'electrical', to: 'all-clear', on: 'ELEC_OK' })
+      .addTransition({ from: 'safety-systems', to: 'all-clear', on: 'SAFETY_OK' })
+      .addTransition({ from: 'all-clear', to: 'done', on: 'SIGN_OFF' })
+      .build();
+
+    expect(workflow).toBeDefined();
+  });
+
   it('infers guard payload type from the action schema', () => {
     // Compile-time proof: ctx.payload is typed as { score: number } without annotation.
-    const workflow = new WorkflowBuilder('guard-inference')
+    const workflow = new WorkflowBuilder({ name: 'guard-inference', states: ['pending', 'passed'] as const })
       .defineAction('SCORE', z.object({ score: z.number() }))
-      .addState(new StepState('pending'))
-      .addState(new StepState('passed'))
+      .addStep('pending')
+      .addStep('passed')
       .setInitial('pending')
       .setTerminal(['passed'])
       .addTransition({

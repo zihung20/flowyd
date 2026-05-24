@@ -7,7 +7,7 @@ The reference section is **information-oriented**. Every exported API is documen
 
 | Page | Covers |
 |------|--------|
-| [WorkflowBuilder](./workflow-builder) | Fluent builder — `defineAction`, `addState`, `setInitial`, `setTerminal`, `addTransition`, `build` |
+| [WorkflowBuilder](./workflow-builder) | Config-First builder — `defineAction`, `addStep`, `addFork`, `addJoin`, `addSubWorkflow`, `setInitial`, `setTerminal`, `addTransition`, `build` |
 | [WorkflowInstance](./workflow-instance) | Runtime instance — `dispatch`, `canExecute`, `getSnapshot`, `restoreInstance`, `resolveSubWorkflow`, guard injection, state queries |
 | [State Types](./state-types) | `StepState`, `ForkState`, `JoinState`, `SubWorkflowState` — constructors and properties |
 | [Guards](./guards) | `Guard` factory namespace — all built-in guard constructors and the `IGuard` interface |

@@ -1,20 +1,17 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import { WorkflowBuilder } from './builder.js';
-import { StepState } from '../states/step-state.js';
-import { ForkState } from '../states/fork-state.js';
-import { JoinState } from '../states/join-state.js';
 import { Guard } from '../guards/factory.js';
 import { StateStatus } from '../types/index.js';
 
 const Empty = z.object({});
 
-const linear = new WorkflowBuilder('linear')
+const linear = new WorkflowBuilder({ name: 'linear', states: ['a', 'b', 'c'] as const })
   .defineAction('GO', Empty)
   .defineAction('BACK', Empty)
-  .addState(new StepState('a'))
-  .addState(new StepState('b'))
-  .addState(new StepState('c'))
+  .addStep('a')
+  .addStep('b')
+  .addStep('c')
   .setInitial('a')
   .setTerminal(['c'])
   .addTransition({ from: 'a', to: 'b', on: 'GO' })
@@ -41,12 +38,12 @@ describe('Engine — terminal state', () => {
 
 describe('Engine — no-active-source', () => {
   it('returns no-active-source when action has transitions but none from the active state', async () => {
-    const wf = new WorkflowBuilder('back-test')
+    const wf = new WorkflowBuilder({ name: 'back-test', states: ['a', 'b', 'c'] as const })
       .defineAction('GO', Empty)
       .defineAction('BACK', Empty)
-      .addState(new StepState('a'))
-      .addState(new StepState('b'))
-      .addState(new StepState('c'))
+      .addStep('a')
+      .addStep('b')
+      .addStep('c')
       .setInitial('a')
       .setTerminal(['c'])
       .addTransition({ from: 'a', to: 'b', on: 'GO' })
@@ -71,10 +68,10 @@ describe('Engine — no-active-source', () => {
 
 describe('Engine — invalid-action', () => {
   it('returns invalid-action for an undeclared action name', async () => {
-    const wf = new WorkflowBuilder('ghost-test')
+    const wf = new WorkflowBuilder({ name: 'ghost-test', states: ['start', 'end'] as const })
       .defineAction('GO', Empty)
-      .addState(new StepState('start'))
-      .addState(new StepState('end'))
+      .addStep('start')
+      .addStep('end')
       .setInitial('start')
       .setTerminal(['end'])
       .addTransition({ from: 'start', to: 'end', on: 'GO' })
@@ -86,10 +83,10 @@ describe('Engine — invalid-action', () => {
 });
 
 describe('Engine — guard evaluation', () => {
-  const guarded = new WorkflowBuilder('guarded')
+  const guarded = new WorkflowBuilder({ name: 'guarded', states: ['a', 'b'] as const })
     .defineAction('GO', Empty)
-    .addState(new StepState('a'))
-    .addState(new StepState('b'))
+    .addStep('a')
+    .addStep('b')
     .setInitial('a')
     .setTerminal(['b'])
     .addTransition({ from: 'a', to: 'b', on: 'GO', guard: Guard.inject('canGo') })
@@ -113,10 +110,10 @@ describe('Engine — guard evaluation', () => {
   });
 
   it('Guard.fn inline guard receives payload correctly', async () => {
-    const wf = new WorkflowBuilder('fn-guard')
+    const wf = new WorkflowBuilder({ name: 'fn-guard', states: ['a', 'b'] as const })
       .defineAction('GO', z.object({ role: z.string() }))
-      .addState(new StepState('a'))
-      .addState(new StepState('b'))
+      .addStep('a')
+      .addStep('b')
       .setInitial('a')
       .setTerminal(['b'])
       .addTransition({
@@ -135,10 +132,10 @@ describe('Engine — guard evaluation', () => {
   });
 
   it('Guard.not inverts a passing guard', async () => {
-    const wf = new WorkflowBuilder('not-guard')
+    const wf = new WorkflowBuilder({ name: 'not-guard', states: ['a', 'b'] as const })
       .defineAction('GO', Empty)
-      .addState(new StepState('a'))
-      .addState(new StepState('b'))
+      .addStep('a')
+      .addStep('b')
       .setInitial('a')
       .setTerminal(['b'])
       .addTransition({ from: 'a', to: 'b', on: 'GO', guard: Guard.not(Guard.always()) })
@@ -170,14 +167,17 @@ describe('Engine — DispatchResult shape on success', () => {
 });
 
 describe('Engine — Fork fan-out', () => {
-  const forked = new WorkflowBuilder('fork-engine')
+  const forked = new WorkflowBuilder({
+    name: 'fork-engine',
+    states: ['start', 'fork', 'x', 'y', 'z', 'join'] as const,
+  })
     .defineAction('START', Empty)
-    .addState(new StepState('start'))
-    .addState(new ForkState('fork', { targets: ['x', 'y', 'z'] }))
-    .addState(new StepState('x'))
-    .addState(new StepState('y'))
-    .addState(new StepState('z'))
-    .addState(new JoinState('join', { requires: ['x', 'y', 'z'] }))
+    .addStep('start')
+    .addFork('fork', { targets: ['x', 'y', 'z'] })
+    .addStep('x')
+    .addStep('y')
+    .addStep('z')
+    .addJoin('join', { requires: ['x', 'y', 'z'] })
     .setInitial('start')
     .setTerminal(['join'])
     .addTransition({ from: 'start', to: 'fork', on: 'START' })
@@ -199,18 +199,21 @@ describe('Engine — Fork fan-out', () => {
 });
 
 describe('Engine — Join fixed-point', () => {
-  const quorum = new WorkflowBuilder('quorum')
+  const quorum = new WorkflowBuilder({
+    name: 'quorum',
+    states: ['start', 'fork', 'a', 'b', 'c', 'join', 'done'] as const,
+  })
     .defineAction('START', Empty)
     .defineAction('DONE_A', Empty)
     .defineAction('DONE_B', Empty)
     .defineAction('DONE_C', Empty)
-    .addState(new StepState('start'))
-    .addState(new ForkState('fork', { targets: ['a', 'b', 'c'] }))
-    .addState(new StepState('a'))
-    .addState(new StepState('b'))
-    .addState(new StepState('c'))
-    .addState(new JoinState('join', { requires: ['a', 'b', 'c'], mode: 2 }))
-    .addState(new StepState('done'))
+    .addStep('start')
+    .addFork('fork', { targets: ['a', 'b', 'c'] })
+    .addStep('a')
+    .addStep('b')
+    .addStep('c')
+    .addJoin('join', { requires: ['a', 'b', 'c'], mode: 2 })
+    .addStep('done')
     .setInitial('start')
     .setTerminal(['done'])
     .addTransition({ from: 'start', to: 'fork', on: 'START' })
@@ -245,10 +248,10 @@ describe('Engine — history', () => {
   });
 
   it('history entry contains the action name and payload', async () => {
-    const wf = new WorkflowBuilder('payload-history')
+    const wf = new WorkflowBuilder({ name: 'payload-history', states: ['a', 'b'] as const })
       .defineAction('GO', z.object({ note: z.string() }))
-      .addState(new StepState('a'))
-      .addState(new StepState('b'))
+      .addStep('a')
+      .addStep('b')
       .setInitial('a')
       .setTerminal(['b'])
       .addTransition({ from: 'a', to: 'b', on: 'GO' })

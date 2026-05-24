@@ -20,13 +20,14 @@ describe('JoinState', () => {
   });
 
   it('stores requires as a frozen copy', () => {
-    const orig = ['a', 'b'];
+    const orig: [string, string] = ['a', 'b'];
     const j = new JoinState('j', { requires: orig });
     orig.push('c');
     expect(j.requires).toEqual(['a', 'b']);
   });
 
   it('throws when requires is empty', () => {
+    // @ts-expect-error — intentional: verifying runtime guard for empty array
     expect(() => new JoinState('j', { requires: [] })).toThrow('at least one required');
   });
 });

@@ -13,22 +13,18 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import { WorkflowBuilder } from '../../src/core/builder.js';
-import { StepState } from '../../src/states/step-state.js';
-import { ForkState } from '../../src/states/fork-state.js';
-import { JoinState } from '../../src/states/join-state.js';
-import { SubWorkflowState } from '../../src/states/sub-workflow-state.js';
 import { StateStatus } from '../../src/types/index.js';
 
 const Empty = z.object({});
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
-const linear = new WorkflowBuilder('linear')
+const linear = new WorkflowBuilder({ name: 'linear', states: ['s1', 's2', 's3'] as const })
   .defineAction('NEXT', Empty)
   .defineAction('SKIP', Empty)
-  .addState(new StepState('s1'))
-  .addState(new StepState('s2'))
-  .addState(new StepState('s3'))
+  .addStep('s1')
+  .addStep('s2')
+  .addStep('s3')
   .setInitial('s1')
   .setTerminal(['s3'])
   .addTransition({ from: 's1', to: 's2', on: 'NEXT' })
@@ -36,17 +32,20 @@ const linear = new WorkflowBuilder('linear')
   .addTransition({ from: 's1', to: 's3', on: 'SKIP' })
   .build();
 
-const parallel = new WorkflowBuilder('parallel')
+const parallel = new WorkflowBuilder({
+  name: 'parallel',
+  states: ['start', 'fork', 'a', 'b', 'join', 'end'] as const,
+})
   .defineAction('START', Empty)
   .defineAction('DONE_A', Empty)
   .defineAction('DONE_B', Empty)
   .defineAction('FINISH', Empty)
-  .addState(new StepState('start'))
-  .addState(new ForkState('fork', { targets: ['a', 'b'] }))
-  .addState(new StepState('a'))
-  .addState(new StepState('b'))
-  .addState(new JoinState('join', { requires: ['a', 'b'], mode: 'all' }))
-  .addState(new StepState('end'))
+  .addStep('start')
+  .addFork('fork', { targets: ['a', 'b'] })
+  .addStep('a')
+  .addStep('b')
+  .addJoin('join', { requires: ['a', 'b'], mode: 'all' })
+  .addStep('end')
   .setInitial('start')
   .setTerminal(['end'])
   .addTransition({ from: 'start', to: 'fork', on: 'START' })
@@ -55,12 +54,12 @@ const parallel = new WorkflowBuilder('parallel')
   .addTransition({ from: 'join', to: 'end', on: 'FINISH' })
   .build();
 
-const subWf = new WorkflowBuilder('sub-wf')
+const subWf = new WorkflowBuilder({ name: 'sub-wf', states: ['begin', 'external', 'done'] as const })
   .defineAction('ENTER', Empty)
   .defineAction('COMPLETE', Empty)
-  .addState(new StepState('begin'))
-  .addState(new SubWorkflowState('external', { subWorkflowName: 'child-process' }))
-  .addState(new StepState('done'))
+  .addStep('begin')
+  .addSubWorkflow('external', { subWorkflowName: 'child-process' })
+  .addStep('done')
   .setInitial('begin')
   .setTerminal(['done'])
   .addTransition({ from: 'begin', to: 'external', on: 'ENTER' })

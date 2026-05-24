@@ -1,9 +1,13 @@
 /**
  * Example: Train Engineer Pre-Departure Checklist
  *
- * Models the mandatory checklist a train engineer must complete before a
- * service departure. Three inspection streams run in parallel (mechanical,
- * electrical, safety), then join before the engineer can sign off and depart.
+ * Demonstrates the Config-First WorkflowBuilder pattern. All state names are
+ * declared upfront in the constructor so that `addFork` targets and `addJoin`
+ * requires receive IDE autocomplete restricted to the declared union — no
+ * manual type unions needed.
+ *
+ * Three inspection streams run in parallel (mechanical, electrical, safety),
+ * then join before the engineer can sign off and depart.
  *
  * Workflow diagram:
  *
@@ -27,7 +31,7 @@
  */
 
 import { z } from 'zod';
-import { WorkflowBuilder, StepState, ForkState, JoinState } from '../src/index.js';
+import { WorkflowBuilder } from '../src/index.js';
 import { MermaidExporter } from '../src/visualization/index.js';
 
 // ─── Schema definitions ───────────────────────────────────────────────────────
@@ -53,9 +57,31 @@ const DepartSchema = z.object({
   scheduledAt:  z.string(),    // ISO 8601
 });
 
-// ─── Workflow definition ──────────────────────────────────────────────────────
+// ─── Workflow definition — Config-First pattern ───────────────────────────────
+//
+// All state IDs are declared upfront. TypeScript infers the union
+//   'reported-for-duty' | 'briefed' | 'inspection-fork' | 'mechanical' |
+//   'electrical' | 'safety-systems' | 'inspections-joined' | 'signed-off' | 'departed'
+// from the `states` array, so every subsequent call is constrained to that set.
+//
+// `addFork` and `addJoin` autocomplete their `targets`/`requires` arrays to
+// members of this union — no manual type annotations required.
 
-const engineerChecklist = new WorkflowBuilder('engineer-predeparture-checklist')
+const engineerChecklist = new WorkflowBuilder({
+  name: 'engineer-predeparture-checklist',
+  states: [
+    'reported-for-duty',
+    'briefed',
+    'inspection-fork',
+    'mechanical',
+    'electrical',
+    'safety-systems',
+    'inspections-joined',
+    'signed-off',
+    'departed',
+  ] as const,
+})
+  // ── Actions ──────────────────────────────────────────────────────────────
   .defineAction('BRIEFING_RECEIVED', BriefingSchema)
   .defineAction('START_INSPECTION',  z.object({}))
   .defineAction('MECH_OK',           InspectionSchema)
@@ -64,18 +90,31 @@ const engineerChecklist = new WorkflowBuilder('engineer-predeparture-checklist')
   .defineAction('SIGN_OFF',          SignOffSchema)
   .defineAction('DEPART',            DepartSchema)
 
-  // States
-  .addState(new StepState('reported-for-duty',  { label: 'Reported for Duty' }))
-  .addState(new StepState('briefed',            { label: 'Briefed' }))
-  .addState(new ForkState('inspection-fork',    { label: 'Inspection Fork', targets: ['mechanical', 'electrical', 'safety-systems'] }))
-  .addState(new StepState('mechanical',         { label: 'Mechanical Check' }))
-  .addState(new StepState('electrical',         { label: 'Electrical Check' }))
-  .addState(new StepState('safety-systems',     { label: 'Safety Systems Check' }))
-  .addState(new JoinState('inspections-joined', { label: 'Inspections Complete', requires: ['mechanical', 'electrical', 'safety-systems'], mode: 'all' }))
-  .addState(new StepState('signed-off',         { label: 'Signed Off' }))
-  .addState(new StepState('departed',           { label: 'Departed' }))
+  // ── States ───────────────────────────────────────────────────────────────
+  .addStep('reported-for-duty', { label: 'Reported for Duty' })
+  .addStep('briefed',           { label: 'Briefed' })
 
-  // Graph
+  // targets: autocompletes to the declared state union
+  .addFork('inspection-fork', {
+    label:   'Inspection Fork',
+    targets: ['mechanical', 'electrical', 'safety-systems'],
+  })
+
+  .addStep('mechanical',     { label: 'Mechanical Check' })
+  .addStep('electrical',     { label: 'Electrical Check' })
+  .addStep('safety-systems', { label: 'Safety Systems Check' })
+
+  // requires: autocompletes to the declared state union
+  .addJoin('inspections-joined', {
+    label:    'Inspections Complete',
+    requires: ['mechanical', 'electrical', 'safety-systems'],
+    mode:     'all',
+  })
+
+  .addStep('signed-off', { label: 'Signed Off' })
+  .addStep('departed',   { label: 'Departed' })
+
+  // ── Graph ─────────────────────────────────────────────────────────────────
   .setInitial('reported-for-duty')
   .setTerminal(['departed'])
 

@@ -13,16 +13,33 @@ import { BaseState } from './base.js';
  * reached. Once active, it behaves like a `StepState` and waits for an
  * explicit action to advance.
  *
+ * The optional `TValidStates` generic constrains `requires` to a union of
+ * known state IDs when constructed in a typed context (e.g. via
+ * `WorkflowBuilder.addJoin`). When omitted it defaults to `string`, preserving
+ * backward-compatibility with direct construction.
+ *
+ * @template TId          - Literal type of this state's `id`.
+ * @template TValidStates - Union of valid prerequisite state IDs. Defaults to `string`.
+ *
  * @example
  * ```ts
- * .addState(new JoinState('reviews-complete', {
+ * // Via the builder (requires autocomplete to declared state names):
+ * builder.addJoin('all-clear', {
+ *   requires: ['mechanical', 'electrical', 'safety-systems'],
+ *   mode: 'all',
+ * })
+ *
+ * // Direct construction (requires: any string[]):
+ * new JoinState('reviews-complete', {
  *   requires: ['legal', 'finance', 'tech'],
- *   mode: 'all',   // wait for all three
- * }))
- * .addTransition({ from: 'reviews-complete', to: 'approved', on: 'FINALIZE' })
+ *   mode: 'all',
+ * })
  * ```
  */
-export class JoinState<TId extends string = string> extends BaseState<TId> implements IJoinState {
+export class JoinState<TId extends string = string, TValidStates extends string = string>
+  extends BaseState<TId>
+  implements IJoinState
+{
   readonly kind = StateKind.Join;
   readonly requires: readonly string[];
   readonly mode: JoinMode;
@@ -32,12 +49,14 @@ export class JoinState<TId extends string = string> extends BaseState<TId> imple
    *                  is preserved so `WorkflowBuilder` can track registered IDs.
    * @param options - Configuration for the synchronisation barrier.
    *   - `requires`: IDs of states that must complete before this join fires.
+   *                 Must be non-empty; constrained to `TValidStates` when that
+   *                 generic is provided.
    *   - `mode`:     `'all'` (default) | `'any'` | a quorum number.
    * @throws {Error} If `requires` is empty.
    */
   constructor(
     id: TId,
-    options: { label?: string; requires: string[]; mode?: JoinMode },
+    options: { label?: string; requires: [TValidStates, ...TValidStates[]]; mode?: JoinMode },
   ) {
     super(id, options.label ?? id);
     if (options.requires.length === 0) {

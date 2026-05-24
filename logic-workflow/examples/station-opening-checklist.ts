@@ -33,7 +33,7 @@
  */
 
 import { z } from 'zod';
-import { WorkflowBuilder, StepState } from '../src/index.js';
+import { WorkflowBuilder } from '../src/index.js';
 import { MermaidExporter } from '../src/visualization/index.js';
 
 // ─── Schema definitions ───────────────────────────────────────────────────────
@@ -68,19 +68,29 @@ const CommenceServiceSchema = z.object({
 
 // ─── Workflow definition ──────────────────────────────────────────────────────
 
-const stationOpening = new WorkflowBuilder('station-opening')
+const stationOpening = new WorkflowBuilder({
+  name: 'station-opening',
+  states: [
+    'closed',
+    'premises-unlocked',
+    'safety-walk-done',
+    'systems-active',
+    'fare-gates-open',
+    'open-for-service',
+  ] as const,
+})
   .defineAction('UNLOCK_PREMISES',  UnlockSchema)
   .defineAction('COMPLETE_SAFETY_WALK', SafetyWalkSchema)
   .defineAction('ACTIVATE_SYSTEMS', ActivateSystemsSchema)
   .defineAction('OPEN_FARE_GATES',  OpenFareGatesSchema)
   .defineAction('COMMENCE_SERVICE', CommenceServiceSchema)
 
-  .addState(new StepState('closed',            { label: 'Station Closed' }))
-  .addState(new StepState('premises-unlocked', { label: 'Premises Unlocked' }))
-  .addState(new StepState('safety-walk-done',  { label: 'Safety Walk Done' }))
-  .addState(new StepState('systems-active',    { label: 'Systems Active' }))
-  .addState(new StepState('fare-gates-open',   { label: 'Fare Gates Open' }))
-  .addState(new StepState('open-for-service',  { label: 'Open for Service' }))
+  .addStep('closed',            { label: 'Station Closed' })
+  .addStep('premises-unlocked', { label: 'Premises Unlocked' })
+  .addStep('safety-walk-done',  { label: 'Safety Walk Done' })
+  .addStep('systems-active',    { label: 'Systems Active' })
+  .addStep('fare-gates-open',   { label: 'Fare Gates Open' })
+  .addStep('open-for-service',  { label: 'Open for Service' })
 
   .setInitial('closed')
   .setTerminal(['open-for-service'])

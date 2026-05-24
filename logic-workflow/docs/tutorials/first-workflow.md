@@ -37,9 +37,12 @@ Open a new file, `purchase-order.ts`:
 
 ```ts
 import { z } from 'zod';
-import { WorkflowBuilder, StepState, Guard } from 'logic-workflow';
+import { WorkflowBuilder, Guard } from 'logic-workflow';
 
-const purchaseOrder = new WorkflowBuilder('purchase-order')
+const purchaseOrder = new WorkflowBuilder({
+  name: 'purchase-order',
+  states: ['draft', 'pending-approval', 'approved', 'rejected'] as const,
+})
   .defineAction('SUBMIT',  z.object({ submitterId: z.string() }))
   .defineAction('APPROVE', z.object({ approverId: z.string(), reason: z.string() }))
   .defineAction('REJECT',  z.object({ reason: z.string() }))
@@ -57,13 +60,13 @@ Zod schemas are the single source of truth for both the TypeScript type and the 
 Continue chaining:
 
 ```ts
-  .addState(new StepState('draft',            { label: 'Draft' }))
-  .addState(new StepState('pending-approval', { label: 'Pending Approval' }))
-  .addState(new StepState('approved',         { label: 'Approved' }))
-  .addState(new StepState('rejected',         { label: 'Rejected' }))
+  .addStep('draft',            { label: 'Draft' })
+  .addStep('pending-approval', { label: 'Pending Approval' })
+  .addStep('approved',         { label: 'Approved' })
+  .addStep('rejected',         { label: 'Rejected' })
 ```
 
-`StepState` is the basic building block. It becomes `active` when entered and waits for a dispatch to advance.
+`addStep` registers a `StepState` — the basic building block. It becomes `active` when entered and waits for a dispatch to advance. Because all four IDs were declared in the constructor, the compiler will reject any typo at this point.
 
 
 ## 5. Wire transitions
@@ -151,7 +154,7 @@ restored.injectGuard('isManager', myGuardFn);
 
 | Concept | How you used it |
 |---------|----------------|
-| `WorkflowBuilder` | Fluent chain: `defineAction → addState → setInitial → setTerminal → addTransition → build` |
+| `WorkflowBuilder` | Config-First builder: declare states upfront, then `defineAction → addStep → setInitial → setTerminal → addTransition → build` |
 | `StepState` | Four states: `draft`, `pending-approval`, `approved`, `rejected` |
 | `Guard.inject` | Named guard resolved at runtime from `injectGuard()` |
 | `dispatch` | Validates payload, evaluates guard, fires transition atomically |

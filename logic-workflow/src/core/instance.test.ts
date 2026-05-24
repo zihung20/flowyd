@@ -1,17 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import { WorkflowBuilder } from './builder.js';
-import { StepState } from '../states/step-state.js';
-import { SubWorkflowState } from '../states/sub-workflow-state.js';
 import { StateStatus } from '../types/index.js';
 
 const Empty = z.object({});
 
 function makeLinear() {
-  return new WorkflowBuilder('linear')
+  return new WorkflowBuilder({ name: 'linear', states: ['a', 'b'] as const })
     .defineAction('GO', Empty)
-    .addState(new StepState('a'))
-    .addState(new StepState('b'))
+    .addStep('a')
+    .addStep('b')
     .setInitial('a')
     .setTerminal(['b'])
     .addTransition({ from: 'a', to: 'b', on: 'GO' })
@@ -19,12 +17,12 @@ function makeLinear() {
 }
 
 function makeSubWorkflow() {
-  return new WorkflowBuilder('sub-wf')
+  return new WorkflowBuilder({ name: 'sub-wf', states: ['start', 'sub', 'end'] as const })
     .defineAction('START', Empty)
     .defineAction('DONE', Empty)
-    .addState(new StepState('start'))
-    .addState(new SubWorkflowState('sub', { subWorkflowName: 'external' }))
-    .addState(new StepState('end'))
+    .addStep('start')
+    .addSubWorkflow('sub', { subWorkflowName: 'external' })
+    .addStep('end')
     .setInitial('start')
     .setTerminal(['end'])
     .addTransition({ from: 'start', to: 'sub', on: 'START' })
@@ -87,10 +85,10 @@ describe('WorkflowInstance — canExecute dry-run', () => {
   });
 
   it('returns false when a guard blocks', async () => {
-    const wf = new WorkflowBuilder('guarded')
+    const wf = new WorkflowBuilder({ name: 'guarded', states: ['a', 'b'] as const })
       .defineAction('GO', Empty)
-      .addState(new StepState('a'))
-      .addState(new StepState('b'))
+      .addStep('a')
+      .addStep('b')
       .setInitial('a')
       .setTerminal(['b'])
       .addTransition({ from: 'a', to: 'b', on: 'GO', guard: async () => false })
