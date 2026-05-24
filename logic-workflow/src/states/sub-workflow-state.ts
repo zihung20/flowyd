@@ -30,17 +30,18 @@ import { BaseState } from './base.js';
  * .addTransition({ from: 'vendor-approval', to: 'rejected', on: 'KYC_FAILED' })
  * ```
  */
-export class SubWorkflowState extends BaseState implements ISubWorkflowState {
+export class SubWorkflowState<TId extends string = string> extends BaseState<TId> implements ISubWorkflowState {
   readonly kind = StateKind.SubWorkflow;
   readonly subWorkflowName: string;
 
   /**
-   * @param id      - Unique identifier within the parent workflow.
+   * @param id      - Unique identifier within the parent workflow. The literal
+   *                  type is preserved so `WorkflowBuilder` can track registered IDs.
    * @param options - `subWorkflowName`: the name of the external workflow
    *                  definition this state waits for. Used for documentation
    *                  and visualisation; the engine does not resolve it.
    */
-  constructor(id: string, options: { label?: string; subWorkflowName: string }) {
+  constructor(id: TId, options: { label?: string; subWorkflowName: string }) {
     super(id, options.label ?? id);
     this.subWorkflowName = options.subWorkflowName;
   }

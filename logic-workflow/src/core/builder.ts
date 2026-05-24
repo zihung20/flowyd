@@ -1,8 +1,9 @@
 import { type ZodSchema } from 'zod';
-import type { IState, TransitionDefinition, ActionPayloadMap, WorkflowDefinition } from '../types/index.js';
+import type { IState, TransitionDefinition, ActionPayloadMap, WorkflowDefinition, IGuard, GuardFn } from '../types/index.js';
 import { StateKind } from '../types/index.js';
 import { StateRegistry } from './registry.js';
 import { Workflow } from './workflow.js';
+import { FnGuard } from '../guards/index.js';
 
 /**
  * Fluent builder for composing and validating a workflow definition.
@@ -14,15 +15,22 @@ import { Workflow } from './workflow.js';
  * 4. `addTransition()` — wire states together with named, optionally-guarded arcs.
  * 5. `build()` — validate and compile into an immutable `Workflow`.
  *
- * Every method except `build()` and `defineAction()` returns `this` for chaining.
- * `defineAction()` returns a new builder type so that the `TActions` generic
- * accumulates correctly across calls.
+ * Both `defineAction()` and `addState()` return new builder instances so that
+ * the `TActions` and `TStates` generics accumulate correctly across calls.
+ * All other methods return `this` for chaining.
  *
  * @template TActions - Accumulated map of action names → payload types.
  *                      Starts as `Record<never, never>` and grows with each
  *                      `defineAction()` call.
+ * @template TStates  - Union of all registered state IDs as string literals.
+ *                      Starts as `never` and grows with each `addState()` call.
+ *                      Constrains `setInitial`, `setTerminal`, and `addTransition`
+ *                      to only accept IDs that have been registered.
  */
-export class WorkflowBuilder<TActions extends ActionPayloadMap = Record<never, never>> {
+export class WorkflowBuilder<
+  TActions extends ActionPayloadMap = Record<never, never>,
+  TStates extends string = never,
+> {
   private readonly stateRegistry = new StateRegistry();
   private readonly transitions: TransitionDefinition[] = [];
   private readonly actionSchemas = new Map<string, ZodSchema<unknown>>();
@@ -49,33 +57,37 @@ export class WorkflowBuilder<TActions extends ActionPayloadMap = Record<never, n
   defineAction<K extends string, T>(
     name: K,
     schema: ZodSchema<T>,
-  ): WorkflowBuilder<TActions & Record<K, T>> {
+  ): WorkflowBuilder<TActions & Record<K, T>, TStates> {
     this.actionSchemas.set(name, schema as ZodSchema<unknown>);
-    return this as unknown as WorkflowBuilder<TActions & Record<K, T>>;
+    // Builder identity preserved; only the TActions generic parameter changes.
+    return this as unknown as WorkflowBuilder<TActions & Record<K, T>, TStates>;
   }
 
   /**
-   * Registers a state in the workflow graph.
+   * Registers a state in the workflow graph and extends the compile-time union
+   * of known state IDs (`TStates`).
    *
    * Accepts any concrete state class: `StepState`, `ForkState`, `JoinState`,
    * or `SubWorkflowState`. The state's `kind` is used by the engine to select
    * the correct entry behaviour.
    *
    * @param state - A state instance with a unique `id`.
+   * @returns A new `WorkflowBuilder` generic extended with the new state ID.
    * @throws {Error} If a state with the same `id` is already registered.
    */
-  addState(state: IState): this {
+  addState<S extends IState>(state: S): WorkflowBuilder<TActions, TStates | S['id']> {
     this.stateRegistry.register(state);
-    return this;
+    // Builder identity preserved; the TStates ID union grows.
+    return this as unknown as WorkflowBuilder<TActions, TStates | S['id']>;
   }
 
   /**
    * Declares the single state that will be `active` when a new instance is created.
    *
-   * @param stateId - Must be a registered state ID.
+   * @param stateId - Must be a registered state ID (`TStates`).
    * @throws {Error} If called more than once.
    */
-  setInitial(stateId: string): this {
+  setInitial(stateId: TStates): this {
     if (this.initialStateId !== null) {
       throw new Error(`Initial state is already set to "${this.initialStateId}"`);
     }
@@ -87,9 +99,9 @@ export class WorkflowBuilder<TActions extends ActionPayloadMap = Record<never, n
    * Declares one or more terminal states. Once any terminal state becomes
    * `active`, the instance rejects further `dispatch` calls.
    *
-   * @param stateIds - IDs of all terminal states. At least one required.
+   * @param stateIds - IDs of all terminal states (`TStates`). At least one required.
    */
-  setTerminal(stateIds: string[]): this {
+  setTerminal(stateIds: ReadonlyArray<TStates>): this {
     this.terminalStateIds = [...stateIds];
     return this;
   }
@@ -97,10 +109,16 @@ export class WorkflowBuilder<TActions extends ActionPayloadMap = Record<never, n
   /**
    * Adds a directed transition arc to the workflow graph.
    *
-   * The engine evaluates this transition when:
-   * - `from` is currently `active`
-   * - The dispatched action name matches `on`
-   * - The optional `guard` evaluates to `true`
+   * `from` and `to` are constrained to `TStates` — the union of registered state
+   * IDs — and `on` is constrained to `keyof TActions`, preventing typos at
+   * compile time for both state IDs and action names.
+   *
+   * The `guard` property accepts either:
+   * - A raw arrow function `(ctx) => boolean | Promise<boolean>`: `ctx.payload`
+   *   is automatically typed as `TActions[K]`, eliminating the need for an
+   *   explicit type annotation.
+   * - Any `IGuard` instance (e.g. `Guard.and([...])`, `Guard.inject('name')`).
+   * Raw functions are wrapped in `FnGuard` internally; the engine sees only `IGuard`.
    *
    * Multiple transitions from the same state on the same action are allowed
    * (e.g. to model parallel fan-out or mutually exclusive guards). The engine
@@ -108,8 +126,29 @@ export class WorkflowBuilder<TActions extends ActionPayloadMap = Record<never, n
    *
    * @param transition - The transition definition. `from`, `to`, and `on` are required.
    */
-  addTransition(transition: TransitionDefinition): this {
-    this.transitions.push(transition);
+  addTransition<K extends keyof TActions & string>(transition: {
+    readonly from: TStates;
+    readonly to: TStates;
+    readonly on: K;
+    readonly guard?: IGuard<TActions[K]> | GuardFn<TActions[K]>;
+  }): this {
+    const guard: IGuard<unknown> | undefined =
+      transition.guard === undefined
+        ? undefined
+        : typeof transition.guard === 'function'
+          ? new FnGuard(transition.guard as GuardFn<unknown>)
+          : // IGuard method signatures are bivariant; safe because the engine passes
+            // the runtime-validated payload whose type matches TActions[K].
+            (transition.guard as IGuard<unknown>);
+
+    // exactOptionalPropertyTypes requires the property to be absent rather than
+    // set to `undefined`, so we conditionally include `guard`.
+    const entry: TransitionDefinition =
+      guard !== undefined
+        ? { from: transition.from, to: transition.to, on: transition.on, guard }
+        : { from: transition.from, to: transition.to, on: transition.on };
+
+    this.transitions.push(entry);
     return this;
   }
 

@@ -22,20 +22,21 @@ import { BaseState } from './base.js';
  * .addTransition({ from: 'reviews-complete', to: 'approved', on: 'FINALIZE' })
  * ```
  */
-export class JoinState extends BaseState implements IJoinState {
+export class JoinState<TId extends string = string> extends BaseState<TId> implements IJoinState {
   readonly kind = StateKind.Join;
   readonly requires: readonly string[];
   readonly mode: JoinMode;
 
   /**
-   * @param id      - Unique identifier within the workflow.
+   * @param id      - Unique identifier within the workflow. The literal type
+   *                  is preserved so `WorkflowBuilder` can track registered IDs.
    * @param options - Configuration for the synchronisation barrier.
    *   - `requires`: IDs of states that must complete before this join fires.
    *   - `mode`:     `'all'` (default) | `'any'` | a quorum number.
    * @throws {Error} If `requires` is empty.
    */
   constructor(
-    id: string,
+    id: TId,
     options: { label?: string; requires: string[]; mode?: JoinMode },
   ) {
     super(id, options.label ?? id);

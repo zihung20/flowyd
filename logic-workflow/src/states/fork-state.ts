@@ -20,17 +20,18 @@ import { BaseState } from './base.js';
  * // After START_REVIEW: 'legal' and 'finance' are both active simultaneously.
  * ```
  */
-export class ForkState extends BaseState implements IForkState {
+export class ForkState<TId extends string = string> extends BaseState<TId> implements IForkState {
   readonly kind = StateKind.Fork;
   readonly targets: readonly string[];
 
   /**
-   * @param id      - Unique identifier within the workflow.
+   * @param id      - Unique identifier within the workflow. The literal type
+   *                  is preserved so `WorkflowBuilder` can track registered IDs.
    * @param options - `targets`: the state IDs to activate simultaneously on
    *                  entry. At least one is required.
    * @throws {Error} If `targets` is empty.
    */
-  constructor(id: string, options: { label?: string; targets: string[] }) {
+  constructor(id: TId, options: { label?: string; targets: string[] }) {
     super(id, options.label ?? id);
     if (options.targets.length === 0) {
       throw new Error(`ForkState "${id}" must declare at least one target state`);

@@ -42,6 +42,7 @@ describe('WorkflowBuilder', () => {
       .addState(new StepState('start'))
       .setInitial('start')
       .setTerminal(['start'])
+      // @ts-expect-error — intentional: verifying runtime fallback for a type-bypassed invalid state ID
       .addTransition({ from: 'start', to: 'ghost', on: 'GO' });
     expect(() => b.build()).toThrow('"ghost"');
   });
@@ -52,6 +53,7 @@ describe('WorkflowBuilder', () => {
       .addState(new StepState('end'))
       .setInitial('start')
       .setTerminal(['end'])
+      // @ts-expect-error — intentional: verifying runtime fallback for a type-bypassed undeclared action
       .addTransition({ from: 'start', to: 'end', on: 'UNDECLARED' });
     expect(() => b.build()).toThrow('UNDECLARED');
   });
@@ -92,5 +94,41 @@ describe('WorkflowBuilder', () => {
     // If TActions inference is broken this line won't compile
     const instance = workflow.createInstance('i1');
     expect(instance).toBeDefined();
+  });
+
+  it('accumulates TStates generics and constrains setInitial/setTerminal/addTransition', () => {
+    // This test is primarily a compile-time proof: if TStates accumulation is
+    // broken, the setInitial / setTerminal / addTransition calls below would
+    // produce TypeScript errors because the literal IDs would not be in TStates.
+    const workflow = new WorkflowBuilder('typed-states')
+      .defineAction('GO', z.object({}))
+      .addState(new StepState('alpha'))
+      .addState(new StepState('beta'))
+      .setInitial('alpha')      // 'alpha' ∈ TStates ✓
+      .setTerminal(['beta'])    // 'beta'  ∈ TStates ✓
+      .addTransition({ from: 'alpha', to: 'beta', on: 'GO' })  // both ∈ TStates ✓
+      .build();
+
+    expect(workflow).toBeDefined();
+  });
+
+  it('infers guard payload type from the action schema', () => {
+    // Compile-time proof: the raw arrow function receives ctx.payload typed as
+    // { score: number } without any explicit type annotation.
+    const workflow = new WorkflowBuilder('guard-inference')
+      .defineAction('SCORE', z.object({ score: z.number() }))
+      .addState(new StepState('pending'))
+      .addState(new StepState('passed'))
+      .setInitial('pending')
+      .setTerminal(['passed'])
+      .addTransition({
+        from: 'pending',
+        to:   'passed',
+        on:   'SCORE',
+        guard: (ctx) => ctx.payload.score >= 80,  // ctx.payload.score is typed as number ✓
+      })
+      .build();
+
+    expect(workflow).toBeDefined();
   });
 });

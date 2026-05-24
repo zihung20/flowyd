@@ -8,14 +8,15 @@ import { BaseState } from './base.js';
  * Every workflow must have at least one `StepState` as its initial state and
  * at least one as a terminal state.
  */
-export class StepState extends BaseState {
+export class StepState<TId extends string = string> extends BaseState<TId> {
   readonly kind = StateKind.Step;
 
   /**
-   * @param id      - Unique identifier within the workflow.
+   * @param id      - Unique identifier within the workflow. The literal type
+   *                  is preserved so `WorkflowBuilder` can track registered IDs.
    * @param options - Optional display label (defaults to `id`).
    */
-  constructor(id: string, options: { label?: string } = {}) {
+  constructor(id: TId, options: { label?: string } = {}) {
     super(id, options.label ?? id);
   }
 }

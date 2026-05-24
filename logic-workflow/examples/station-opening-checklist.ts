@@ -33,7 +33,7 @@
  */
 
 import { z } from 'zod';
-import { WorkflowBuilder, StepState, Guard } from '../src/index.js';
+import { WorkflowBuilder, StepState } from '../src/index.js';
 import { MermaidExporter } from '../src/visualization/index.js';
 
 // ─── Schema definitions ───────────────────────────────────────────────────────
@@ -90,23 +90,21 @@ const stationOpening = new WorkflowBuilder('station-opening')
     to:   'premises-unlocked',
     on:   'UNLOCK_PREMISES',
     // Only allow entry if a valid key-card scan is confirmed
-    guard: Guard.fn<z.infer<typeof UnlockSchema>>((ctx) => ctx.payload.keyCardScanned === true),
+    guard: (ctx) => ctx.payload.keyCardScanned === true,
   })
   .addTransition({
     from: 'premises-unlocked',
     to:   'safety-walk-done',
     on:   'COMPLETE_SAFETY_WALK',
     // Block if the safety walk found unresolved issues
-    guard: Guard.fn<z.infer<typeof SafetyWalkSchema>>(
-      (ctx) => ctx.payload.issuesFound.length === 0,
-    ),
+    guard: (ctx) => ctx.payload.issuesFound.length === 0,
   })
   .addTransition({
     from: 'safety-walk-done',
     to:   'systems-active',
     on:   'ACTIVATE_SYSTEMS',
     // All listed systems must be confirmed online
-    guard: Guard.fn<z.infer<typeof ActivateSystemsSchema>>((ctx) => ctx.payload.allOnline === true),
+    guard: (ctx) => ctx.payload.allOnline === true,
   })
   .addTransition({ from: 'systems-active',    to: 'fare-gates-open',  on: 'OPEN_FARE_GATES' })
   .addTransition({ from: 'fare-gates-open',   to: 'open-for-service', on: 'COMMENCE_SERVICE' })

@@ -27,7 +27,7 @@
  */
 
 import { z } from 'zod';
-import { WorkflowBuilder, StepState, ForkState, JoinState, Guard } from '../src/index.js';
+import { WorkflowBuilder, StepState, ForkState, JoinState } from '../src/index.js';
 import { MermaidExporter } from '../src/visualization/index.js';
 
 // ─── Schema definitions ───────────────────────────────────────────────────────
@@ -89,9 +89,7 @@ const engineerChecklist = new WorkflowBuilder('engineer-predeparture-checklist')
     to:    'signed-off',
     on:    'SIGN_OFF',
     // Guard: engineer must certify personally, not a stand-in
-    guard: Guard.fn<z.infer<typeof SignOffSchema>>(
-      (ctx) => ctx.payload.certifies === true,
-    ),
+    guard: (ctx) => ctx.payload.certifies === true,
   })
   .addTransition({ from: 'signed-off', to: 'departed', on: 'DEPART' })
 
