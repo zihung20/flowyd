@@ -245,3 +245,64 @@ Complexity that requires a comment is a signal to consider refactoring first. If
 | Non-null assertions without a justifying comment | hides null-safety assumptions |
 | Exported symbol without a TSDoc block | breaks the boundary documentation contract |
 | Inline comment explaining *what* code does | noise; rename the identifier instead |
+
+---
+
+## Agent Session Protocol
+
+**Standing rule for every agent session:** After making any code change, update this section and `README.md` to reflect what was done. Future agents read this file first — leave a clear trail.
+
+Format for each entry:
+
+```
+### YYYY-MM-DD — <short title>
+- What changed and why (file paths + reason)
+- Any invariants introduced or broken
+- Known follow-ups or open questions
+```
+
+---
+
+## Session History
+
+### 2026-05-24 — Initial TSDoc pass + examples expansion
+
+- `src/states/base.ts`, `step-state.ts`, `fork-state.ts`, `join-state.ts`, `sub-workflow-state.ts`:
+  Added full TSDoc on all exported classes (`@param`, `@throws`, `@example`). The `TId` template
+  parameter explanation on `BaseState` clarifies why the generic exists (compile-time state-ID
+  union accumulation in `WorkflowBuilder`).
+- `src/core/builder.ts`: Added comprehensive TSDoc on every public method, including the call-order
+  contract, all structural checks in `build()`, and the inline-guard-vs-IGuard overload on
+  `addTransition`. Comments on the identity-preserving `return this as unknown as …` casts
+  explain why the unsafe cast is safe (only the generic parameter changes, not the runtime object).
+- `tests/core/builder.test.ts`: Expanded structural-validation tests for `ForkState` target and
+  `JoinState` requires checks; added `@ts-expect-error` annotations with explanations.
+- `examples/engineer-predeparture-checklist.ts`, `examples/station-opening-checklist.ts`:
+  Updated to match current API surface and demonstrate current best practices.
+- `examples/occ-disruption-sop.ts`: Full MRT OCC service-disruption SOP — demonstrates
+  multi-role `Guard.inject`, parallel notification `ForkState`/`JoinState`, `SubWorkflowState`
+  + `resolveSubWorkflow`, and `JsonGraphExporter`. Run with `npx tsx examples/occ-disruption-sop.ts`.
+
+**No API surface changes.** All existing tests pass.
+
+### 2026-05-24 — Phase 1: VitePress documentation site (Diátaxis)
+
+- `docs/` — new directory tree. All content files; no live imports from `src/`.
+  - `docs/.vitepress/config.ts` — site config with nav + per-section sidebar
+  - `docs/index.md` — hero home page with feature grid
+  - `docs/tutorials/` — `index.md`, `first-workflow.md` (full purchase-order walkthrough)
+  - `docs/how-to/` — `index.md`, `parallel-branches.md`, `sub-workflows.md`, `guards.md`, `persistence.md`
+  - `docs/reference/` — `index.md`, `workflow-builder.md`, `workflow-instance.md`, `state-types.md`, `guards.md`, `dispatch-result.md`, `visualization.md`
+  - `docs/explanation/` — `index.md`, `architecture.md`, `fixed-point-engine.md`, `design-decisions.md`
+- `package.json` — added `docs:dev`, `docs:build`, `docs:preview` scripts; `vitepress ^1.6.4` in devDependencies
+- `.npmrc` — added `build-scripts-allow-list=esbuild` (required by vitepress's esbuild dep)
+- `PLANNING.md` — created; tracks phase-by-phase plans
+
+**Run the site:**
+```sh
+pnpm docs:dev      # dev server (http://localhost:5173)
+pnpm docs:build    # production build → docs/.vitepress/dist/
+pnpm docs:preview  # preview the production build
+```
+
+**No source code changes.** All existing tests pass. `pnpm docs:build` exits clean.
