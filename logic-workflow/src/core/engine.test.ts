@@ -78,7 +78,7 @@ describe('Engine — invalid-action', () => {
       .build();
 
     const inst = wf.createInstance('e-inv-001');
-    await expect(inst.dispatch('GO' as 'GO', {} as never)).resolves.toMatchObject({ success: true });
+    await expect(inst.dispatch('GO' as const, {} as never)).resolves.toMatchObject({ success: true });
   });
 });
 
@@ -94,7 +94,7 @@ describe('Engine — guard evaluation', () => {
 
   it('blocks when the injected guard returns false', async () => {
     const inst = guarded.createInstance('g-001');
-    inst.injectGuard('canGo', async () => false);
+    inst.injectGuard('canGo', () => false);
     const result = await inst.dispatch('GO', {});
     expect(result.success).toBe(false);
     if (!result.success) expect(result.reason).toBe('guard-failed');
@@ -103,7 +103,7 @@ describe('Engine — guard evaluation', () => {
 
   it('passes when the injected guard returns true', async () => {
     const inst = guarded.createInstance('g-002');
-    inst.injectGuard('canGo', async () => true);
+    inst.injectGuard('canGo', () => true);
     const result = await inst.dispatch('GO', {});
     expect(result.success).toBe(true);
     expect(inst.getCurrentStates()).toEqual(['b']);

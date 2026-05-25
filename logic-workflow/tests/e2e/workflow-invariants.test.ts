@@ -201,7 +201,7 @@ describe('Invariant: terminal state rejects all dispatches', () => {
 // ─── Available transitions accuracy ──────────────────────────────────────────
 
 describe('Invariant: getAvailableTransitions', () => {
-  it('lists only actions from currently active states', async () => {
+  it('lists only actions from currently active states', () => {
     const inst = linear.createInstance('at-001');
     // s1 is active; both NEXT and SKIP are defined from s1
     const transitions = inst.getAvailableTransitions().sort();

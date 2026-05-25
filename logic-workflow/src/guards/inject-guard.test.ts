@@ -10,7 +10,7 @@ describe('InjectedGuard', () => {
       ...makeCtx({ role: 'manager' }),
       resolveGuard: (name: string): GuardFn<unknown> | undefined =>
         name === 'canApprove'
-          ? async (c) => (c.payload as { role: string }).role === 'manager'
+          ? (c) => (c.payload as { role: string }).role === 'manager'
           : undefined,
     };
     expect(await guard.evaluate(ctx)).toBe(true);

@@ -260,7 +260,10 @@ pnpm test:e2e          # e2e only
 
 ### Agent session protocol
 
-After every code change, append a version entry to **Section 4** below and update `README.md` to reflect what changed. Future agents read this file first — leave a clear trail.
+After every code change:
+
+1. Run `pnpm lint && pnpm typecheck && pnpm test && pnpm build` — all four must exit clean before declaring the task done.
+2. Append a version entry to **Section 4** below and update `README.md` to reflect what changed. Future agents read this file first — leave a clear trail.
 
 ---
 
@@ -307,3 +310,10 @@ After every code change, append a version entry to **Section 4** below and updat
 - All type exports, `Guard`, `StateKind`, `StateStatus`, `WorkflowBuilder`, `WorkflowInstance`, `Workflow` retained.
 - Updated web-runner workflow files (`src/workflow/demo-workflow.ts`, `src/workflows/ewcr.ts`, `incident.ts`, `predeparture.ts`, `purchase-order.ts`) to Config-First API; removed all direct state-class imports.
 - 143 tests pass; `pnpm typecheck && pnpm build` clean.
+
+### [v0.6.0] 2026-05-25 — Dynamic workflow tests + lint clean
+
+- Added `tests/integration/dynamic-workflow.test.ts`: 19 tests covering dynamic (runtime `string[]`) workflow construction — linear chain traversal, snapshot round-trips, parallel fan-out/fan-in, and `build()` runtime validation for all invalid-reference cases.
+- Fixed pre-existing lint errors across 11 files: removed `async` from guard methods that never needed it (`primitives.ts`, `state-guard.ts`, `and-guard.test.ts`, `or-guard.test.ts`, `inject-guard.test.ts`), sync test callbacks, and all `injectGuard(() => async)` callbacks in integration and e2e tests; fixed `prefer-as-const` in `engine.test.ts`.
+- Updated Agent session protocol in Section 3 to require `pnpm lint && pnpm typecheck && pnpm test && pnpm build` (all four) after every change.
+- 162 tests pass; all four pipeline steps exit clean.

@@ -42,7 +42,7 @@ describe('StateRegistry', () => {
 describe('GuardRegistry', () => {
   it('registers and resolves a guard by name', () => {
     const reg = new GuardRegistry();
-    const fn = async () => true;
+    const fn = () => true;
     reg.register('myGuard', fn);
     expect(reg.resolve('myGuard')).toBe(fn);
   });
@@ -54,8 +54,8 @@ describe('GuardRegistry', () => {
 
   it('overwrites a previously registered guard on re-registration', () => {
     const reg = new GuardRegistry();
-    const first = async () => true;
-    const second = async () => false;
+    const first = () => true;
+    const second = () => false;
     reg.register('g', first);
     reg.register('g', second);
     expect(reg.resolve('g')).toBe(second);

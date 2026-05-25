@@ -28,9 +28,9 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
     "lint:fix": "eslint src tests --fix",
-    "docs:dev": "vitepress dev docs",
+    "docs:dev": "vitepress dev docs --port 6060",
     "docs:build": "vitepress build docs",
-    "docs:preview": "vitepress preview docs"
+    "docs:preview": "vitepress preview docs --port 6060"
   },
   "files": [
     "dist",

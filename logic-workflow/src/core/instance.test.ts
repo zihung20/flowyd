@@ -42,7 +42,7 @@ describe('WorkflowInstance — snapshot round-trip', () => {
     expect(json.history).toHaveLength(0);
   });
 
-  it('mutating the returned snapshot does not affect the live instance', async () => {
+  it('mutating the returned snapshot does not affect the live instance', () => {
     const wf = makeLinear();
     const inst = wf.createInstance('i-002');
     const snap = inst.getSnapshot();
@@ -91,7 +91,7 @@ describe('WorkflowInstance — canExecute dry-run', () => {
       .addStep('b')
       .setInitial('a')
       .setTerminal(['b'])
-      .addTransition({ from: 'a', to: 'b', on: 'GO', guard: async () => false })
+      .addTransition({ from: 'a', to: 'b', on: 'GO', guard: () => false })
       .build();
 
     const inst = wf.createInstance('c-003');
@@ -130,7 +130,7 @@ describe('WorkflowInstance — resolveSubWorkflow', () => {
     expect(() => inst.resolveSubWorkflow('start')).toThrow('SubWorkflowState');
   });
 
-  it('throws when the SubWorkflowState is not in waiting status', async () => {
+  it('throws when the SubWorkflowState is not in waiting status', () => {
     const wf = makeSubWorkflow();
     const inst = wf.createInstance('sw-003');
     // 'sub' is still idle (START not dispatched yet)

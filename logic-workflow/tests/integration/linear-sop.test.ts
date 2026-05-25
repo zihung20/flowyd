@@ -53,7 +53,7 @@ describe('Linear SOP — purchase order', () => {
 
   it('blocks when a guard fails', async () => {
     const inst = purchaseOrder.createInstance('po-004');
-    inst.injectGuard('isManager', async () => false);
+    inst.injectGuard('isManager', () => false);
     await inst.dispatch('SUBMIT', { submitterId: 'u1' });
     const result = await inst.dispatch('APPROVE', { reason: 'ok', approverId: 'u2' });
     expect(result.success).toBe(false);
@@ -62,7 +62,7 @@ describe('Linear SOP — purchase order', () => {
 
   it('allows when the guard passes', async () => {
     const inst = purchaseOrder.createInstance('po-005');
-    inst.injectGuard('isManager', async () => true);
+    inst.injectGuard('isManager', () => true);
     await inst.dispatch('SUBMIT', { submitterId: 'u1' });
     const result = await inst.dispatch('APPROVE', { reason: 'looks good', approverId: 'mgr' });
     expect(result.success).toBe(true);
@@ -89,12 +89,12 @@ describe('Linear SOP — purchase order', () => {
 
   it('returns a persisted snapshot that can restore state', async () => {
     const inst = purchaseOrder.createInstance('po-008');
-    inst.injectGuard('isManager', async () => true);
+    inst.injectGuard('isManager', () => true);
     await inst.dispatch('SUBMIT', { submitterId: 'u1' });
     const snap = inst.getSnapshot();
 
     const restored = purchaseOrder.restoreInstance(snap);
-    restored.injectGuard('isManager', async () => true);
+    restored.injectGuard('isManager', () => true);
     expect(restored.getCurrentStates()).toEqual(['pending-approval']);
     const r = await restored.dispatch('APPROVE', { reason: 'ok', approverId: 'mgr' });
     expect(r.success).toBe(true);
@@ -109,7 +109,7 @@ describe('Linear SOP — purchase order', () => {
 
   it('canExecute returns false without dispatching', async () => {
     const inst = purchaseOrder.createInstance('po-010');
-    inst.injectGuard('isManager', async () => false);
+    inst.injectGuard('isManager', () => false);
     await inst.dispatch('SUBMIT', { submitterId: 'u1' });
     const can = await inst.canExecute('APPROVE', { reason: 'ok', approverId: 'mgr' });
     expect(can).toBe(false);

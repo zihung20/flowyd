@@ -19,8 +19,8 @@ export class StateCompletedGuard implements IGuard<unknown> {
    */
   constructor(private readonly stateId: string) {}
 
-  async evaluate(ctx: GuardContext<unknown>): Promise<boolean> {
-    return ctx.instanceState.isStateCompleted(this.stateId);
+  evaluate(ctx: GuardContext<unknown>): Promise<boolean> {
+    return Promise.resolve(ctx.instanceState.isStateCompleted(this.stateId));
   }
 }
 
@@ -35,7 +35,7 @@ export class StateActiveGuard implements IGuard<unknown> {
   /** @param stateId - ID of the state that must be `active` for this guard to pass. */
   constructor(private readonly stateId: string) {}
 
-  async evaluate(ctx: GuardContext<unknown>): Promise<boolean> {
-    return ctx.instanceState.isStateActive(this.stateId);
+  evaluate(ctx: GuardContext<unknown>): Promise<boolean> {
+    return Promise.resolve(ctx.instanceState.isStateActive(this.stateId));
   }
 }

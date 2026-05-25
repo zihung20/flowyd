@@ -116,12 +116,12 @@ describe('SubWorkflow SOP — vendor onboarding', () => {
     expect(entry?.payload).toMatchObject({ instanceId: 'kyc-run-42' });
   });
 
-  it('throws when resolveSubWorkflow is called on a non-SubWorkflow state', async () => {
+  it('throws when resolveSubWorkflow is called on a non-SubWorkflow state', () => {
     const inst = vendorOnboarding.createInstance('vo-010');
     expect(() => inst.resolveSubWorkflow('draft')).toThrow('SubWorkflowState');
   });
 
-  it('throws when resolveSubWorkflow is called while state is not waiting', async () => {
+  it('throws when resolveSubWorkflow is called while state is not waiting', () => {
     const inst = vendorOnboarding.createInstance('vo-011');
     // Never submitted — kyc-check is still idle
     expect(() => inst.resolveSubWorkflow('kyc-check')).toThrow('not waiting');

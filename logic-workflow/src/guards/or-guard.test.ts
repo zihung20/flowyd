@@ -16,7 +16,7 @@ describe('OrGuard', () => {
 
   it('short-circuits on first success', async () => {
     let secondCalled = false;
-    const second = { evaluate: async () => { secondCalled = true; return false; } };
+    const second = { evaluate: (): Promise<boolean> => { secondCalled = true; return Promise.resolve(false); } };
     const g = new OrGuard([new AlwaysGuard(), second]);
     await g.evaluate(makeCtx());
     expect(secondCalled).toBe(false);

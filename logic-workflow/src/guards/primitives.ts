@@ -5,8 +5,8 @@ import type { IGuard, GuardContext, GuardFn } from '../types/index.js';
  * as an explicit "no guard required" marker on transitions.
  */
 export class AlwaysGuard implements IGuard<unknown> {
-  async evaluate(_ctx: GuardContext<unknown>): Promise<boolean> {
-    return true;
+  evaluate(_ctx: GuardContext<unknown>): Promise<boolean> {
+    return Promise.resolve(true);
   }
 }
 
@@ -15,8 +15,8 @@ export class AlwaysGuard implements IGuard<unknown> {
  * transition cannot fire regardless of payload.
  */
 export class NeverGuard implements IGuard<unknown> {
-  async evaluate(_ctx: GuardContext<unknown>): Promise<boolean> {
-    return false;
+  evaluate(_ctx: GuardContext<unknown>): Promise<boolean> {
+    return Promise.resolve(false);
   }
 }
 
@@ -33,10 +33,10 @@ export class NeverGuard implements IGuard<unknown> {
 export class FnGuard<T = unknown> implements IGuard<unknown> {
   constructor(private readonly fn: GuardFn<T>) {}
 
-  async evaluate(ctx: GuardContext<unknown>): Promise<boolean> {
+  evaluate(ctx: GuardContext<unknown>): Promise<boolean> {
     // Cast is safe when the guard is attached to a transition whose action
     // has a matching payload schema — the engine validates the payload before
     // calling evaluate.
-    return this.fn(ctx as GuardContext<T>);
+    return Promise.resolve(this.fn(ctx as GuardContext<T>));
   }
 }
