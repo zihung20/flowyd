@@ -264,67 +264,29 @@ After every code change:
 
 1. Run `pnpm lint && pnpm typecheck && pnpm test && pnpm build` — all four must exit clean before declaring the task done.
 2. Append a version entry to **Section 4** below and update `README.md` to reflect what changed. Future agents read this file first — leave a clear trail.
+3. After updating the version history: if Section 4 contains **5 or more entries**, merge all entries into a single condensed summary that is shorter than the combined text of the individual entries, then replace Section 4 with that single merged entry.
 
 ---
 
-## 4. Project Version History
+## 4. AI Behavioral Guidelines (Karpathy Rules)
 
-### [v0.1.0] 2026-05-24 — Foundation: TSDoc, examples, discriminated union, testing pyramid
+1. **Think Before Coding** — State assumptions explicitly before writing any code. If requirements are ambiguous or conflicting, ask a clarifying question rather than guessing.
 
-- Added full TSDoc (`@param`, `@throws`, `@example`) to all exported state classes and `WorkflowBuilder` public methods.
-- Introduced `AnyState` discriminated union in `src/types/state.ts`; removed 11 unsafe casts from engine, instance, and visualization layers.
-- Deleted dead code: `src/types/node.ts`, `src/core/context.ts` (layer violation + unused).
-- Established Vitest workspace with three named projects: `unit`, `integration`, `e2e`.
-- Co-located unit tests next to source files (`src/guards/*.test.ts`, `src/core/*.test.ts`).
-- Grew test suite from 74 → 141 passing tests.
-- Added `occ-disruption-sop.ts` example demonstrating multi-role guards, fork/join, and sub-workflow.
+2. **Simplicity First** — Write the minimum code needed to solve the problem. No over-engineering, no speculative abstractions, no features that weren't asked for.
 
-### [v0.2.0] 2026-05-24 — VitePress documentation site (Diátaxis)
+3. **Surgical Changes** — Touch only the code required to complete the task. Match the surrounding style. Do not refactor, rename, or restructure anything outside the stated scope.
 
-- Created `docs/` with four sections: Tutorials, How-To, Reference, Explanation.
-- Added `docs:dev`, `docs:build`, `docs:preview` scripts to `package.json`.
-- No source code changes; all tests pass.
+4. **Goal-Driven Execution** — Define what success looks like before starting. Run tests and linters to confirm the goal is met before reporting the task complete.
 
-### [v0.3.0] 2026-05-24 — React web runner SPA
+---
 
-- Created `../web-runner/` (sibling directory): React 19 + Vite 6 + Tailwind v4 + @xyflow/react.
-- Visualises workflow graph with dagre layout; auto-fills dispatch forms from Zod schema introspection; shows audit history panel.
-- Initial demo: engineer pre-departure checklist, later replaced with 40-section EWCR demo (5×8 grid, cross-section neighbour guards).
-- Fixed `package.json` exports map (`.mjs` → `.js`) and added `"files": ["dist", "src"]`.
+## 5. Project Version History
 
-### [v0.4.0] 2026-05-24 — Config-First WorkflowBuilder + typed factory methods
+### [v0.1.0–v0.7.0] 2026-05-24/25 — Foundation through createWorkflow factory
 
-**Breaking change.** Constructor signature changed from `new WorkflowBuilder('name')` to `new WorkflowBuilder({ name, states: [...] as const })`.
-
-- `states` array declared upfront establishes the `TStates` union; all subsequent method calls are constrained to it.
-- Added typed factory methods: `addStep`, `addFork`, `addJoin`, `addSubWorkflow`. Each creates and registers the state in one call, enabling a fully typed single-chain fluent API.
-- `addFork` `targets` and `addJoin` `requires` autocomplete to `TStates` and are typed as non-empty tuples `[TStates, ...TStates[]]`.
-- Removed `addState()` escape hatch entirely. Tests that verify runtime validation now use `@ts-expect-error` on `addFork`/`addJoin` directly.
-- `ForkState<TId, TValidStates>` and `JoinState<TId, TValidStates>` gained a second generic; defaults to `string` for standalone use.
-- Updated all call sites: tests, integration tests, e2e tests, examples, and all docs markdown.
-- Grew test suite from 141 → 143 passing tests. `pnpm typecheck && pnpm test && pnpm build` all exit clean.
-
-### [v0.5.0] 2026-05-24 — Trim public API surface
-
-- Removed from `src/index.ts`: `StepState`, `ForkState`, `JoinState`, `SubWorkflowState` (users use `addStep`/`addFork`/`addJoin`/`addSubWorkflow`), `WorkflowEngine` (internal; users go through `WorkflowInstance`), and all concrete guard classes (`AndGuard`, `OrGuard`, `NotGuard`, `InjectedGuard`, `FnGuard`, `AlwaysGuard`, `NeverGuard`, `StateCompletedGuard`, `StateActiveGuard`) — all guard composition goes through the `Guard` namespace.
-- All type exports, `Guard`, `StateKind`, `StateStatus`, `WorkflowBuilder`, `WorkflowInstance`, `Workflow` retained.
-- Updated web-runner workflow files (`src/workflow/demo-workflow.ts`, `src/workflows/ewcr.ts`, `incident.ts`, `predeparture.ts`, `purchase-order.ts`) to Config-First API; removed all direct state-class imports.
-- 143 tests pass; `pnpm typecheck && pnpm build` clean.
-
-### [v0.7.0] 2026-05-25 — createWorkflow factory; no more `as const`
-
-**Breaking change.** `new WorkflowBuilder({ states: [...] as const })` is replaced by `createWorkflow({ states: [...] })`.
-
-- Added `createWorkflow<const TStates extends string>(config)` factory function in `src/core/builder.ts`. The `const` type parameter modifier infers literal state IDs from a plain array automatically — no `as const` at call sites.
-- When `states` is a runtime `string[]`, TypeScript infers `TStates = string` automatically — no cast (`as [string, ...string[]]`) needed for dynamic workflows.
-- Constructor parameter relaxed from `readonly [TStates, ...TStates[]]` to `readonly TStates[]`; the non-empty check is handled at runtime by `build()`.
-- `createWorkflow` exported from `src/core/index.ts` and `src/index.ts`.
-- Updated all call sites: 11 test files, 3 example files, and all TSDoc examples.
-- 162 tests pass; all four pipeline steps exit clean.
-
-### [v0.6.0] 2026-05-25 — Dynamic workflow tests + lint clean
-
-- Added `tests/integration/dynamic-workflow.test.ts`: 19 tests covering dynamic (runtime `string[]`) workflow construction — linear chain traversal, snapshot round-trips, parallel fan-out/fan-in, and `build()` runtime validation for all invalid-reference cases.
-- Fixed pre-existing lint errors across 11 files: removed `async` from guard methods that never needed it (`primitives.ts`, `state-guard.ts`, `and-guard.test.ts`, `or-guard.test.ts`, `inject-guard.test.ts`), sync test callbacks, and all `injectGuard(() => async)` callbacks in integration and e2e tests; fixed `prefer-as-const` in `engine.test.ts`.
-- Updated Agent session protocol in Section 3 to require `pnpm lint && pnpm typecheck && pnpm test && pnpm build` (all four) after every change.
-- 162 tests pass; all four pipeline steps exit clean.
+- **v0.1.0**: TSDoc on all exports; `AnyState` discriminated union; Vitest workspace (unit/integration/e2e); 141 tests.
+- **v0.2.0**: VitePress `docs/` site (Diátaxis structure).
+- **v0.3.0**: `../web-runner/` React SPA — Vite + Tailwind + @xyflow/react; dagre layout; Zod-introspected dispatch forms.
+- **v0.4.0** *(breaking)*: Config-First WorkflowBuilder — states declared upfront; typed `addStep`/`addFork`/`addJoin`/`addSubWorkflow`; removed `addState()`.
+- **v0.5.0**: Trimmed public barrel — concrete state/guard classes removed; all guard composition via `Guard` namespace.
+- **v0.6.0–v0.7.0** *(breaking)*: `createWorkflow()` factory replaces `new WorkflowBuilder({ states: [...] as const })`; dynamic-workflow integration tests (19 tests); lint fixed across 11 files. 162 tests pass.
