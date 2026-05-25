@@ -46,7 +46,7 @@
 
 import { z } from 'zod';
 import {
-  WorkflowBuilder,
+  createWorkflow,
   Guard,
 } from '../src/index.js';
 import { MermaidExporter, JsonGraphExporter } from '../src/visualization/index.js';
@@ -133,7 +133,7 @@ const isSupervisor   = Guard.inject('isSupervisor');
 
 // ─── Workflow definition ──────────────────────────────────────────────────────
 
-const occDisruptionSop = new WorkflowBuilder({
+const occDisruptionSop = createWorkflow({
   name: 'occ-service-disruption',
   states: [
     'incident-detected',
@@ -149,7 +149,7 @@ const occDisruptionSop = new WorkflowBuilder({
     'service-disrupted',
     'service-restored',
     'incident-closed',
-  ] as const,
+  ],
 })
   .defineAction('VERIFY',              IncidentVerifySchema)
   .defineAction('ESCALATE_TO_DM',      EscalateSchema)

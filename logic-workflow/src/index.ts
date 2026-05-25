@@ -1,5 +1,5 @@
 // Core
-export { WorkflowBuilder, Workflow, WorkflowInstance } from './core/index.js';
+export { createWorkflow , type WorkflowInstance } from './core/index.js';
 
 // Guards
 export { Guard } from './guards/index.js';

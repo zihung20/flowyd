@@ -13,7 +13,13 @@
       "Bash(pnpm build *)",
       "Bash(npx tsx *)",
       "Bash(pnpm exec *)",
-      "Bash(pnpm lint *)"
+      "Bash(pnpm lint *)",
+      "Bash(perl -pi -e 's/new WorkflowBuilder\\\\\\(\\\\{/createWorkflow\\({/g' /Users/zihung20/Desktop/workflow/logic-workflow/examples/engineer-predeparture-checklist.ts /Users/zihung20/Desktop/workflow/logic-workflow/examples/station-opening-checklist.ts)",
+      "Bash(perl -pi -e 's/ as const,/,/g if /states:/' /Users/zihung20/Desktop/workflow/logic-workflow/examples/engineer-predeparture-checklist.ts /Users/zihung20/Desktop/workflow/logic-workflow/examples/station-opening-checklist.ts)",
+      "Bash(perl -pi -e 's/new WorkflowBuilder\\\\\\(\\\\{/createWorkflow\\({/g' /Users/zihung20/Desktop/workflow/logic-workflow/examples/occ-disruption-sop.ts)",
+      "Bash(perl -pi -e 's/new WorkflowBuilder\\\\\\(\\\\{/createWorkflow\\({/g' /Users/zihung20/Desktop/workflow/logic-workflow/tests/integration/parallel-join.test.ts)",
+      "Bash(perl -pi -e 's/ as const,/,/g if /states:/' /Users/zihung20/Desktop/workflow/logic-workflow/tests/integration/parallel-join.test.ts)",
+      "Bash(git *)"
     ]
   }
 }

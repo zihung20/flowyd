@@ -134,9 +134,9 @@ Treat a violation as a build error even when the compiler does not catch it.
 All state IDs are declared upfront in the constructor. This establishes the `TStates` union at instantiation, so `addStep`, `addFork`, `addJoin`, `addSubWorkflow`, `setInitial`, `setTerminal`, and `addTransition` are all constrained to that fixed set — typos fail at compile time.
 
 ```ts
-const wf = new WorkflowBuilder({
+const wf = createWorkflow({
   name: 'my-workflow',
-  states: ['draft', 'review', 'approved', 'rejected'] as const,  // ← as const is required
+  states: ['draft', 'review', 'approved', 'rejected'],  // no `as const` needed
 })
   .defineAction('SUBMIT', z.object({ submitterId: z.string() }))
   .addStep('draft')
@@ -150,8 +150,8 @@ const wf = new WorkflowBuilder({
 ```
 
 **Rules:**
-- Always pass `states: [...] as const`. Without `as const`, TypeScript widens to `string[]` and loses the literal union.
-- Never use `new WorkflowBuilder('name')` (old positional signature — removed).
+- Use `createWorkflow()` — the `const` type parameter infers literal types automatically.
+- Never use `new WorkflowBuilder('name')` (old positional signature — removed) or `new WorkflowBuilder({...})` directly.
 - Every state must be registered via `addStep`, `addFork`, `addJoin`, or `addSubWorkflow`. There is no `addState` escape hatch.
 - `addFork` targets and `addJoin` requires autocomplete to the `TStates` union. A reference to an unregistered ID is both a compile-time error and a `build()` runtime error.
 - `defineAction` returns a new generic specialization (`WorkflowBuilder<TActions & Record<K, T>, TStates>`) because `TActions` must accumulate per call. The runtime object is unchanged; only the TypeScript type widens. All other methods return `this`.
@@ -310,6 +310,17 @@ After every code change:
 - All type exports, `Guard`, `StateKind`, `StateStatus`, `WorkflowBuilder`, `WorkflowInstance`, `Workflow` retained.
 - Updated web-runner workflow files (`src/workflow/demo-workflow.ts`, `src/workflows/ewcr.ts`, `incident.ts`, `predeparture.ts`, `purchase-order.ts`) to Config-First API; removed all direct state-class imports.
 - 143 tests pass; `pnpm typecheck && pnpm build` clean.
+
+### [v0.7.0] 2026-05-25 — createWorkflow factory; no more `as const`
+
+**Breaking change.** `new WorkflowBuilder({ states: [...] as const })` is replaced by `createWorkflow({ states: [...] })`.
+
+- Added `createWorkflow<const TStates extends string>(config)` factory function in `src/core/builder.ts`. The `const` type parameter modifier infers literal state IDs from a plain array automatically — no `as const` at call sites.
+- When `states` is a runtime `string[]`, TypeScript infers `TStates = string` automatically — no cast (`as [string, ...string[]]`) needed for dynamic workflows.
+- Constructor parameter relaxed from `readonly [TStates, ...TStates[]]` to `readonly TStates[]`; the non-empty check is handled at runtime by `build()`.
+- `createWorkflow` exported from `src/core/index.ts` and `src/index.ts`.
+- Updated all call sites: 11 test files, 3 example files, and all TSDoc examples.
+- 162 tests pass; all four pipeline steps exit clean.
 
 ### [v0.6.0] 2026-05-25 — Dynamic workflow tests + lint clean
 

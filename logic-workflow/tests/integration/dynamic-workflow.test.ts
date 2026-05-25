@@ -1,22 +1,19 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
-import { WorkflowBuilder } from '../../src/core/builder.js';
+import { WorkflowBuilder, createWorkflow } from '../../src/core/builder.js';
 
 // ---------------------------------------------------------------------------
 // Helpers — dynamic builders
 //
-// Without `as const`, TypeScript cannot infer a literal TStates union from a
-// runtime string[]. Casting to [string, ...string[]] gives TStates = string,
-// which accepts any string for state IDs — compile-time safety is intentionally
-// absent. Runtime validation via build() is the only guard.
+// createWorkflow infers TStates = string when the states array is a runtime
+// string[]. Compile-time state-ID checking is absent; build() is the only guard.
 // ---------------------------------------------------------------------------
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 function buildLinearChain(stateIds: string[]) {
   if (stateIds.length < 2) throw new Error('need at least 2 states');
 
-  // stateIds is a runtime value; cast to non-empty tuple so TStates = string.
-  const builder = new WorkflowBuilder({ name: 'dynamic-linear', states: stateIds as [string, ...string[]] })
+  const builder = createWorkflow({ name: 'dynamic-linear', states: stateIds })
     .defineAction('NEXT', z.object({}));
 
   for (const id of stateIds) {
@@ -41,20 +38,18 @@ function buildLinearChain(stateIds: string[]) {
  * Each branch completes on its own `DONE_<i>` action. Because the action
  * names are computed in a loop, TypeScript cannot track the TActions
  * accumulation statically — the builder is cast to a wide type after the
- * statically-known actions are defined. The WorkflowDefinition returned has
- * TActions = Record<string, ZodTypeAny>, so dispatch() accepts any string.
+ * statically-known actions are defined.
  */
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 function buildParallelBranches(branchCount: number) {
   const branches = Array.from({ length: branchCount }, (_, i) => `branch-${i}`);
   const allStates = ['start', 'fork', ...branches, 'join', 'end'];
 
-  const initial = new WorkflowBuilder({ name: 'dynamic-parallel', states: allStates as [string, ...string[]] })
+  const initial = createWorkflow({ name: 'dynamic-parallel', states: allStates })
     .defineAction('START', z.object({}))
     .defineAction('COMPLETE_ALL', z.object({}));
 
-  // After the statically-known actions, cast to a wide builder so that
-  // loop-defined action names (`DONE_${i}`) are accepted by TypeScript.
+  // Loop-defined action names can't be tracked by TActions; cast to wide type.
   // At runtime defineAction always returns `this`, so no data is lost.
   const builder = initial as unknown as WorkflowBuilder<Record<string, unknown>, string>;
 
@@ -172,10 +167,10 @@ describe('Dynamic linear chain', () => {
 
 describe('Dynamic builder — runtime validation', () => {
   it('build() throws when a transition references a state not in the declared list', () => {
-    // Use a runtime variable so TypeScript does not flag 'ghost' at compile time —
-    // this is the exact scenario dynamic workflows face.
+    // Cast to string[] so createWorkflow infers TStates = string; TypeScript
+    // then cannot flag 'ghost' at compile time — only build() catches it.
     const dynamicStates = ['a', 'b'] as string[];
-    const builder = new WorkflowBuilder({ name: 'bad-transition', states: dynamicStates as [string, ...string[]] })
+    const builder = createWorkflow({ name: 'bad-transition', states: dynamicStates })
       .defineAction('GO', z.object({}))
       .addStep('a')
       .addStep('b')
@@ -187,7 +182,7 @@ describe('Dynamic builder — runtime validation', () => {
 
   it('build() throws when no initial state is set', () => {
     const dynamicStates = ['a', 'b'] as string[];
-    const builder = new WorkflowBuilder({ name: 'no-initial', states: dynamicStates as [string, ...string[]] })
+    const builder = createWorkflow({ name: 'no-initial', states: dynamicStates })
       .defineAction('GO', z.object({}))
       .addStep('a')
       .addStep('b')
@@ -198,7 +193,7 @@ describe('Dynamic builder — runtime validation', () => {
 
   it('build() throws when no terminal state is set', () => {
     const dynamicStates = ['a', 'b'] as string[];
-    const builder = new WorkflowBuilder({ name: 'no-terminal', states: dynamicStates as [string, ...string[]] })
+    const builder = createWorkflow({ name: 'no-terminal', states: dynamicStates })
       .defineAction('GO', z.object({}))
       .addStep('a')
       .addStep('b')
@@ -209,7 +204,7 @@ describe('Dynamic builder — runtime validation', () => {
 
   it('build() throws when a fork target is not in the declared state list', () => {
     const dynamicStates = ['start', 'fork'] as string[];
-    const builder = new WorkflowBuilder({ name: 'bad-fork', states: dynamicStates as [string, ...string[]] })
+    const builder = createWorkflow({ name: 'bad-fork', states: dynamicStates })
       .defineAction('GO', z.object({}))
       .addStep('start')
       .addFork('fork', { targets: ['missing-branch'] as [string, ...string[]] })
@@ -221,7 +216,7 @@ describe('Dynamic builder — runtime validation', () => {
 
   it('build() throws when a join requires a state not in the declared list', () => {
     const dynamicStates = ['start', 'join'] as string[];
-    const builder = new WorkflowBuilder({ name: 'bad-join', states: dynamicStates as [string, ...string[]] })
+    const builder = createWorkflow({ name: 'bad-join', states: dynamicStates })
       .defineAction('GO', z.object({}))
       .addStep('start')
       .addJoin('join', { requires: ['phantom'] as [string, ...string[]] })

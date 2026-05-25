@@ -31,7 +31,7 @@
  */
 
 import { z } from 'zod';
-import { WorkflowBuilder } from '../src/index.js';
+import { createWorkflow } from '../src/index.js';
 import { MermaidExporter } from '../src/visualization/index.js';
 
 // ─── Schema definitions ───────────────────────────────────────────────────────
@@ -67,7 +67,7 @@ const DepartSchema = z.object({
 // `addFork` and `addJoin` autocomplete their `targets`/`requires` arrays to
 // members of this union — no manual type annotations required.
 
-const engineerChecklist = new WorkflowBuilder({
+const engineerChecklist = createWorkflow({
   name: 'engineer-predeparture-checklist',
   states: [
     'reported-for-duty',
@@ -79,7 +79,7 @@ const engineerChecklist = new WorkflowBuilder({
     'inspections-joined',
     'signed-off',
     'departed',
-  ] as const,
+  ],
 })
   // ── Actions ──────────────────────────────────────────────────────────────
   .defineAction('BRIEFING_RECEIVED', BriefingSchema)

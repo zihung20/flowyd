@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
-import { WorkflowBuilder } from '../../src/core/builder.js';
+import { createWorkflow } from '../../src/core/builder.js';
 
 const Empty = z.object({});
 
@@ -10,9 +10,9 @@ const Empty = z.object({});
  *   start ──START──▶ fork ──▶ legal ──LEGAL_DONE──▶ ┐
  *                         └──▶ finance ──FINANCE_DONE──▶ join(all) ──FINALIZE──▶ approved
  */
-const procurement = new WorkflowBuilder({
+const procurement = createWorkflow({
   name: 'procurement',
-  states: ['start', 'fork', 'legal', 'finance', 'join', 'approved'] as const,
+  states: ['start', 'fork', 'legal', 'finance', 'join', 'approved'],
 })
   .defineAction('START', Empty)
   .defineAction('LEGAL_DONE', Empty)
@@ -98,9 +98,9 @@ describe('Parallel-join SOP — procurement', () => {
  *   start ──GO──▶ fork ──▶ branch-a ──DONE_A──▶ ┐
  *                       └──▶ branch-b ──DONE_B──▶ join(any) ──PROCEED──▶ end
  */
-const anyJoin = new WorkflowBuilder({
+const anyJoin = createWorkflow({
   name: 'any-join',
-  states: ['start', 'fork', 'branch-a', 'branch-b', 'join', 'end'] as const,
+  states: ['start', 'fork', 'branch-a', 'branch-b', 'join', 'end'],
 })
   .defineAction('GO', Empty)
   .defineAction('DONE_A', Empty)

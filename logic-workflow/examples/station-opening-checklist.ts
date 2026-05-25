@@ -33,7 +33,7 @@
  */
 
 import { z } from 'zod';
-import { WorkflowBuilder } from '../src/index.js';
+import { createWorkflow } from '../src/index.js';
 import { MermaidExporter } from '../src/visualization/index.js';
 
 // ─── Schema definitions ───────────────────────────────────────────────────────
@@ -68,7 +68,7 @@ const CommenceServiceSchema = z.object({
 
 // ─── Workflow definition ──────────────────────────────────────────────────────
 
-const stationOpening = new WorkflowBuilder({
+const stationOpening = createWorkflow({
   name: 'station-opening',
   states: [
     'closed',
@@ -77,7 +77,7 @@ const stationOpening = new WorkflowBuilder({
     'systems-active',
     'fare-gates-open',
     'open-for-service',
-  ] as const,
+  ],
 })
   .defineAction('UNLOCK_PREMISES',  UnlockSchema)
   .defineAction('COMPLETE_SAFETY_WALK', SafetyWalkSchema)

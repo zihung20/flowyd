@@ -1,15 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
-import { WorkflowBuilder } from '../../src/core/builder.js';
+import { createWorkflow } from '../../src/core/builder.js';
 import { Guard } from '../../src/guards/factory.js';
 
 const SubmitSchema = z.object({ submitterId: z.string() });
 const ApproveSchema = z.object({ reason: z.string(), approverId: z.string() });
 const RejectSchema = z.object({ reason: z.string() });
 
-const purchaseOrder = new WorkflowBuilder({
+const purchaseOrder = createWorkflow({
   name: 'purchase-order',
-  states: ['draft', 'pending-approval', 'approved', 'rejected'] as const,
+  states: ['draft', 'pending-approval', 'approved', 'rejected'],
 })
   .defineAction('SUBMIT', SubmitSchema)
   .defineAction('APPROVE', ApproveSchema)

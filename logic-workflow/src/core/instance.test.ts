@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
-import { WorkflowBuilder } from './builder.js';
+import { createWorkflow } from './builder.js';
 import { StateStatus } from '../types/index.js';
 
 const Empty = z.object({});
 
 function makeLinear() {
-  return new WorkflowBuilder({ name: 'linear', states: ['a', 'b'] as const })
+  return createWorkflow({ name: 'linear', states: ['a', 'b'] })
     .defineAction('GO', Empty)
     .addStep('a')
     .addStep('b')
@@ -17,7 +17,7 @@ function makeLinear() {
 }
 
 function makeSubWorkflow() {
-  return new WorkflowBuilder({ name: 'sub-wf', states: ['start', 'sub', 'end'] as const })
+  return createWorkflow({ name: 'sub-wf', states: ['start', 'sub', 'end'] })
     .defineAction('START', Empty)
     .defineAction('DONE', Empty)
     .addStep('start')
@@ -85,7 +85,7 @@ describe('WorkflowInstance — canExecute dry-run', () => {
   });
 
   it('returns false when a guard blocks', async () => {
-    const wf = new WorkflowBuilder({ name: 'guarded', states: ['a', 'b'] as const })
+    const wf = createWorkflow({ name: 'guarded', states: ['a', 'b'] })
       .defineAction('GO', Empty)
       .addStep('a')
       .addStep('b')

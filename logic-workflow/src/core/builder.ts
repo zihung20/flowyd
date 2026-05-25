@@ -23,9 +23,9 @@ import { SubWorkflowState } from '../states/sub-workflow-state.js';
  * separate type union.
  *
  * ```ts
- * const builder = new WorkflowBuilder({
+ * const builder = createWorkflow({
  *   name: 'my-workflow',
- *   states: ['pending', 'fork', 'branch-a', 'branch-b', 'joined', 'done'] as const,
+ *   states: ['pending', 'fork', 'branch-a', 'branch-b', 'joined', 'done'],
  * });
  * ```
  *
@@ -64,25 +64,14 @@ export class WorkflowBuilder<
 
   /**
    * Creates a new `WorkflowBuilder` with the full set of state IDs declared
-   * upfront. TypeScript infers `TStates` from the `states` array, constraining
-   * every subsequent call to that union.
-   *
-   * Use `as const` on the `states` array so that TypeScript infers literal
-   * types rather than `string`:
-   *
-   * ```ts
-   * new WorkflowBuilder({
-   *   name: 'inspection',
-   *   states: ['pending', 'fork', 'mechanical', 'electrical', 'joined', 'done'] as const,
-   * })
-   * ```
+   * upfront. Prefer the {@link createWorkflow} factory which automatically
+   * preserves literal types without needing `as const` at the call site.
    *
    * @param config.name   - Workflow name. Must be non-empty.
-   * @param config.states - Non-empty array of every state ID in the graph.
-   *                        Must satisfy `as const` to preserve literal types.
+   * @param config.states - Array of every state ID in the graph.
    * @throws {Error} If `name` is empty.
    */
-  constructor(config: { name: string; states: readonly [TStates, ...TStates[]] }) {
+  constructor(config: { name: string; states: readonly TStates[] }) {
     if (!config.name.trim()) throw new Error('Workflow name must be non-empty');
     this.name = config.name;
   }
@@ -309,4 +298,32 @@ export class WorkflowBuilder<
 
     return new Workflow<TActions>(definition);
   }
+}
+
+/**
+ * Creates a new {@link WorkflowBuilder} with all state IDs declared upfront.
+ *
+ * The `const` type parameter modifier automatically infers literal state-ID
+ * types from a plain array — no `as const` needed at the call site. When
+ * `states` is a runtime `string[]`, TypeScript infers `TStates = string` and
+ * the builder falls back to runtime-only validation via `build()`.
+ *
+ * ```ts
+ * // Static: full compile-time safety, no `as const` needed
+ * const wf = createWorkflow({ name: 'po', states: ['draft', 'review', 'done'] });
+ *
+ * // Dynamic: states from a database or user input
+ * const wf = createWorkflow({ name: 'dynamic', states: fetchedStates });
+ * ```
+ *
+ * @param config.name   - Workflow name. Must be non-empty.
+ * @param config.states - Every state ID in the graph.
+ * @returns A `WorkflowBuilder` constrained to the declared state IDs.
+ * @throws {Error} If `name` is empty.
+ */
+export function createWorkflow<const TStates extends string>(config: {
+  name: string;
+  states: readonly TStates[];
+}): WorkflowBuilder<Record<never, never>, TStates> {
+  return new WorkflowBuilder<Record<never, never>, TStates>(config);
 }

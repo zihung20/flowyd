@@ -23,7 +23,7 @@ import { BaseState } from './base.js';
  *
  * @example
  * ```ts
- * new WorkflowBuilder({ name: 'vendor', states: ['draft', 'vendor-approval', 'approved', 'rejected'] as const })
+ * createWorkflow({ name: 'vendor', states: ['draft', 'vendor-approval', 'approved', 'rejected'] })
  *   .addSubWorkflow('vendor-approval', { subWorkflowName: 'vendor-kyc' })
  *   .addTransition({ from: 'vendor-approval', to: 'approved', on: 'KYC_PASSED' })
  *   .addTransition({ from: 'vendor-approval', to: 'rejected', on: 'KYC_FAILED' })
