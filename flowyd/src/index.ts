@@ -1,5 +1,5 @@
 // Core
-export { createWorkflow, type WorkflowInstance } from './core/index.js';
+export { createWorkflow, createDynamicWorkflow, type WorkflowInstance } from './core/index.js';
 
 // Guards
 export { Guard } from './guards/index.js';

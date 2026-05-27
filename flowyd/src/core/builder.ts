@@ -344,22 +344,18 @@ export class WorkflowBuilder<
  * by one literal, so all subsequent calls are constrained to the growing set
  * of registered IDs — no upfront array needed.
  *
- * For workflows whose state IDs are only known at runtime (e.g. loaded from a
- * database), cast to a wide builder after construction:
- *
  * ```ts
- * // Static: TStates accumulates automatically
  * const wf = createWorkflow({ name: 'po' })
  *   .addStep('draft')
  *   .addStep('review')
  *   .addStep('done')
- *   ...
- *
- * // Dynamic: cast to wide builder, runtime validation falls to build()
- * const builder = createWorkflow({ name: 'dynamic' }) as unknown as
- *   WorkflowBuilder<Record<string, unknown>, string>;
- * for (const id of fetchedStates) { builder.addStep(id); }
+ *   .setInitial('draft')
+ *   .setTerminal(['done'])
+ *   .build();
  * ```
+ *
+ * For workflows whose state IDs are only known at runtime, use
+ * {@link createDynamicWorkflow} instead.
  *
  * @param config.name - Workflow name. Must be non-empty.
  * @returns A `WorkflowBuilder` with `TStates = never`, ready to accumulate state IDs.
@@ -369,4 +365,33 @@ export function createWorkflow(config: {
   name: string;
 }): WorkflowBuilder<Record<never, never>, never> {
   return new WorkflowBuilder<Record<never, never>, never>(config);
+}
+
+/**
+ * Creates a {@link WorkflowBuilder} typed for runtime-defined state IDs.
+ *
+ * Use this when state IDs come from an external source (database, config file,
+ * user input) and cannot be known at compile time. Unlike {@link createWorkflow},
+ * `TStates` is pre-widened to `string` so you can call `addStep`, `addFork`,
+ * `addJoin`, and `addWait` in loops without type errors. Structural correctness
+ * is enforced at runtime by `build()`.
+ *
+ * ```ts
+ * const builder = createDynamicWorkflow({ name: 'dynamic-linear' });
+ * builder.defineAction('NEXT', z.object({}));
+ * for (const id of fetchedIds) { builder.addStep(id); }
+ * builder.setInitial(fetchedIds[0]).setTerminal([fetchedIds.at(-1)]);
+ * const wf = builder.build();
+ * ```
+ *
+ * @param config.name - Workflow name. Must be non-empty.
+ * @returns A `WorkflowBuilder` with `TStates = string` and `TActions = Record<string, unknown>`.
+ * @throws {Error} If `name` is empty.
+ */
+export function createDynamicWorkflow(config: {
+  name: string;
+}): WorkflowBuilder<Record<string, unknown>, string> {
+  // Cast is intentional: opts out of literal accumulation so runtime string IDs
+  // are accepted by all builder methods. build() enforces structural correctness.
+  return new WorkflowBuilder(config) as unknown as WorkflowBuilder<Record<string, unknown>, string>;
 }

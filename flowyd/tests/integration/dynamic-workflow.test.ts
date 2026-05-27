@@ -1,25 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
-import { WorkflowBuilder, createWorkflow } from '../../src/core/builder.js';
+import { createDynamicWorkflow } from '../../src/core/builder.js';
 
-// ---------------------------------------------------------------------------
-// Helpers — dynamic builders
-//
-// State IDs are only known at runtime so we cast to a wide builder type;
-// compile-time state-ID checking is absent — build() is the only guard.
-// ---------------------------------------------------------------------------
-
-// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 function buildLinearChain(stateIds: string[]) {
   if (stateIds.length < 2) {
     throw new Error('need at least 2 states');
   }
 
-  // Cast to wide builder: runtime string[] cannot accumulate TStates generics.
-  const builder = createWorkflow({ name: 'dynamic-linear' }) as unknown as WorkflowBuilder<
-    Record<string, unknown>,
-    string
-  >;
+  const builder = createDynamicWorkflow({ name: 'dynamic-linear' });
   builder.defineAction('NEXT', z.object({}));
 
   for (const id of stateIds) {
@@ -41,22 +29,15 @@ function buildLinearChain(stateIds: string[]) {
  * Build a fan-out / fan-in workflow at runtime:
  *   start → fork → [branch-0 … branch-N] → join → end
  *
- * Each branch completes on its own `DONE_<i>` action. Because the action
- * names are computed in a loop, TypeScript cannot track the TActions
- * accumulation statically — the builder is cast to a wide type after the
- * statically-known actions are defined.
+ * Each branch completes on its own `DONE_<i>` action. State IDs and action
+ * names are computed in a loop, so createDynamicWorkflow is used throughout.
  */
-// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 function buildParallelBranches(branchCount: number) {
   const branches = Array.from({ length: branchCount }, (_, i) => `branch-${i}`);
+  const builder = createDynamicWorkflow({ name: 'dynamic-parallel' });
 
-  const initial = createWorkflow({ name: 'dynamic-parallel' })
-    .defineAction('START', z.object({}))
-    .defineAction('COMPLETE_ALL', z.object({}));
-
-  // Loop-defined action names and state IDs can't be tracked by generics; cast to wide type.
-  // At runtime defineAction / addStep always returns `this`, so no data is lost.
-  const builder = initial as unknown as WorkflowBuilder<Record<string, unknown>, string>;
+  builder.defineAction('START', z.object({}));
+  builder.defineAction('COMPLETE_ALL', z.object({}));
 
   for (let i = 0; i < branchCount; i++) {
     builder.defineAction(`DONE_${i}`, z.object({}));
@@ -82,6 +63,67 @@ function buildParallelBranches(branchCount: number) {
 
   return builder.build();
 }
+
+// ---------------------------------------------------------------------------
+// createDynamicWorkflow factory
+// ---------------------------------------------------------------------------
+
+describe('createDynamicWorkflow factory', () => {
+  it('throws on an empty name', () => {
+    expect(() => createDynamicWorkflow({ name: '' })).toThrow('non-empty');
+  });
+
+  it('throws on a whitespace-only name', () => {
+    expect(() => createDynamicWorkflow({ name: '   ' })).toThrow('non-empty');
+  });
+
+  it('builds a valid workflow from runtime-supplied IDs without any cast', () => {
+    const ids: string[] = ['alpha', 'beta', 'gamma'];
+    const builder = createDynamicWorkflow({ name: 'no-cast' });
+    builder.defineAction('NEXT', z.object({}));
+    for (const id of ids) { builder.addStep(id); }
+    builder.setInitial(ids[0]!).setTerminal([ids[2]!]);
+    builder.addTransition({ from: 'alpha', to: 'beta', on: 'NEXT' });
+    builder.addTransition({ from: 'beta', to: 'gamma', on: 'NEXT' });
+    expect(() => builder.build()).not.toThrow();
+  });
+
+  it('accepts addWait in a dynamic loop', () => {
+    const waitIds = ['wait-a', 'wait-b'];
+    const builder = createDynamicWorkflow({ name: 'dynamic-waits' });
+    builder.defineAction('RESUME', z.object({}));
+    for (const id of waitIds) { builder.addWait(id, { externalName: id }); }
+    builder.setInitial('wait-a').setTerminal(['wait-b']);
+    builder.addTransition({ from: 'wait-a', to: 'wait-b', on: 'RESUME' });
+    expect(() => builder.build()).not.toThrow();
+  });
+
+  it('produces a workflow whose instance starts at the initial state', () => {
+    const builder = createDynamicWorkflow({ name: 'start-check' });
+    builder.defineAction('GO', z.object({}));
+    builder.addStep('begin').addStep('finish');
+    builder.setInitial('begin').setTerminal(['finish']);
+    builder.addTransition({ from: 'begin', to: 'finish', on: 'GO' });
+    const wf = builder.build();
+    const inst = wf.createInstance('sc-001');
+    expect(inst.getCurrentStates()).toEqual(['begin']);
+  });
+
+  it('produces identical runtime behaviour to the explicit-cast approach', async () => {
+    const builder = createDynamicWorkflow({ name: 'parity' });
+    builder.defineAction('NEXT', z.object({}));
+    builder.addStep('x').addStep('y').addStep('z');
+    builder.setInitial('x').setTerminal(['z']);
+    builder.addTransition({ from: 'x', to: 'y', on: 'NEXT' });
+    builder.addTransition({ from: 'y', to: 'z', on: 'NEXT' });
+    const wf = builder.build();
+    const inst = wf.createInstance('par-001');
+    await inst.dispatch('NEXT', {});
+    expect(inst.getCurrentStates()).toEqual(['y']);
+    await inst.dispatch('NEXT', {});
+    expect(inst.isTerminal()).toBe(true);
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Linear chain tests
@@ -172,34 +214,32 @@ describe('Dynamic linear chain', () => {
 
 describe('Dynamic builder — runtime validation', () => {
   it('build() throws when a transition references an unregistered state', () => {
-    // Cast to wide builder: TypeScript cannot flag 'ghost' at compile time — only build() catches it.
-    const initial = createWorkflow({ name: 'bad-transition' }).defineAction('GO', z.object({}));
-    const builder = initial as unknown as WorkflowBuilder<Record<string, unknown>, string>;
+    const builder = createDynamicWorkflow({ name: 'bad-transition' });
+    builder.defineAction('GO', z.object({}));
     builder.addStep('a').addStep('b').setInitial('a').setTerminal(['b']);
     builder.addTransition({ from: 'a', to: 'ghost', on: 'GO' });
     expect(() => builder.build()).toThrow('"ghost"');
   });
 
   it('build() throws when no initial state is set', () => {
-    const initial = createWorkflow({ name: 'no-initial' }).defineAction('GO', z.object({}));
-    const builder = initial as unknown as WorkflowBuilder<Record<string, unknown>, string>;
+    const builder = createDynamicWorkflow({ name: 'no-initial' });
+    builder.defineAction('GO', z.object({}));
     builder.addStep('a').addStep('b').setTerminal(['b']);
     builder.addTransition({ from: 'a', to: 'b', on: 'GO' });
     expect(() => builder.build()).toThrow('initial state');
   });
 
   it('build() throws when no terminal state is set', () => {
-    const initial = createWorkflow({ name: 'no-terminal' }).defineAction('GO', z.object({}));
-    const builder = initial as unknown as WorkflowBuilder<Record<string, unknown>, string>;
+    const builder = createDynamicWorkflow({ name: 'no-terminal' });
+    builder.defineAction('GO', z.object({}));
     builder.addStep('a').addStep('b').setInitial('a');
     builder.addTransition({ from: 'a', to: 'b', on: 'GO' });
     expect(() => builder.build()).toThrow('terminal state');
   });
 
   it('build() throws when a fork target is not a registered state', () => {
-    // 'missing-branch' is never added via addStep — only build() catches it.
-    const initial = createWorkflow({ name: 'bad-fork' }).defineAction('GO', z.object({}));
-    const builder = initial as unknown as WorkflowBuilder<Record<string, unknown>, string>;
+    const builder = createDynamicWorkflow({ name: 'bad-fork' });
+    builder.defineAction('GO', z.object({}));
     builder.addStep('start');
     builder.addFork('fork', { targets: ['missing-branch'] as [string, ...string[]] });
     builder.setInitial('start').setTerminal(['start']);
@@ -208,9 +248,8 @@ describe('Dynamic builder — runtime validation', () => {
   });
 
   it('build() throws when a join requires an unregistered state', () => {
-    // 'phantom' is never added via addStep — only build() catches it.
-    const initial = createWorkflow({ name: 'bad-join' }).defineAction('GO', z.object({}));
-    const builder = initial as unknown as WorkflowBuilder<Record<string, unknown>, string>;
+    const builder = createDynamicWorkflow({ name: 'bad-join' });
+    builder.defineAction('GO', z.object({}));
     builder.addStep('start');
     builder.addJoin('join', { requires: ['phantom'] as [string, ...string[]] });
     builder.setInitial('start').setTerminal(['join']);
