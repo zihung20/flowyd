@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { WorkflowBuilder } from 'logic-workflow';
+import { createWorkflow } from 'logic-workflow';
 import type { WorkflowInstance } from 'logic-workflow';
 
 const SubmitSchema = z.object({
@@ -28,7 +28,7 @@ const FulfillSchema = z.object({
   deliveryDate: z.string().min(1),
 });
 
-export const purchaseOrderWorkflow = new WorkflowBuilder({
+export const purchaseOrderWorkflow = createWorkflow({
   name: 'purchase-order',
   states: [
     'draft',
@@ -37,7 +37,7 @@ export const purchaseOrderWorkflow = new WorkflowBuilder({
     'approved',
     'rejected',
     'fulfilled',
-  ] as const,
+  ],
 })
   .defineAction('SUBMIT',   SubmitSchema)
   .defineAction('REVIEW',   ReviewSchema)

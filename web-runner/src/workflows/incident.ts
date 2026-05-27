@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { WorkflowBuilder, Guard } from 'logic-workflow';
+import { createWorkflow, Guard } from 'logic-workflow';
 import type { WorkflowInstance } from 'logic-workflow';
 
 const SeverityEnum = z.enum(['P1', 'P2', 'P3', 'P4']);
@@ -39,7 +39,7 @@ const CloseSchema = z.object({
   postMortemUrl: z.string().min(1),
 });
 
-export const incidentWorkflow = new WorkflowBuilder({
+export const incidentWorkflow = createWorkflow({
   name: 'it-incident-response',
   states: [
     'detected',
@@ -49,7 +49,7 @@ export const incidentWorkflow = new WorkflowBuilder({
     'eradicated',
     'recovered',
     'closed',
-  ] as const,
+  ],
 })
   .defineAction('DETECT',      DetectSchema)
   .defineAction('TRIAGE',      TriageSchema)

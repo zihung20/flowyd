@@ -47,7 +47,7 @@ function kindSuffix(kind: StateKind): string {
  */
 export const MermaidExporter: IExporter<string> = {
   export(definition: WorkflowDefinition, snapshot?: InstanceSnapshot): string {
-    const lines: string[] = ['stateDiagram-v2'];
+    const lines: string[] = ['stateDiagram-v2', '  direction LR'];
 
     // State declarations with labels
     for (const [id, state] of definition.states) {
@@ -56,9 +56,6 @@ export const MermaidExporter: IExporter<string> = {
 
       if (state.kind === StateKind.Fork || state.kind === StateKind.Join) {
         lines.push(`  state "${label}" as ${sid}`);
-        if (state.kind === StateKind.Fork) {
-          lines.push(`  [*] --> ${sid} : fork`);
-        }
       } else if (state.kind === StateKind.Wait) {
         lines.push(`  state "${label} [${state.externalName}]" as ${sid}`);
       } else {
@@ -100,6 +97,11 @@ export const MermaidExporter: IExporter<string> = {
     for (const id of definition.terminalStateIds) {
       lines.push(`  ${sanitizeId(id)} --> [*]`);
     }
+
+    lines.push('');
+    lines.push('  classDef active    fill:#3b82f6,color:#fff,stroke:#2563eb');
+    lines.push('  classDef waiting   fill:#f59e0b,color:#fff,stroke:#d97706');
+    lines.push('  classDef completed fill:#10b981,color:#fff,stroke:#059669');
 
     // Live status annotations when a snapshot is provided
     if (snapshot) {

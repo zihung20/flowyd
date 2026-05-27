@@ -6,6 +6,14 @@ import type {
   ReadonlyInstanceState,
   GuardFn,
 } from '../types/index.js';
+
+/**
+ * Produces `Base` intersected with `{ [extra keys in Given]: never }`.
+ * Applied to `dispatch` / `canExecute` so that object literals with unknown
+ * properties fail at the call site rather than silently reaching Zod's runtime
+ * `.strict()` check.
+ */
+type Exact<Base, Given extends Base> = Given & { [K in Exclude<keyof Given, keyof Base>]: never };
 import { StateStatus, StateKind } from '../types/index.js';
 import { GuardRegistry } from './registry.js';
 import { WorkflowEngine } from './engine.js';
@@ -118,9 +126,9 @@ export class WorkflowInstance<TActions extends ActionPayloadMap> {
    * @param payload - The payload that would be passed to `dispatch`.
    * @returns `true` if at least one matching transition passes its guard.
    */
-  async canExecute<K extends keyof TActions & string>(
+  async canExecute<K extends keyof TActions & string, P extends TActions[K]>(
     action: K,
-    payload: TActions[K],
+    payload: Exact<TActions[K], P>,
   ): Promise<boolean> {
     const result = await this.dispatch(action, payload, true);
     return result.success;
@@ -147,9 +155,9 @@ export class WorkflowInstance<TActions extends ActionPayloadMap> {
    * @throws {Error}    If a named guard referenced by the transition has not
    *                    been injected via `injectGuard()`.
    */
-  async dispatch<K extends keyof TActions & string>(
+  async dispatch<K extends keyof TActions & string, P extends TActions[K]>(
     action: K,
-    payload: TActions[K],
+    payload: Exact<TActions[K], P>,
   ): Promise<DispatchResult>;
 
   /**

@@ -5,6 +5,18 @@ import { StateStatus } from '../types/index.js';
 
 const Empty = z.object({});
 
+function makeTyped() {
+  return createWorkflow({ name: 'typed', states: ['a', 'b'] })
+    .defineAction('GO', z.object({ id: z.string() }))
+    .defineAction('PING', Empty.strict())
+    .addStep('a')
+    .addStep('b')
+    .setInitial('a')
+    .setTerminal(['b'])
+    .addTransition({ from: 'a', to: 'b', on: 'GO' })
+    .build();
+}
+
 function makeLinear() {
   return createWorkflow({ name: 'linear', states: ['a', 'b'] })
     .defineAction('GO', Empty)
@@ -144,5 +156,62 @@ describe('WorkflowInstance — resolveWait', () => {
     inst.resolveWait('sub');
     expect(inst.getSnapshot().version).toBe(2);
     expect(inst.getSnapshot().history).toHaveLength(2);
+  });
+});
+
+describe('WorkflowInstance — payload strictness', () => {
+  // Type-only tests: the async helpers below are never called at runtime.
+  // TypeScript still checks their bodies, so unused @ts-expect-error directives
+  // would cause `pnpm typecheck` to fail — which is the guard we want.
+
+  it('rejects extra properties on a keyed schema at compile time', () => {
+    const inst = makeTyped().createInstance('ps-001');
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    async function _typeOnly() {
+      // @ts-expect-error 'extra' is not declared in the GO schema
+      await inst.dispatch('GO', { id: 'abc', extra: 'bad' });
+    }
+    expect(inst).toBeDefined();
+  });
+
+  it('rejects extra properties on an empty schema at compile time', () => {
+    const inst = makeTyped().createInstance('ps-002');
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    async function _typeOnly() {
+      // @ts-expect-error 'baboi' is not in the empty PING schema
+      await inst.dispatch('PING', { baboi: 'ignore' });
+    }
+    expect(inst).toBeDefined();
+  });
+
+  it('rejects extra properties on canExecute at compile time', () => {
+    const inst = makeTyped().createInstance('ps-003');
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    async function _typeOnly() {
+      // @ts-expect-error extra property must be rejected on canExecute too
+      await inst.canExecute('GO', { id: 'abc', extra: 'bad' });
+    }
+    expect(inst).toBeDefined();
+  });
+
+  it('accepts exact payload shapes at compile time', () => {
+    const inst = makeTyped().createInstance('ps-004');
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    async function _typeOnly() {
+      // These must compile without error
+      await inst.dispatch('GO', { id: 'abc' });
+      await inst.dispatch('PING', {});
+      await inst.canExecute('GO', { id: 'abc' });
+    }
+    expect(inst).toBeDefined();
+  });
+
+  it('rejects extra properties at runtime via Zod strict()', async () => {
+    const inst = makeTyped().createInstance('ps-005');
+    // PING uses Empty.strict() — Zod throws at runtime even if you bypass the type
+    await expect(
+      // Force the call past the type system to test runtime behaviour
+      (inst.dispatch as (a: string, p: unknown) => Promise<unknown>)('PING', { baboi: 'ignore' }),
+    ).rejects.toThrow();
   });
 });

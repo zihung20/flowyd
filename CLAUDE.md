@@ -298,3 +298,10 @@ After every code change:
 - `instance.resolveSubWorkflow()` → `instance.resolveWait()`; history action key `__resolve_sub_workflow:` → `__resolve_wait:`.
 - File renames: `sub-workflow-state.ts` → `wait-state.ts`, `sub-workflow.test.ts` → `wait.test.ts`, `sub-workflows.md` → `wait-state.md`.
 - All docs, tests, examples, and web-runner updated. 162 tests pass; all four pipeline steps clean.
+
+### [v0.9.0] 2026-05-26 — Mermaid exporter fixes + web-runner export toolbar
+
+- Fixed spurious `[*] --> forkState : fork` arrow that appeared as a second initial transition in `stateDiagram-v2`.
+- Added `direction LR` to Mermaid output for horizontal left-to-right layout.
+- Added `classDef active/waiting/completed` blocks so live-status colour annotations render in mermaid.live and GitHub without extra configuration.
+- Added export toolbar to `SingleRunner`: **Copy Mermaid** (clipboard), **Download .mmd**, **Download JSON**, **Mermaid Live ↗** (opens with pako-compressed URL via native `CompressionStream`). 167 tests pass; all pipeline steps clean.

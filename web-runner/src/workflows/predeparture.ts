@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { WorkflowBuilder } from 'logic-workflow';
+import { createWorkflow } from 'logic-workflow';
 import type { WorkflowInstance } from 'logic-workflow';
 
 const BriefingSchema = z.object({
@@ -23,7 +23,7 @@ const DepartSchema = z.object({
   scheduledAt: z.string().min(1),
 });
 
-export const predepartureWorkflow = new WorkflowBuilder({
+export const predepartureWorkflow = createWorkflow({
   name: 'engineer-predeparture-checklist',
   states: [
     'reported-for-duty',
@@ -35,7 +35,7 @@ export const predepartureWorkflow = new WorkflowBuilder({
     'inspections-joined',
     'signed-off',
     'departed',
-  ] as const,
+  ],
 })
   .defineAction('BRIEFING_RECEIVED', BriefingSchema)
   .defineAction('START_INSPECTION',  z.object({}))

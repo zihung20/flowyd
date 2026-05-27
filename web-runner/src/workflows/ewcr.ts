@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { WorkflowBuilder, Guard, StateStatus } from 'logic-workflow';
+import { createWorkflow, Guard, StateStatus } from 'logic-workflow';
 import type { WorkflowInstance, InstanceSnapshot } from 'logic-workflow';
 
 // ─── Grid geometry ────────────────────────────────────────────────────────────
@@ -68,7 +68,7 @@ const RestorePowerSchema = z.object({
 //   neighbors-safe  — blocks CONFIRM_ISOLATION until no adjacent section is still energised
 //   neighbors-clear — blocks RESTORE_POWER while any adjacent section has live work
 
-export const ewcrWorkflow = new WorkflowBuilder({
+export const ewcrWorkflow = createWorkflow({
   name: 'ewcr-section',
   states: [
     'idle',
@@ -78,7 +78,7 @@ export const ewcrWorkflow = new WorkflowBuilder({
     'work-in-progress',
     'work-completed',
     'power-restored',
-  ] as const,
+  ],
 })
   .defineAction('REQUEST_ISOLATION', RequestIsolationSchema)
   .defineAction('CONFIRM_ISOLATION', ConfirmIsolationSchema)
