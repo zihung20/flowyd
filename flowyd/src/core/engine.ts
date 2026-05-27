@@ -40,12 +40,13 @@ export class WorkflowEngine {
   /**
    * Evaluates a dispatched action against the current instance state.
    *
-   * @param definition     - The immutable compiled workflow graph.
-   * @param instanceState  - Read-only view of the current instance state.
-   * @param guardRegistry  - The instance's registered guard functions.
+   * @param definition      - The immutable compiled workflow graph.
+   * @param instanceState   - Read-only view of the current instance state.
+   * @param guardRegistry   - The instance's registered guard functions.
    * @param currentSnapshot - Full snapshot used to produce the updated one on success.
    * @param action          - The action name being dispatched.
    * @param payload         - The Zod-validated action payload.
+   * @param context         - The accumulated instance context, passed through to guards.
    * @returns A `DispatchResult` discriminated union. On success, includes the
    *          updated snapshot and lists of entered/exited states.
    */
@@ -56,6 +57,7 @@ export class WorkflowEngine {
     currentSnapshot: InstanceSnapshot,
     action: string,
     payload: unknown,
+    context: unknown,
   ): Promise<DispatchResult> {
     if (currentSnapshot.isTerminal) {
       return {
@@ -82,7 +84,7 @@ export class WorkflowEngine {
     }
 
     // Evaluate guards for each candidate
-    const guardCtx = WorkflowEngine.buildGuardContext(payload, instanceState, guardRegistry);
+    const guardCtx = WorkflowEngine.buildGuardContext(payload, instanceState, guardRegistry, context);
     const passing: TransitionDefinition[] = [];
 
     for (const candidate of candidates) {
@@ -256,16 +258,19 @@ export class WorkflowEngine {
   /**
    * Constructs the `GuardContext` passed to every guard during evaluation.
    *
-   * Provides the typed payload, the live instance state view, and the
-   * guard resolution function for `InjectedGuard` lookups.
+   * Provides the typed payload, the accumulated instance context, the live
+   * instance state view, and the guard resolution function for `InjectedGuard`
+   * lookups.
    */
   private static buildGuardContext(
     payload: unknown,
     instanceState: ReadonlyInstanceState,
     guardRegistry: GuardRegistry,
+    context: unknown,
   ): GuardContext<unknown> {
     return {
       payload,
+      context,
       instanceState,
       resolveGuard: (name: string) => guardRegistry.resolve(name),
     };

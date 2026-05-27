@@ -88,13 +88,15 @@ export const Guard = {
    * not to register a named injectable.
    *
    * ```ts
-   * Guard.fn<ApprovePayload>((ctx) => ctx.payload.approverId !== '')
+   * Guard.fn<ApprovePayload, MyContext>((ctx) => ctx.context.score >= 80)
    * ```
    *
-   * @template T - The expected payload type. Validated by the action schema
-   *               at dispatch time before the guard is invoked.
+   * @template T        - The expected payload type. Validated by the action
+   *                      schema at dispatch time before the guard is invoked.
+   * @template TContext - The instance context type. Inferred automatically
+   *                      when used as an inline guard on `addTransition`.
    */
-  fn<T = unknown>(fn: GuardFn<T>): FnGuard<T> {
+  fn<T = unknown, TContext = unknown>(fn: GuardFn<T, TContext>): FnGuard<T, TContext> {
     return new FnGuard(fn);
   },
 

@@ -287,3 +287,7 @@ Core library built iteratively: typed `WorkflowBuilder` (accumulating `TStates`/
 ### [v0.13.0] 2026-05-27 — `createDynamicWorkflow()` factory
 
 Added `createDynamicWorkflow({ name })` as a first-class escape hatch for runtime-defined workflows. Returns `WorkflowBuilder<Record<string, unknown>, string>` directly, eliminating the user-visible `as unknown as` cast previously required for loop-based dynamic builds. The cast is now internal to the library. Exported from `flowyd` alongside `createWorkflow`. 167 tests; all pipeline steps clean.
+
+### [v0.14.0] 2026-05-27 — Instance context for guards
+
+Added caller-owned typed instance context. `WorkflowBuilder.setContext(schema)` widens a third `TContext` generic and stores the Zod schema in `WorkflowDefinition.contextSchema` for runtime validation. Context is per-instance: `workflow.createInstance(id, context)` validates and stores it; `instance.setContext(data)` validates and updates it mid-workflow; `getContext()` reads it. Both throw `ZodError` on constraint violations (e.g. `z.number().min(1).max(10)` rejects 11). `GuardContext.context: TContext` exposes the value to every guard — inline guards on `addTransition` are fully typed via `TContext`, which is now threaded through all five state-registration methods and `defineAction`. `Guard.fn<T, TContext>` and `injectGuard<TPayload, TCtx>` for standalone annotations. Context persists in `InstanceSnapshot.context` (optional field, backward-compatible). 193 tests; all pipeline steps clean.

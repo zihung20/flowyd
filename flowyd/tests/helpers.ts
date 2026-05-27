@@ -8,6 +8,7 @@ import { StateStatus } from '../src/types/index.js';
 export function makeCtx<T = unknown>(
   payload: T = {} as T,
   overrides: Partial<ReadonlyInstanceState> = {},
+  context: unknown = undefined,
 ): GuardContext<T> {
   const base: ReadonlyInstanceState = {
     instanceId: 'test-instance',
@@ -24,6 +25,7 @@ export function makeCtx<T = unknown>(
 
   return {
     payload,
+    context,
     instanceState: base,
     resolveGuard: () => undefined,
   };

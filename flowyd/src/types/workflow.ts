@@ -39,4 +39,11 @@ export interface WorkflowDefinition {
    * is considered finished and further `dispatch` calls are rejected.
    */
   readonly terminalStateIds: readonly string[];
+
+  /**
+   * Zod schema for the instance context declared via `WorkflowBuilder.setContext()`.
+   * Used to validate context values at `createInstance` and `instance.setContext()`.
+   * `undefined` when no context schema was declared.
+   */
+  readonly contextSchema?: ZodSchema<unknown>;
 }

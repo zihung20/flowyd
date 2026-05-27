@@ -5,10 +5,21 @@ import type { ReadonlyInstanceState } from './instance.js';
  *
  * @template TPayload - The validated payload type of the action that
  *                      triggered the guard check.
+ * @template TContext - The type of the instance's accumulated context,
+ *                      set via `instance.setContext()`. Defaults to `unknown`
+ *                      when no context schema has been declared.
  */
-export interface GuardContext<TPayload> {
+export interface GuardContext<TPayload, TContext = unknown> {
   /** The Zod-validated action payload. Typed to the specific action's schema. */
   readonly payload: TPayload;
+
+  /**
+   * Accumulated instance context set by the caller via `instance.setContext()`.
+   * Persists across all dispatches for the lifetime of the instance.
+   * Use this for data that must survive between steps (e.g. computed scores,
+   * role information, counter values).
+   */
+  readonly context: TContext;
 
   /**
    * Live read-only snapshot of the instance's current state map.
@@ -39,7 +50,7 @@ export interface GuardContext<TPayload> {
  */
 export interface IGuard<TPayload = unknown> {
   /**
-   * @param ctx - Full guard context including the action payload and live instance state.
+   * @param ctx - Full guard context including the action payload, instance context, and live instance state.
    * @returns `true` to allow the transition; `false` to block it.
    */
   evaluate(ctx: GuardContext<TPayload>): Promise<boolean>;
@@ -51,5 +62,8 @@ export interface IGuard<TPayload = unknown> {
  * @template TPayload - The expected shape of the action payload. When using
  *                      `Guard.inject('name')`, annotate this at the
  *                      `instance.injectGuard<TPayload>('name', fn)` call site.
+ * @template TContext - The instance context type. Inferred automatically when
+ *                      used as an inline guard on `addTransition`. Annotate
+ *                      explicitly when used with `Guard.fn<TPayload, TContext>()`.
  */
-export type GuardFn<TPayload> = (ctx: GuardContext<TPayload>) => boolean | Promise<boolean>;
+export type GuardFn<TPayload, TContext = unknown> = (ctx: GuardContext<TPayload, TContext>) => boolean | Promise<boolean>;

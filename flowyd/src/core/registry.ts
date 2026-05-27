@@ -68,7 +68,7 @@ export class GuardRegistry {
    * @param fn   - The guard function. Annotate the generic `TPayload` at the
    *               call site to ensure the function receives the correct payload type.
    */
-  register<TPayload>(name: string, fn: GuardFn<TPayload>): void {
+  register<TPayload, TCtx = unknown>(name: string, fn: GuardFn<TPayload, TCtx>): void {
     this.guards.set(name, fn as GuardFn<unknown>);
   }
 

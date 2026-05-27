@@ -65,6 +65,12 @@ export interface InstanceSnapshot {
   readonly stateStatuses: Readonly<Record<string, StateStatus>>;
   readonly isTerminal: boolean;
   readonly history: readonly HistoryEntry[];
+  /**
+   * Caller-owned context set via `instance.setContext()`. Persists in the
+   * snapshot so it survives `getSnapshot()` / `restoreInstance()` round-trips.
+   * `undefined` when no context has been set.
+   */
+  readonly context?: unknown;
   readonly createdAt: string;
   readonly updatedAt: string;
 }

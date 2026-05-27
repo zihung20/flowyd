@@ -35,8 +35,10 @@ import { WorkflowEngine } from './engine.js';
  *
  * @template TActions - Map of action names to their validated payload types,
  *                      inferred from `WorkflowBuilder.defineAction()` calls.
+ * @template TContext - Type of the instance context declared via
+ *                      `WorkflowBuilder.setContext()`. Defaults to `unknown`.
  */
-export class WorkflowInstance<TActions extends ActionPayloadMap> {
+export class WorkflowInstance<TActions extends ActionPayloadMap, TContext = unknown> {
   private snapshot: InstanceSnapshot;
   private readonly guardRegistry = new GuardRegistry();
 
@@ -61,9 +63,40 @@ export class WorkflowInstance<TActions extends ActionPayloadMap> {
    * @param fn   - The guard implementation. Annotate `TPayload` to match the
    *               payload type of the action(s) this guard is attached to.
    */
-  injectGuard<TPayload = unknown>(name: string, fn: GuardFn<TPayload>): this {
+  injectGuard<TPayload = unknown, TCtx = unknown>(name: string, fn: GuardFn<TPayload, TCtx>): this {
     this.guardRegistry.register(name, fn);
     return this;
+  }
+
+  // ─── Context ──────────────────────────────────────────────────────────────
+
+  /**
+   * Replaces the accumulated instance context and persists it in the snapshot.
+   *
+   * Guards declared on transitions can read this value via `ctx.context`.
+   * The new value is immediately available to the next `dispatch` call and is
+   * included in the snapshot returned by `getSnapshot()`.
+   *
+   * @param data - The new context value. Must conform to `TContext`.
+   * @returns `this` for chaining.
+   */
+  setContext(data: TContext): this {
+    const validated = this.definition.contextSchema?.parse(data) ?? data;
+    this.snapshot = { ...this.snapshot, context: validated };
+    return this;
+  }
+
+  /**
+   * Returns the current instance context.
+   *
+   * @returns The value last set by `setContext()`, or the `initialContext`
+   *          declared in the workflow definition, or `undefined` if neither
+   *          has been provided.
+   */
+  getContext(): TContext {
+    // Cast is safe: the snapshot context is always written as TContext via setContext
+    // and initialContext, both of which are constrained at the builder level.
+    return this.snapshot.context as TContext;
   }
 
   // ─── Query ────────────────────────────────────────────────────────────────
@@ -191,6 +224,7 @@ export class WorkflowInstance<TActions extends ActionPayloadMap> {
       this.snapshot,
       action,
       validatedPayload,
+      this.snapshot.context,
     );
 
     if (result.success && !dryRun) {

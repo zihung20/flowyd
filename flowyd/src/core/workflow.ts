@@ -12,8 +12,10 @@ import { WorkflowInstance } from './instance.js';
  *
  * @template TActions - Map of action names to their validated payload types.
  *                      Inferred automatically from `WorkflowBuilder.defineAction()` calls.
+ * @template TContext - Type of the instance context declared via
+ *                      `WorkflowBuilder.setContext()`. Defaults to `unknown`.
  */
-export class Workflow<TActions extends ActionPayloadMap> {
+export class Workflow<TActions extends ActionPayloadMap, TContext = unknown> {
   /** @internal */
   constructor(private readonly definition: WorkflowDefinition) {}
 
@@ -24,9 +26,13 @@ export class Workflow<TActions extends ActionPayloadMap> {
    * @param instanceId - A caller-supplied unique identifier for this run
    *                     (e.g. a UUID, database primary key, or order number).
    *                     Used in snapshots and history entries for correlation.
-   * @returns A new `WorkflowInstance<TActions>` ready for guard injection and dispatch.
+   * @param context    - Initial context for this instance. Typed as `TContext`
+   *                     when `setContext()` was called on the builder. Pass the
+   *                     data your guards need to evaluate this specific run
+   *                     (e.g. the requester's role, computed scores).
+   * @returns A new `WorkflowInstance<TActions, TContext>` ready for guard injection and dispatch.
    */
-  createInstance(instanceId: string): WorkflowInstance<TActions> {
+  createInstance(instanceId: string, context?: TContext): WorkflowInstance<TActions, TContext> {
     const now = new Date().toISOString();
 
     const stateStatuses: Record<string, StateStatus> = {};
@@ -35,6 +41,10 @@ export class Workflow<TActions extends ActionPayloadMap> {
     }
     stateStatuses[this.definition.initialStateId] = StateStatus.Active;
 
+    const validatedContext = context !== undefined
+      ? this.definition.contextSchema?.parse(context) ?? context
+      : undefined;
+
     const snapshot: InstanceSnapshot = {
       instanceId,
       workflowName: this.definition.name,
@@ -42,11 +52,12 @@ export class Workflow<TActions extends ActionPayloadMap> {
       stateStatuses,
       isTerminal: false,
       history: [],
+      context: validatedContext,
       createdAt: now,
       updatedAt: now,
     };
 
-    return new WorkflowInstance<TActions>(this.definition, snapshot);
+    return new WorkflowInstance<TActions, TContext>(this.definition, snapshot);
   }
 
   /**
@@ -58,17 +69,17 @@ export class Workflow<TActions extends ActionPayloadMap> {
    * `instance.injectGuard()` again after restoration.
    *
    * @param snapshot - The JSON object retrieved from your persistence layer.
-   * @returns A `WorkflowInstance<TActions>` in the exact state captured by the snapshot.
+   * @returns A `WorkflowInstance<TActions, TContext>` in the exact state captured by the snapshot.
    * @throws {Error} If the snapshot's `workflowName` does not match this definition.
    */
-  restoreInstance(snapshot: InstanceSnapshot): WorkflowInstance<TActions> {
+  restoreInstance(snapshot: InstanceSnapshot): WorkflowInstance<TActions, TContext> {
     if (snapshot.workflowName !== this.definition.name) {
       throw new Error(
         `Cannot restore snapshot: workflow name mismatch. ` +
           `Expected "${this.definition.name}", got "${snapshot.workflowName}"`,
       );
     }
-    return new WorkflowInstance<TActions>(this.definition, structuredClone(snapshot));
+    return new WorkflowInstance<TActions, TContext>(this.definition, structuredClone(snapshot));
   }
 
   /** Returns the underlying definition for use by visualisation exporters. */
