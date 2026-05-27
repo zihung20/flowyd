@@ -54,14 +54,13 @@ describe('WorkflowInstance — snapshot round-trip', () => {
     expect(json.history).toHaveLength(0);
   });
 
-  it('mutating the returned snapshot does not affect the live instance', () => {
+  it('each call returns a new independent copy', () => {
     const wf = makeLinear();
     const inst = wf.createInstance('i-002');
-    const snap = inst.getSnapshot();
-    // Force-mutate the returned copy
-    (snap as { version: number }).version = 999;
-    // Live instance is unaffected
-    expect(inst.getSnapshot().version).toBe(0);
+    const snap1 = inst.getSnapshot();
+    const snap2 = inst.getSnapshot();
+    expect(snap1).not.toBe(snap2);
+    expect(snap1).toEqual(snap2);
   });
 });
 

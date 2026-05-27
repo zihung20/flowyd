@@ -49,19 +49,17 @@ import { WaitState } from '../states/wait-state.js';
  * 5. `addTransition()` — wire states together with named, optionally-guarded arcs.
  * 6. `build()` — validate and compile into an immutable `Workflow`.
  *
- * `defineAction()` and the four state-registration methods return a new builder
- * instance so that `TActions` and `TStates` generics accumulate correctly.
+ * `defineAction()` and the four state-registration methods return the same
+ * builder instance under a widened type — `TActions` and `TStates` accumulate
+ * correctly without allocating a new object.
  * `setInitial`, `setTerminal`, and `addTransition` return `this`.
- *
- * `addState()` is an escape hatch for externally-constructed state objects when
- * the typed factory methods are not suitable.
  *
  * @template TActions  - Accumulated map of action names → payload types.
  *                       Starts as `Record<never, never>` and grows with each
  *                       `defineAction()` call.
- * @template TStates   - Union of all declared state IDs, inferred from the
- *                       `states` array passed to the constructor. Constrains
- *                       all state-ID arguments throughout the chain.
+ * @template TStates   - Union of registered state IDs. Starts as `never` and
+ *                       widens with each `addStep`/`addFork`/`addJoin`/`addWait`
+ *                       call. Constrains all state-ID arguments throughout the chain.
  * @template TContext  - Type of the instance context declared via `setContext()`.
  *                       Defaults to `unknown` until `setContext` is called.
  */
@@ -94,13 +92,12 @@ export class WorkflowBuilder<
   }
 
   /**
-   * Declares the shape of the instance context, widening the `TContext` generic.
+   * Declares the shape of the instance context, widening `TContext` from
+   * `unknown` to the inferred type `C`.
    *
-   * This is a compile-time-only call — it has no runtime effect on the workflow
-   * definition. Its sole purpose is to widen `TContext` so that:
-   * - Inline guards on `addTransition` receive `ctx.context` typed as `C`.
-   * - `workflow.createInstance(id, context)` accepts and enforces `C`.
-   * - `instance.setContext(data)` and `instance.getContext()` are typed to `C`.
+   * The schema is stored on the workflow definition and used to validate
+   * context values at `createInstance` and `instance.setContext()` time.
+   * It also types `ctx.context` in inline guards on `addTransition`.
    *
    * The initial context value is provided per-instance at `createInstance` time,
    * not here — different instances of the same workflow may start with different
@@ -118,11 +115,13 @@ export class WorkflowBuilder<
    * const instance = wf.createInstance('req-001', { score: 92, isDutyManager: true });
    * ```
    *
-   * @param schema - Zod schema describing the context shape. Used only to infer `C`.
-   * @returns A new builder with `TContext` narrowed to `C`.
+   * @param schema - Zod schema describing the context shape. Stored for runtime
+   *                 validation and used to infer `C`.
+   * @returns The same builder with `TContext` set to `C`.
    */
   setContext<C>(schema: ZodSchema<C>): WorkflowBuilder<TActions, TStates, C> {
-    this.contextSchema = schema as ZodSchema<unknown>;
+    this.contextSchema = schema;
+    // TContext and C are unrelated type parameters; double cast is required.
     return this as unknown as WorkflowBuilder<TActions, TStates, C>;
   }
 
@@ -137,15 +136,14 @@ export class WorkflowBuilder<
    *
    * @param name   - The action identifier (e.g. `'APPROVE'`, `'SUBMIT'`).
    * @param schema - Zod schema for the payload. Validated at `dispatch` time.
-   * @returns A new `WorkflowBuilder` generic extended with the new action.
+   * @returns The same builder with `TActions` extended to include the new action.
    */
   defineAction<K extends string, T>(
     name: K,
     schema: ZodSchema<T>,
   ): WorkflowBuilder<TActions & Record<K, T>, TStates, TContext> {
-    this.actionSchemas.set(name, schema as ZodSchema<unknown>);
-    // Builder identity preserved; only the TActions generic parameter changes.
-    return this as unknown as WorkflowBuilder<TActions & Record<K, T>, TStates, TContext>;
+    this.actionSchemas.set(name, schema);
+    return this as WorkflowBuilder<TActions & Record<K, T>, TStates, TContext>;
   }
 
   /**
@@ -158,12 +156,12 @@ export class WorkflowBuilder<
    *
    * @param id      - Unique state identifier. Becomes part of `TStates` after this call.
    * @param options - Optional display label (defaults to `id`).
-   * @returns A new builder with `TStates` widened to `TStates | K`.
+   * @returns The same builder with `TStates` widened to `TStates | K`.
    * @throws {Error} If a state with the same `id` is already registered.
    */
   addStep<K extends string>(id: K, options: { label?: string } = {}): WorkflowBuilder<TActions, TStates | K, TContext> {
     this.stateRegistry.register(new StepState(id, options));
-    return this as unknown as WorkflowBuilder<TActions, TStates | K, TContext>;
+    return this as WorkflowBuilder<TActions, TStates | K, TContext>;
   }
 
   /**
@@ -177,7 +175,7 @@ export class WorkflowBuilder<
    * @param id      - Unique state identifier for the fork node.
    * @param options - `targets`: non-empty array of already-registered state IDs to activate in parallel.
    *                  `label`: optional display label.
-   * @returns A new builder with `TStates` widened to `TStates | K`.
+   * @returns The same builder with `TStates` widened to `TStates | K`.
    * @throws {Error} If `targets` is empty or if the `id` is already registered.
    */
   addFork<K extends string>(
@@ -185,7 +183,7 @@ export class WorkflowBuilder<
     options: { label?: string; targets: [TStates, ...TStates[]] },
   ): WorkflowBuilder<TActions, TStates | K, TContext> {
     this.stateRegistry.register(new ForkState(id, options));
-    return this as unknown as WorkflowBuilder<TActions, TStates | K, TContext>;
+    return this as WorkflowBuilder<TActions, TStates | K, TContext>;
   }
 
   /**
@@ -200,7 +198,7 @@ export class WorkflowBuilder<
    * @param options - `requires`: non-empty array of already-registered prerequisite state IDs.
    *                  `mode`:    `'all'` (default) | `'any'` | a quorum number.
    *                  `label`:   optional display label.
-   * @returns A new builder with `TStates` widened to `TStates | K`.
+   * @returns The same builder with `TStates` widened to `TStates | K`.
    * @throws {Error} If `requires` is empty or if the `id` is already registered.
    */
   addJoin<K extends string>(
@@ -208,7 +206,7 @@ export class WorkflowBuilder<
     options: { label?: string; requires: [TStates, ...TStates[]]; mode?: JoinMode },
   ): WorkflowBuilder<TActions, TStates | K, TContext> {
     this.stateRegistry.register(new JoinState(id, options));
-    return this as unknown as WorkflowBuilder<TActions, TStates | K, TContext>;
+    return this as WorkflowBuilder<TActions, TStates | K, TContext>;
   }
 
   /**
@@ -218,7 +216,7 @@ export class WorkflowBuilder<
    * @param id      - Unique state identifier for the wait node.
    * @param options - `externalName`: name of the external process being waited on.
    *                  `label`:        optional display label.
-   * @returns A new builder with `TStates` widened to `TStates | K`.
+   * @returns The same builder with `TStates` widened to `TStates | K`.
    * @throws {Error} If a state with the same `id` is already registered.
    */
   addWait<K extends string>(
@@ -226,7 +224,7 @@ export class WorkflowBuilder<
     options: { label?: string; externalName: string },
   ): WorkflowBuilder<TActions, TStates | K, TContext> {
     this.stateRegistry.register(new WaitState(id, options));
-    return this as unknown as WorkflowBuilder<TActions, TStates | K, TContext>;
+    return this as WorkflowBuilder<TActions, TStates | K, TContext>;
   }
 
   /**
@@ -280,10 +278,8 @@ export class WorkflowBuilder<
       transition.guard === undefined
         ? undefined
         : typeof transition.guard === 'function'
-          ? new FnGuard(transition.guard as GuardFn<unknown>)
-          : // IGuard method signatures are bivariant; safe because the engine passes
-            // the runtime-validated payload whose type matches TActions[K].
-            (transition.guard as IGuard<unknown>);
+          ? new FnGuard(transition.guard)
+          : transition.guard;
 
     // exactOptionalPropertyTypes requires the property to be absent rather than
     // set to `undefined`, so we conditionally include `guard`.
@@ -429,7 +425,5 @@ export function createWorkflow(config: {
 export function createDynamicWorkflow(config: {
   name: string;
 }): WorkflowBuilder<Record<string, unknown>, string> {
-  // Cast is intentional: opts out of literal accumulation so runtime string IDs
-  // are accepted by all builder methods. build() enforces structural correctness.
-  return new WorkflowBuilder(config) as unknown as WorkflowBuilder<Record<string, unknown>, string>;
+  return new WorkflowBuilder<Record<string, unknown>, string>(config);
 }

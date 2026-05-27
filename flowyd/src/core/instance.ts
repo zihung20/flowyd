@@ -2,6 +2,7 @@ import type {
   WorkflowDefinition,
   ActionPayloadMap,
   DispatchResult,
+  HistoryEntry,
   InstanceSnapshot,
   ReadonlyInstanceState,
   GuardFn,
@@ -45,7 +46,7 @@ export class WorkflowInstance<TActions extends ActionPayloadMap, TContext = unkn
   /** @internal Created exclusively by `Workflow._createInstance` and `Workflow._restoreInstance`. */
   constructor(
     private readonly definition: WorkflowDefinition,
-    snapshot: InstanceSnapshot, //TODO: making inline private
+    snapshot: InstanceSnapshot,
   ) {
     this.snapshot = snapshot;
   }
@@ -89,9 +90,8 @@ export class WorkflowInstance<TActions extends ActionPayloadMap, TContext = unkn
   /**
    * Returns the current instance context.
    *
-   * @returns The value last set by `setContext()`, or the `initialContext`
-   *          declared in the workflow definition, or `undefined` if neither
-   *          has been provided.
+   * @returns The context passed to `createInstance()` or last set via
+   *          `setContext()`, or `undefined` if neither has been provided.
    */
   getContext(): TContext {
     // Cast is safe: the snapshot context is always written as TContext via setContext
@@ -267,10 +267,10 @@ export class WorkflowInstance<TActions extends ActionPayloadMap, TContext = unkn
       [stateId]: StateStatus.Active,
     };
 
-    const historyEntry = {
+    const historyEntry: HistoryEntry = {
       action: `__resolve_wait:${stateId}`,
       payload: externalSnapshot ?? null,
-      exitedStates: [] as string[],
+      exitedStates: [],
       enteredStates: [stateId],
       at: new Date().toISOString(),
     };
@@ -290,7 +290,7 @@ export class WorkflowInstance<TActions extends ActionPayloadMap, TContext = unkn
    * Returns a plain, JSON-serialisable snapshot of the current instance state.
    *
    * Safe to `JSON.stringify` and write to any persistence layer. The returned
-   * object is a deep-frozen copy — mutations do not affect the live instance.
+   * object is a deep clone — mutations do not affect the live instance.
    *
    * @returns An `InstanceSnapshot` capturing the full current state.
    */
