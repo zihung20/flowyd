@@ -47,9 +47,6 @@ src/
 │   ├── mermaid.ts        — MermaidExporter
 │   └── json-graph.ts     — JsonGraphExporter, JsonGraph, JsonGraphNode, JsonGraphEdge
 
-├── testing/
-│   └── helpers.ts        — shared test fixtures (makeLinear, etc.)
-
 └── index.ts              — public barrel: WorkflowBuilder, Guard, state classes, types, exporters
 ```
 
@@ -230,6 +227,8 @@ Private/internal methods only need TSDoc when their purpose is genuinely non-obv
 | `integration` | `tests/integration/**/*.test.ts` | Multi-component flows |
 | `e2e` | `tests/e2e/**/*.test.ts` | Full workflow invariants |
 
+`tests/helpers.ts` — shared `makeCtx` fixture used by unit tests in `src/guards/`.
+
 ```sh
 pnpm test              # all three projects
 pnpm test:unit         # unit only
@@ -318,3 +317,16 @@ After every code change:
 - Refactored `mermaid.ts`: extracted `stateDeclarationLine()` helper with an exhaustive `switch` to replace a three-branch if-else chain.
 - Refactored `json-graph.ts`: replaced three sequential `if (state.kind === ...)` checks with a single `switch` block.
 - Expanded `CONTRIBUTING.md` with a comprehensive Code Style section covering formatting, naming, conditionals (early returns, boolean expressions, switch vs if-else), casting (discriminated-union narrowing, non-null assertions, `unknown` over `any`), Zod, error handling, and comments. 167 tests pass; all pipeline steps clean.
+
+### [v0.10.2] 2026-05-27 — Move test helpers out of src/
+
+- Moved `src/testing/helpers.ts` → `tests/helpers.ts`; deleted `src/testing/` directory.
+- Updated imports in 5 guard unit test files (`and`, `or`, `not`, `state`, `inject`).
+- Updated CLAUDE.md file map and Vitest section to reflect new location. 167 tests pass; all pipeline steps clean.
+
+### [v0.10.3] 2026-05-27 — Mermaid fork/join native notation + direction TD
+
+- Fork states now declared as `state id <<fork>>` and join states as `state id <<join>>` — Mermaid renders these as UML synchronisation bars instead of labelled boxes.
+- Changed layout direction from `LR` to `TD` (top-to-bottom).
+- Eliminated duplicate fan-in arrows to join states: transitions to join states are skipped from the main transition loop and emitted once without labels via the `requires` block. Removed `✓` labels from join fan-in arrows.
+- `kindSuffix()` now returns `''` for Fork and Join (visual distinction is via the bar notation). 167 tests pass; all pipeline steps clean.

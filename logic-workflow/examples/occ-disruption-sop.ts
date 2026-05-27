@@ -85,6 +85,10 @@ const AuthoriseSchema = z.object({
   responseType: z.enum(['bus-bridging', 'short-working', 'full-suspension']),
 });
 
+const StartNotificationsSchema = z.object({
+  startedBy: z.object({ staffId: z.string(), role: z.string() }),
+});
+
 const NotifyOpsSchema = z.object({
   notifiedBy: z.object({ staffId: z.string() }),
   channel: z.enum(['radio', 'phone', 'operations-system']),
@@ -157,6 +161,7 @@ const occDisruptionSop = createWorkflow({
   .defineAction('VERIFY', IncidentVerifySchema)
   .defineAction('ESCALATE_TO_DM', EscalateSchema)
   .defineAction('AUTHORISE_RESPONSE', AuthoriseSchema)
+  .defineAction('START_NOTIFICATIONS', StartNotificationsSchema)
   .defineAction('NOTIFY_OPS_TEAM', NotifyOpsSchema)
   .defineAction('NOTIFY_STN_MASTERS', NotifyStnSchema)
   .defineAction('NOTIFY_PUBLIC', NotifyPublicSchema)
@@ -174,9 +179,9 @@ const occDisruptionSop = createWorkflow({
     label: 'Notification Fork',
     targets: ['ops-team', 'stn-masters', 'public-comms'],
   })
-  .addStep('ops-team', { label: 'Ops Team Notified' })
-  .addStep('stn-masters', { label: 'Station Masters Notified' })
-  .addStep('public-comms', { label: 'Public Comms Notified' })
+  .addStep('ops-team', { label: 'Notifying Ops Team' })
+  .addStep('stn-masters', { label: 'Notifying Station Masters' })
+  .addStep('public-comms', { label: 'Notifying Public' })
   .addJoin('notification-join', {
     label: 'All Parties Notified',
     requires: ['ops-team', 'stn-masters', 'public-comms'],
@@ -208,7 +213,7 @@ const occDisruptionSop = createWorkflow({
     on: 'AUTHORISE_RESPONSE',
     guard: isDutyManager,
   })
-  .addTransition({ from: 'response-authorised', to: 'notification-fork', on: 'NOTIFY_OPS_TEAM' }) // fork entry — action name is reused below
+  .addTransition({ from: 'response-authorised', to: 'notification-fork', on: 'START_NOTIFICATIONS' })
   .addTransition({ from: 'ops-team', to: 'notification-join', on: 'NOTIFY_OPS_TEAM' })
   .addTransition({ from: 'stn-masters', to: 'notification-join', on: 'NOTIFY_STN_MASTERS' })
   .addTransition({ from: 'public-comms', to: 'notification-join', on: 'NOTIFY_PUBLIC' })
@@ -299,12 +304,9 @@ async function runDisruptionSop() {
   logStep('3. DM authorised response', inst.getCurrentStates());
 
   // ── Step 4: Fork — kick off all three notification streams ──────────────────
-  // NOTIFY_OPS_TEAM on 'response-authorised' triggers the fork entry
   currentActor = ctrl;
-  await inst.dispatch('NOTIFY_OPS_TEAM', {
-    notifiedBy: { staffId: ctrl.staffId },
-    channel: 'operations-system',
-    confirmedAt: new Date().toISOString(),
+  await inst.dispatch('START_NOTIFICATIONS', {
+    startedBy: { staffId: ctrl.staffId, role: ctrl.role },
   });
   logStep('4. Fork entered → 3 streams active', inst.getCurrentStates());
 

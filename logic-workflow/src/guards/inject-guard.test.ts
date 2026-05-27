@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { InjectedGuard } from './inject-guard.js';
 import type { GuardFn } from '../types/index.js';
-import { makeCtx } from '../testing/helpers.js';
+import { makeCtx } from '../../tests/helpers.js';
 
 describe('InjectedGuard', () => {
   it('resolves and invokes the registered function', async () => {

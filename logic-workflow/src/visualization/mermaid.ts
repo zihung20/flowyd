@@ -19,8 +19,9 @@ function sanitizeId(id: string): string {
 function stateDeclarationLine(state: AnyState, label: string, sid: string): string {
   switch (state.kind) {
     case StateKind.Fork:
+      return `  state ${sid} <<fork>>`;
     case StateKind.Join:
-      return `  state "${label}" as ${sid}`;
+      return `  state ${sid} <<join>>`;
     case StateKind.Wait:
       return `  state "${label} [${state.externalName}]" as ${sid}`;
     case StateKind.Step:
@@ -35,9 +36,8 @@ function stateDeclarationLine(state: AnyState, label: string, sid: string): stri
 function kindSuffix(kind: StateKind): string {
   switch (kind) {
     case StateKind.Fork:
-      return ' ⑂';
     case StateKind.Join:
-      return ' ⑁';
+      return '';
     case StateKind.Wait:
       return ' ⤴';
     default:
@@ -63,7 +63,7 @@ function kindSuffix(kind: StateKind): string {
  */
 export const MermaidExporter: IExporter<string> = {
   export(definition: WorkflowDefinition, snapshot?: InstanceSnapshot): string {
-    const lines: string[] = ['stateDiagram-v2', '  direction LR'];
+    const lines: string[] = ['stateDiagram-v2'];
 
     // State declarations with labels
     for (const [id, state] of definition.states) {
@@ -78,27 +78,18 @@ export const MermaidExporter: IExporter<string> = {
     // Initial state arrow
     lines.push(`  [*] --> ${sanitizeId(definition.initialStateId)}`);
 
-    // Transitions
+    // All action-triggered transitions — includes fan-in edges to join states with their labels
     for (const t of definition.transitions) {
       const from = sanitizeId(t.from);
       const to = sanitizeId(t.to);
       lines.push(`  ${from} --> ${to} : ${t.on}`);
     }
 
-    // ForkState fan-out arrows (informational, shown separately)
+    // ForkState fan-out arrows (no label — fork bar is self-explanatory)
     for (const [id, state] of definition.states) {
       if (state.kind === StateKind.Fork) {
         for (const target of state.targets) {
           lines.push(`  ${sanitizeId(id)} --> ${sanitizeId(target)}`);
-        }
-      }
-    }
-
-    // JoinState required-inputs annotations
-    for (const [id, state] of definition.states) {
-      if (state.kind === StateKind.Join) {
-        for (const req of state.requires) {
-          lines.push(`  ${sanitizeId(req)} --> ${sanitizeId(id)} : ✓`);
         }
       }
     }
@@ -108,14 +99,12 @@ export const MermaidExporter: IExporter<string> = {
       lines.push(`  ${sanitizeId(id)} --> [*]`);
     }
 
-    lines.push('');
-    lines.push('  classDef active    fill:#3b82f6,color:#fff,stroke:#2563eb');
-    lines.push('  classDef waiting   fill:#f59e0b,color:#fff,stroke:#d97706');
-    lines.push('  classDef completed fill:#10b981,color:#fff,stroke:#059669');
-
     // Live status annotations when a snapshot is provided
     if (snapshot) {
       lines.push('');
+      lines.push('  classDef active    fill:#3b82f6,color:#fff,stroke:#2563eb');
+      lines.push('  classDef waiting   fill:#f59e0b,color:#fff,stroke:#d97706');
+      lines.push('  classDef completed fill:#10b981,color:#fff,stroke:#059669');
       for (const [id, status] of Object.entries(snapshot.stateStatuses)) {
         const cls = STATUS_CLASS[status];
         if (cls) {

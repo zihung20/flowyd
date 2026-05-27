@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { OrGuard } from './or-guard.js';
 import { AlwaysGuard, NeverGuard } from './primitives.js';
-import { makeCtx } from '../testing/helpers.js';
+import { makeCtx } from '../../tests/helpers.js';
 
 describe('OrGuard', () => {
   it('passes when at least one child passes', async () => {
