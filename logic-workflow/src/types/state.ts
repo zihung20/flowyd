@@ -20,9 +20,9 @@ export enum StateKind {
  * - `completed` — permanently exited; cannot be re-entered.
  */
 export enum StateStatus {
-  Idle      = 'idle',
-  Active    = 'active',
-  Waiting   = 'waiting',
+  Idle = 'idle',
+  Active = 'active',
+  Waiting = 'waiting',
   Completed = 'completed',
 }
 

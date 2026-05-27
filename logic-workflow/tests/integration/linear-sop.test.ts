@@ -48,7 +48,9 @@ describe('Linear SOP — purchase order', () => {
     const inst = purchaseOrder.createInstance('po-003');
     const result = await inst.dispatch('APPROVE', { reason: 'ok', approverId: 'u2' });
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.reason).toBe('no-active-source');
+    if (!result.success) {
+      expect(result.reason).toBe('no-active-source');
+    }
   });
 
   it('blocks when a guard fails', async () => {
@@ -57,7 +59,9 @@ describe('Linear SOP — purchase order', () => {
     await inst.dispatch('SUBMIT', { submitterId: 'u1' });
     const result = await inst.dispatch('APPROVE', { reason: 'ok', approverId: 'u2' });
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.reason).toBe('guard-failed');
+    if (!result.success) {
+      expect(result.reason).toBe('guard-failed');
+    }
   });
 
   it('allows when the guard passes', async () => {
@@ -76,7 +80,9 @@ describe('Linear SOP — purchase order', () => {
     await inst.dispatch('REJECT', { reason: 'no budget' });
     const result = await inst.dispatch('SUBMIT', { submitterId: 'u1' });
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.reason).toBe('terminal-state');
+    if (!result.success) {
+      expect(result.reason).toBe('terminal-state');
+    }
   });
 
   it('validates the action payload via Zod', async () => {

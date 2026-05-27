@@ -37,24 +37,24 @@ import { MermaidExporter } from '../src/visualization/index.js';
 // ─── Schema definitions ───────────────────────────────────────────────────────
 
 const BriefingSchema = z.object({
-  trainId:   z.string(),
+  trainId: z.string(),
   routeCode: z.string(),
   shiftTime: z.string(),
 });
 
 const InspectionSchema = z.object({
   technicianId: z.string(),
-  notes:        z.string().optional(),
+  notes: z.string().optional(),
 });
 
 const SignOffSchema = z.object({
   engineerId: z.string(),
-  certifies:  z.literal(true),  // must explicitly assert readiness
+  certifies: z.literal(true), // must explicitly assert readiness
 });
 
 const DepartSchema = z.object({
-  platform:     z.number().int().min(1),
-  scheduledAt:  z.string(),    // ISO 8601
+  platform: z.number().int().min(1),
+  scheduledAt: z.string(), // ISO 8601
 });
 
 // ─── Workflow definition — Config-First pattern ───────────────────────────────
@@ -83,50 +83,50 @@ const engineerChecklist = createWorkflow({
 })
   // ── Actions ──────────────────────────────────────────────────────────────
   .defineAction('BRIEFING_RECEIVED', BriefingSchema)
-  .defineAction('START_INSPECTION',  z.object({}))
-  .defineAction('MECH_OK',           InspectionSchema)
-  .defineAction('ELEC_OK',           InspectionSchema)
-  .defineAction('SAFETY_OK',         InspectionSchema)
-  .defineAction('SIGN_OFF',          SignOffSchema)
-  .defineAction('DEPART',            DepartSchema)
+  .defineAction('START_INSPECTION', z.object({}))
+  .defineAction('MECH_OK', InspectionSchema)
+  .defineAction('ELEC_OK', InspectionSchema)
+  .defineAction('SAFETY_OK', InspectionSchema)
+  .defineAction('SIGN_OFF', SignOffSchema)
+  .defineAction('DEPART', DepartSchema)
 
   // ── States ───────────────────────────────────────────────────────────────
   .addStep('reported-for-duty', { label: 'Reported for Duty' })
-  .addStep('briefed',           { label: 'Briefed' })
+  .addStep('briefed', { label: 'Briefed' })
 
   // targets: autocompletes to the declared state union
   .addFork('inspection-fork', {
-    label:   'Inspection Fork',
+    label: 'Inspection Fork',
     targets: ['mechanical', 'electrical', 'safety-systems'],
   })
 
-  .addStep('mechanical',     { label: 'Mechanical Check' })
-  .addStep('electrical',     { label: 'Electrical Check' })
+  .addStep('mechanical', { label: 'Mechanical Check' })
+  .addStep('electrical', { label: 'Electrical Check' })
   .addStep('safety-systems', { label: 'Safety Systems Check' })
 
   // requires: autocompletes to the declared state union
   .addJoin('inspections-joined', {
-    label:    'Inspections Complete',
+    label: 'Inspections Complete',
     requires: ['mechanical', 'electrical', 'safety-systems'],
-    mode:     'all',
+    mode: 'all',
   })
 
   .addStep('signed-off', { label: 'Signed Off' })
-  .addStep('departed',   { label: 'Departed' })
+  .addStep('departed', { label: 'Departed' })
 
   // ── Graph ─────────────────────────────────────────────────────────────────
   .setInitial('reported-for-duty')
   .setTerminal(['departed'])
 
-  .addTransition({ from: 'reported-for-duty',  to: 'briefed',            on: 'BRIEFING_RECEIVED' })
-  .addTransition({ from: 'briefed',            to: 'inspection-fork',    on: 'START_INSPECTION' })
-  .addTransition({ from: 'mechanical',         to: 'inspections-joined', on: 'MECH_OK' })
-  .addTransition({ from: 'electrical',         to: 'inspections-joined', on: 'ELEC_OK' })
-  .addTransition({ from: 'safety-systems',     to: 'inspections-joined', on: 'SAFETY_OK' })
+  .addTransition({ from: 'reported-for-duty', to: 'briefed', on: 'BRIEFING_RECEIVED' })
+  .addTransition({ from: 'briefed', to: 'inspection-fork', on: 'START_INSPECTION' })
+  .addTransition({ from: 'mechanical', to: 'inspections-joined', on: 'MECH_OK' })
+  .addTransition({ from: 'electrical', to: 'inspections-joined', on: 'ELEC_OK' })
+  .addTransition({ from: 'safety-systems', to: 'inspections-joined', on: 'SAFETY_OK' })
   .addTransition({
-    from:  'inspections-joined',
-    to:    'signed-off',
-    on:    'SIGN_OFF',
+    from: 'inspections-joined',
+    to: 'signed-off',
+    on: 'SIGN_OFF',
     // Guard: engineer must certify personally, not a stand-in
     guard: (ctx) => ctx.payload.certifies === true,
   })
@@ -149,7 +149,7 @@ async function runChecklist() {
 
   // Step 1: Morning briefing
   let result = await instance.dispatch('BRIEFING_RECEIVED', {
-    trainId:   'ENG-042',
+    trainId: 'ENG-042',
     routeCode: 'NS1',
     shiftTime: '06:00',
   });
@@ -163,19 +163,19 @@ async function runChecklist() {
   // Step 3: Each technician clears their stream (order doesn't matter)
   result = await instance.dispatch('ELEC_OK', {
     technicianId: 'ELEC-7',
-    notes:        'All circuits nominal, no fault codes',
+    notes: 'All circuits nominal, no fault codes',
   });
   console.log(`[3] Electrical cleared — active: ${instance.getCurrentStates()}`);
 
   result = await instance.dispatch('SAFETY_OK', {
     technicianId: 'SAFE-3',
-    notes:        'Emergency brakes, door interlocks, CCTV OK',
+    notes: 'Emergency brakes, door interlocks, CCTV OK',
   });
   console.log(`[4] Safety systems cleared — active: ${instance.getCurrentStates()}`);
 
   result = await instance.dispatch('MECH_OK', {
     technicianId: 'MECH-12',
-    notes:        'Bogie, couplings, pantograph — all within spec',
+    notes: 'Bogie, couplings, pantograph — all within spec',
   });
   console.log(`[5] Mechanical cleared — active: ${instance.getCurrentStates()}`);
   // JoinState auto-activates once all three complete
@@ -183,13 +183,13 @@ async function runChecklist() {
   // Step 4: Engineer signs off
   result = await instance.dispatch('SIGN_OFF', {
     engineerId: 'ENG-042',
-    certifies:  true,
+    certifies: true,
   });
   console.log(`[6] Signed off — state: ${instance.getCurrentStates()}`);
 
   // Step 5: Depart
   result = await instance.dispatch('DEPART', {
-    platform:    3,
+    platform: 3,
     scheduledAt: '2024-05-20T06:00:00+08:00',
   });
   if (result.success) {
@@ -203,14 +203,19 @@ async function runChecklist() {
   console.log('\n=== Guard demo: can a sign-off with certifies=false pass? ===\n');
 
   const blocked = engineerChecklist.createInstance('ENG-099-demo');
-  await blocked.dispatch('BRIEFING_RECEIVED', { trainId: 'ENG-099', routeCode: 'EW2', shiftTime: '14:00' });
+  await blocked.dispatch('BRIEFING_RECEIVED', {
+    trainId: 'ENG-099',
+    routeCode: 'EW2',
+    shiftTime: '14:00',
+  });
   await blocked.dispatch('START_INSPECTION', {});
-  await blocked.dispatch('MECH_OK',   { technicianId: 'MECH-1' });
-  await blocked.dispatch('ELEC_OK',   { technicianId: 'ELEC-1' });
+  await blocked.dispatch('MECH_OK', { technicianId: 'MECH-1' });
+  await blocked.dispatch('ELEC_OK', { technicianId: 'ELEC-1' });
   await blocked.dispatch('SAFETY_OK', { technicianId: 'SAFE-1' });
 
   // Attempt to sign off with a falsified form (the Zod schema requires the literal `true`)
   try {
+    // prettier-ignore
     // @ts-expect-error — intentional: simulating a form submission without the checkbox ticked
     const guardResult = await blocked.dispatch('SIGN_OFF', { engineerId: 'ENG-099', certifies: false });
     if (!guardResult.success) {

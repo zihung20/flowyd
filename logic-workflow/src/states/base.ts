@@ -20,6 +20,8 @@ export abstract class BaseState<TId extends string = string> implements IState {
     readonly id: TId,
     readonly label: string,
   ) {
-    if (!id.trim()) throw new Error('State id must be a non-empty string');
+    if (!id.trim()) {
+      throw new Error('State id must be a non-empty string');
+    }
   }
 }

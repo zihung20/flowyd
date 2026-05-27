@@ -39,21 +39,21 @@ import { MermaidExporter } from '../src/visualization/index.js';
 // ─── Schema definitions ───────────────────────────────────────────────────────
 
 const UnlockSchema = z.object({
-  staffId:       z.string().min(3),
+  staffId: z.string().min(3),
   keyCardScanned: z.boolean(),
-  timestamp:     z.string(),
+  timestamp: z.string(),
 });
 
 const SafetyWalkSchema = z.object({
-  walkedBy:   z.string(),
-  issuesFound: z.array(z.string()),   // empty = no issues
+  walkedBy: z.string(),
+  issuesFound: z.array(z.string()), // empty = no issues
   completedAt: z.string(),
 });
 
 const ActivateSystemsSchema = z.object({
   activatedBy: z.string(),
-  systems:     z.array(z.enum(['power', 'lighting', 'cctv', 'pa', 'ticket-machines', 'escalators'])),
-  allOnline:   z.boolean(),
+  systems: z.array(z.enum(['power', 'lighting', 'cctv', 'pa', 'ticket-machines', 'escalators'])),
+  allOnline: z.boolean(),
 });
 
 const OpenFareGatesSchema = z.object({
@@ -62,8 +62,8 @@ const OpenFareGatesSchema = z.object({
 });
 
 const CommenceServiceSchema = z.object({
-  authorisedBy:   z.string(),
-  firstTrainEta:  z.string(),
+  authorisedBy: z.string(),
+  firstTrainEta: z.string(),
 });
 
 // ─── Workflow definition ──────────────────────────────────────────────────────
@@ -79,45 +79,45 @@ const stationOpening = createWorkflow({
     'open-for-service',
   ],
 })
-  .defineAction('UNLOCK_PREMISES',  UnlockSchema)
+  .defineAction('UNLOCK_PREMISES', UnlockSchema)
   .defineAction('COMPLETE_SAFETY_WALK', SafetyWalkSchema)
   .defineAction('ACTIVATE_SYSTEMS', ActivateSystemsSchema)
-  .defineAction('OPEN_FARE_GATES',  OpenFareGatesSchema)
+  .defineAction('OPEN_FARE_GATES', OpenFareGatesSchema)
   .defineAction('COMMENCE_SERVICE', CommenceServiceSchema)
 
-  .addStep('closed',            { label: 'Station Closed' })
+  .addStep('closed', { label: 'Station Closed' })
   .addStep('premises-unlocked', { label: 'Premises Unlocked' })
-  .addStep('safety-walk-done',  { label: 'Safety Walk Done' })
-  .addStep('systems-active',    { label: 'Systems Active' })
-  .addStep('fare-gates-open',   { label: 'Fare Gates Open' })
-  .addStep('open-for-service',  { label: 'Open for Service' })
+  .addStep('safety-walk-done', { label: 'Safety Walk Done' })
+  .addStep('systems-active', { label: 'Systems Active' })
+  .addStep('fare-gates-open', { label: 'Fare Gates Open' })
+  .addStep('open-for-service', { label: 'Open for Service' })
 
   .setInitial('closed')
   .setTerminal(['open-for-service'])
 
   .addTransition({
     from: 'closed',
-    to:   'premises-unlocked',
-    on:   'UNLOCK_PREMISES',
+    to: 'premises-unlocked',
+    on: 'UNLOCK_PREMISES',
     // Only allow entry if a valid key-card scan is confirmed
     guard: (ctx) => ctx.payload.keyCardScanned === true,
   })
   .addTransition({
     from: 'premises-unlocked',
-    to:   'safety-walk-done',
-    on:   'COMPLETE_SAFETY_WALK',
+    to: 'safety-walk-done',
+    on: 'COMPLETE_SAFETY_WALK',
     // Block if the safety walk found unresolved issues
     guard: (ctx) => ctx.payload.issuesFound.length === 0,
   })
   .addTransition({
     from: 'safety-walk-done',
-    to:   'systems-active',
-    on:   'ACTIVATE_SYSTEMS',
+    to: 'systems-active',
+    on: 'ACTIVATE_SYSTEMS',
     // All listed systems must be confirmed online
     guard: (ctx) => ctx.payload.allOnline === true,
   })
-  .addTransition({ from: 'systems-active',    to: 'fare-gates-open',  on: 'OPEN_FARE_GATES' })
-  .addTransition({ from: 'fare-gates-open',   to: 'open-for-service', on: 'COMMENCE_SERVICE' })
+  .addTransition({ from: 'systems-active', to: 'fare-gates-open', on: 'OPEN_FARE_GATES' })
+  .addTransition({ from: 'fare-gates-open', to: 'open-for-service', on: 'COMMENCE_SERVICE' })
 
   .build();
 
@@ -133,25 +133,31 @@ async function runStationOpening() {
   // ── canExecute demo ──────────────────────────────────────────────────────────
   console.log('--- canExecute before any action ---');
   const canUnlockValid = await inst.canExecute('UNLOCK_PREMISES', {
-    staffId: 'SM-042', keyCardScanned: true, timestamp: '05:00',
+    staffId: 'SM-042',
+    keyCardScanned: true,
+    timestamp: '05:00',
   });
   const canUnlockNoCard = await inst.canExecute('UNLOCK_PREMISES', {
-    staffId: 'SM-042', keyCardScanned: false, timestamp: '05:00',
+    staffId: 'SM-042',
+    keyCardScanned: false,
+    timestamp: '05:00',
   });
-  console.log(`  canExecute UNLOCK (key card = true)  → ${canUnlockValid}`);   // true
-  console.log(`  canExecute UNLOCK (key card = false) → ${canUnlockNoCard}`);  // false
-  console.log(`  State after canExecute checks: ${inst.getCurrentStates()}`);  // unchanged
+  console.log(`  canExecute UNLOCK (key card = true)  → ${canUnlockValid}`); // true
+  console.log(`  canExecute UNLOCK (key card = false) → ${canUnlockNoCard}`); // false
+  console.log(`  State after canExecute checks: ${inst.getCurrentStates()}`); // unchanged
   console.log();
 
   // ── Step 1: Unlock ───────────────────────────────────────────────────────────
   let result = await inst.dispatch('UNLOCK_PREMISES', {
-    staffId: 'SM-042', keyCardScanned: true, timestamp: new Date().toISOString(),
+    staffId: 'SM-042',
+    keyCardScanned: true,
+    timestamp: new Date().toISOString(),
   });
   console.log(`[1] Premises unlocked — ${inst.getCurrentStates()}`);
 
   // ── Step 2: Safety walk with an issue found ─────────────────────────────────
   result = await inst.dispatch('COMPLETE_SAFETY_WALK', {
-    walkedBy:    'SM-042',
+    walkedBy: 'SM-042',
     issuesFound: ['Escalator E3 out of service — maintenance called'],
     completedAt: new Date().toISOString(),
   });
@@ -163,7 +169,7 @@ async function runStationOpening() {
 
   // Issue resolved — walk again with no issues
   result = await inst.dispatch('COMPLETE_SAFETY_WALK', {
-    walkedBy:    'SM-042',
+    walkedBy: 'SM-042',
     issuesFound: [],
     completedAt: new Date().toISOString(),
   });
@@ -182,14 +188,14 @@ async function runStationOpening() {
   // ── Step 3: Activate systems — all must be online ───────────────────────────
   result = await restored.dispatch('ACTIVATE_SYSTEMS', {
     activatedBy: 'SM-042',
-    systems:     ['power', 'lighting', 'cctv', 'pa', 'ticket-machines', 'escalators'],
-    allOnline:   true,
+    systems: ['power', 'lighting', 'cctv', 'pa', 'ticket-machines', 'escalators'],
+    allOnline: true,
   });
   console.log(`\n[4] Systems activated — ${restored.getCurrentStates()}`);
 
   // ── Step 4: Open fare gates ──────────────────────────────────────────────────
   result = await restored.dispatch('OPEN_FARE_GATES', {
-    openedBy:  'SM-042',
+    openedBy: 'SM-042',
     gateCount: 8,
   });
   console.log(`[5] Fare gates open — ${restored.getCurrentStates()}`);
@@ -199,7 +205,7 @@ async function runStationOpening() {
 
   // ── Step 5: Commence service ─────────────────────────────────────────────────
   result = await restored.dispatch('COMMENCE_SERVICE', {
-    authorisedBy:  'SM-042',
+    authorisedBy: 'SM-042',
     firstTrainEta: '05:30',
   });
   console.log(`[6] Station open for service ✓ — ${restored.getCurrentStates()}`);
@@ -214,8 +220,10 @@ async function runStationOpening() {
   const finalSnap = restored.getSnapshot();
   for (const entry of finalSnap.history) {
     const entered = entry.enteredStates.join(', ') || '—';
-    const exited  = entry.exitedStates.join(', ')  || '—';
-    console.log(`  [v${String(finalSnap.history.indexOf(entry) + 1).padStart(2, '0')}] ${entry.action.padEnd(26)} exited: ${exited.padEnd(20)} entered: ${entered}`);
+    const exited = entry.exitedStates.join(', ') || '—';
+    console.log(
+      `  [v${String(finalSnap.history.indexOf(entry) + 1).padStart(2, '0')}] ${entry.action.padEnd(26)} exited: ${exited.padEnd(20)} entered: ${entered}`,
+    );
   }
   console.log(`\n  Total history entries : ${finalSnap.history.length}`);
   console.log(`  Final snapshot version: ${finalSnap.version}`);

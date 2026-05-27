@@ -7,13 +7,13 @@ import type { IExporter } from './exporter.js';
  * Cytoscape.js, or any `{ nodes, edges }` renderer.
  */
 export interface JsonGraphNode {
-  id:     string;
-  kind:   string;
-  label:  string;
+  id: string;
+  kind: string;
+  label: string;
   /** Present only when a live snapshot is provided. */
   status?: string;
   /** `true` when this node is the workflow's initial state. */
-  isInitial:  boolean;
+  isInitial: boolean;
   /** `true` when this node is one of the workflow's terminal states. */
   isTerminal: boolean;
   /** ForkState targets (present when `kind === 'fork'`). */
@@ -28,9 +28,9 @@ export interface JsonGraphNode {
  * A directed edge in the serialised JSON graph.
  */
 export interface JsonGraphEdge {
-  id:     string;
-  from:   string;
-  to:     string;
+  id: string;
+  from: string;
+  to: string;
   /** The action name that triggers this transition. */
   action: string;
   /** `true` when this transition has a guard attached. */
@@ -42,18 +42,18 @@ export interface JsonGraphEdge {
  * with live instance state.
  */
 export interface JsonGraph {
-  name:      string;
-  nodes:     JsonGraphNode[];
-  edges:     JsonGraphEdge[];
+  name: string;
+  nodes: JsonGraphNode[];
+  edges: JsonGraphEdge[];
   /** Workflow metadata. */
   meta: {
-    initialStateId:  string;
+    initialStateId: string;
     terminalStateIds: string[];
-    actionNames:     string[];
+    actionNames: string[];
     /** Present when a live snapshot is provided. */
     instance?: {
       instanceId: string;
-      version:    number;
+      version: number;
       isTerminal: boolean;
     };
   };
@@ -75,31 +75,33 @@ export const JsonGraphExporter: IExporter<JsonGraph> = {
     for (const [id, state] of definition.states) {
       const node: JsonGraphNode = {
         id,
-        kind:       state.kind,
-        label:      state.label,
-        isInitial:  id === definition.initialStateId,
+        kind: state.kind,
+        label: state.label,
+        isInitial: id === definition.initialStateId,
         isTerminal: terminalSet.has(id),
         ...(snapshot ? { status: snapshot.stateStatuses[id] ?? 'idle' } : {}),
       };
 
-      if (state.kind === StateKind.Fork) {
-        node.targets = [...state.targets];
-      }
-      if (state.kind === StateKind.Join) {
-        node.join = { requires: [...state.requires], mode: state.mode };
-      }
-      if (state.kind === StateKind.Wait) {
-        node.externalName = state.externalName;
+      switch (state.kind) {
+        case StateKind.Fork:
+          node.targets = [...state.targets];
+          break;
+        case StateKind.Join:
+          node.join = { requires: [...state.requires], mode: state.mode };
+          break;
+        case StateKind.Wait:
+          node.externalName = state.externalName;
+          break;
       }
 
       nodes.push(node);
     }
 
     const edges: JsonGraphEdge[] = definition.transitions.map((t, i) => ({
-      id:       `${t.from}__${t.on}__${t.to}__${i}`,
-      from:     t.from,
-      to:       t.to,
-      action:   t.on,
+      id: `${t.from}__${t.on}__${t.to}__${i}`,
+      from: t.from,
+      to: t.to,
+      action: t.on,
       hasGuard: t.guard !== undefined,
     }));
 
@@ -108,11 +110,17 @@ export const JsonGraphExporter: IExporter<JsonGraph> = {
       nodes,
       edges,
       meta: {
-        initialStateId:   definition.initialStateId,
+        initialStateId: definition.initialStateId,
         terminalStateIds: [...definition.terminalStateIds],
-        actionNames:      [...definition.actionSchemas.keys()],
+        actionNames: [...definition.actionSchemas.keys()],
         ...(snapshot
-          ? { instance: { instanceId: snapshot.instanceId, version: snapshot.version, isTerminal: snapshot.isTerminal } }
+          ? {
+              instance: {
+                instanceId: snapshot.instanceId,
+                version: snapshot.version,
+                isTerminal: snapshot.isTerminal,
+              },
+            }
           : {}),
       },
     };

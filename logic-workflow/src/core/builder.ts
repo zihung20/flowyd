@@ -1,5 +1,11 @@
 import { type ZodSchema } from 'zod';
-import type { TransitionDefinition, ActionPayloadMap, WorkflowDefinition, IGuard, GuardFn } from '../types/index.js';
+import type {
+  TransitionDefinition,
+  ActionPayloadMap,
+  WorkflowDefinition,
+  IGuard,
+  GuardFn,
+} from '../types/index.js';
 import type { JoinMode } from '../types/state.js';
 import { StateKind } from '../types/index.js';
 import { StateRegistry } from './registry.js';
@@ -72,7 +78,9 @@ export class WorkflowBuilder<
    * @throws {Error} If `name` is empty.
    */
   constructor(config: { name: string; states: readonly TStates[] }) {
-    if (!config.name.trim()) throw new Error('Workflow name must be non-empty');
+    if (!config.name.trim()) {
+      throw new Error('Workflow name must be non-empty');
+    }
     this.name = config.name;
   }
 
@@ -252,8 +260,12 @@ export class WorkflowBuilder<
    * @throws {Error} If any structural invariant is violated.
    */
   build(): Workflow<TActions> {
-    if (!this.initialStateId) throw new Error('Workflow requires exactly one initial state (call setInitial)');
-    if (this.terminalStateIds.length === 0) throw new Error('Workflow requires at least one terminal state (call setTerminal)');
+    if (!this.initialStateId) {
+      throw new Error('Workflow requires exactly one initial state (call setInitial)');
+    }
+    if (this.terminalStateIds.length === 0) {
+      throw new Error('Workflow requires at least one terminal state (call setTerminal)');
+    }
 
     const states = this.stateRegistry.snapshot();
 
@@ -261,13 +273,21 @@ export class WorkflowBuilder<
       throw new Error(`Initial state "${this.initialStateId}" is not registered`);
     }
     for (const id of this.terminalStateIds) {
-      if (!states.has(id)) throw new Error(`Terminal state "${id}" is not registered`);
+      if (!states.has(id)) {
+        throw new Error(`Terminal state "${id}" is not registered`);
+      }
     }
     for (const t of this.transitions) {
-      if (!states.has(t.from)) throw new Error(`Transition from unregistered state "${t.from}"`);
-      if (!states.has(t.to)) throw new Error(`Transition to unregistered state "${t.to}"`);
+      if (!states.has(t.from)) {
+        throw new Error(`Transition from unregistered state "${t.from}"`);
+      }
+      if (!states.has(t.to)) {
+        throw new Error(`Transition to unregistered state "${t.to}"`);
+      }
       if (!this.actionSchemas.has(t.on)) {
-        throw new Error(`Transition uses action "${t.on}" which has no registered schema (call defineAction)`);
+        throw new Error(
+          `Transition uses action "${t.on}" which has no registered schema (call defineAction)`,
+        );
       }
     }
     for (const [id, state] of states) {

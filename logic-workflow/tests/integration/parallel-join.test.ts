@@ -76,7 +76,9 @@ describe('Parallel-join SOP — procurement', () => {
     // legal is now completed — no active source for a second LEGAL_DONE
     const result = await inst.dispatch('LEGAL_DONE', {});
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.reason).toBe('no-active-source');
+    if (!result.success) {
+      expect(result.reason).toBe('no-active-source');
+    }
   });
 
   it('snapshot captures both branch statuses correctly', async () => {

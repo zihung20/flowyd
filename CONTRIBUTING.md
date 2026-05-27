@@ -2,10 +2,10 @@
 
 ## Prerequisites
 
-| Tool | Version |
-|------|---------|
-| Node.js | ≥ 20 |
-| pnpm | ≥ 9 |
+| Tool    | Version |
+| ------- | ------- |
+| Node.js | ≥ 20    |
+| pnpm    | ≥ 9     |
 
 Install pnpm if you don't have it:
 
@@ -19,7 +19,7 @@ npm install -g pnpm
 workflow/
 ├── logic-workflow/   # Core TypeScript library
 │   ├── src/          # Source code
-│   ├── tests/        # Unit tests (Vitest)
+│   ├── tests/        # Integration and e2e tests (Vitest)
 │   ├── examples/     # Runnable usage examples
 │   └── docs/         # VitePress documentation site
 └── web-runner/       # React SPA demo (Vite + React Flow)
@@ -43,12 +43,20 @@ pnpm install
 ### Library (`logic-workflow/`)
 
 ```sh
-pnpm dev          # watch mode — rebuilds on save
-pnpm typecheck    # tsc --noEmit
-pnpm lint         # ESLint
-pnpm test         # Vitest (single run)
-pnpm test:watch   # Vitest (watch mode)
-pnpm build        # production build → dist/
+pnpm dev            # watch mode — rebuilds on save
+pnpm format         # Prettier — format all files
+pnpm format:check   # Prettier — check without writing
+pnpm typecheck      # tsc --noEmit
+pnpm lint           # ESLint
+pnpm test           # Vitest (single run)
+pnpm test:watch     # Vitest (watch mode)
+pnpm build          # production build → dist/
+```
+
+Run the full gate before opening a PR:
+
+```sh
+pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build
 ```
 
 ### Web Runner (`web-runner/`)
@@ -72,31 +80,45 @@ pnpm docs:build    # production build
 pnpm docs:preview  # preview the production build
 ```
 
-## Code Conventions
+---
 
-This project applies strict rules documented in [`logic-workflow/CLAUDE.md`](logic-workflow/CLAUDE.md). The key points:
+## Code Style
 
-### Package Manager
-Use **pnpm only**. Never commit `package-lock.json` or `yarn.lock`.
+### Formatting
 
-### TypeScript
-- Strict mode is non-negotiable (`strict`, `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`, `noImplicitOverride`).
-- No `any`. Use `unknown` and narrow explicitly.
-- No non-null assertions (`!`) without a comment explaining why the value is provably non-null.
+Handled by Prettier — run `pnpm format` before committing, never manually align. Config: `singleQuote`, `semi`, `trailingComma: "all"`, `printWidth: 100`, `tabWidth: 2`.
 
-### Zod Schemas
-Define the Zod schema first; derive the TypeScript type from it with `z.infer<>`. Never write a separate `interface` alongside its schema.
+### General
 
-### Layer Boundaries
-Dependencies flow one way: `visualization → core → nodes → types/schemas`. No layer may import from a layer above it.
+- Functions are verbs, types are nouns, booleans answer yes/no (`isTerminal`, `canTransition`).
+- One function, one job. Early returns over nesting. Boolean parameters → options object.
+- Every `if`/`else` body must have braces — enforced by ESLint (`curly: error`). This avoids a conflict where Prettier wraps a long one-liner to the next line, which would make it look braceless.
+- No `any` — use `unknown` and narrow. No non-null assertions (`!`) without a justifying comment.
+- Silent `catch` blocks are banned — re-throw or wrap-and-rethrow. Failures throw; never return `null`/`false` to signal failure.
+- TSDoc on every exported symbol. Inside function bodies, comment the *why* only — never the what.
 
-### Error Handling
-- Functions that can fail must throw a typed error — never return `null` or `undefined` to signal failure.
-- `catch` blocks must re-throw or wrap-and-rethrow. Silent catches are prohibited.
+### TypeScript & Zod
 
-### Comments
-- Write TSDoc on every exported symbol.
-- Inside function bodies, only comment the **why** — never the what.
+Derive types from Zod schemas with `z.infer<>`. Never write a parallel `interface` alongside a schema.
+
+Strict mode flags (`strict`, `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`, `noImplicitOverride`) are permanent — do not disable them.
+
+### Discriminated unions
+
+Narrow with `state.kind`, never cast with `as`. Multiple branches on the same discriminant belong in a `switch`, not a chain of `if` statements.
+
+```ts
+// use switch for AnyState branches — exhaustiveness is visible at a glance
+switch (state.kind) {
+  case StateKind.Fork: ...
+  case StateKind.Join: ...
+  case StateKind.Wait: ...
+}
+```
+
+Any remaining `as` cast must have an inline comment explaining why it is safe at that site.
+
+---
 
 ## Commit Messages
 
@@ -108,16 +130,14 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/):
 [optional body]
 ```
 
-Common types:
-
-| Type | When to use |
-|------|-------------|
-| `feat` | New feature or capability |
-| `fix` | Bug fix |
-| `refactor` | Code restructure with no behaviour change |
-| `test` | Adding or updating tests |
-| `docs` | Documentation only |
-| `chore` | Tooling, config, dependency updates |
+| Type       | When to use                                 |
+| ---------- | ------------------------------------------- |
+| `feat`     | New feature or capability                   |
+| `fix`      | Bug fix                                     |
+| `refactor` | Code restructure with no behaviour change   |
+| `test`     | Adding or updating tests                    |
+| `docs`     | Documentation only                          |
+| `chore`    | Tooling, config, dependency updates         |
 
 Examples:
 
@@ -128,10 +148,12 @@ docs(guards): add guard injection example to how-to guide
 chore: upgrade vitest to 2.x
 ```
 
+---
+
 ## Pull Requests
 
 1. Branch off `main`.
 2. Keep changes focused — one logical change per PR.
-3. Ensure CI passes: `pnpm typecheck && pnpm lint && pnpm test && pnpm build`.
+3. Ensure the full gate passes: `pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build`.
 4. Update `CLAUDE.md` Session History with a dated entry describing what changed and why.
 5. Write a clear PR description: what problem does this solve, and how?

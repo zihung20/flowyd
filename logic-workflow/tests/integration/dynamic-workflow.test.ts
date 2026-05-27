@@ -11,10 +11,14 @@ import { WorkflowBuilder, createWorkflow } from '../../src/core/builder.js';
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 function buildLinearChain(stateIds: string[]) {
-  if (stateIds.length < 2) throw new Error('need at least 2 states');
+  if (stateIds.length < 2) {
+    throw new Error('need at least 2 states');
+  }
 
-  const builder = createWorkflow({ name: 'dynamic-linear', states: stateIds })
-    .defineAction('NEXT', z.object({}));
+  const builder = createWorkflow({ name: 'dynamic-linear', states: stateIds }).defineAction(
+    'NEXT',
+    z.object({}),
+  );
 
   for (const id of stateIds) {
     builder.addStep(id);
@@ -57,9 +61,7 @@ function buildParallelBranches(branchCount: number) {
     builder.defineAction(`DONE_${i}`, z.object({}));
   }
 
-  builder
-    .addStep('start')
-    .addFork('fork', { targets: branches as [string, ...string[]] });
+  builder.addStep('start').addFork('fork', { targets: branches as [string, ...string[]] });
 
   for (const b of branches) {
     builder.addStep(b);
@@ -129,7 +131,9 @@ describe('Dynamic linear chain', () => {
     await inst.dispatch('NEXT', {});
     const result = await inst.dispatch('NEXT', {});
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.reason).toBe('terminal-state');
+    if (!result.success) {
+      expect(result.reason).toBe('terminal-state');
+    }
   });
 
   it('snapshot round-trip preserves position mid-chain', async () => {

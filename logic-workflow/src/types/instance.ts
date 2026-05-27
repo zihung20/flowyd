@@ -91,10 +91,10 @@ export interface TransitionBlocked {
   readonly success: false;
   readonly action: string;
   readonly reason:
-    | 'terminal-state'      // workflow has already reached a terminal state
-    | 'invalid-action'      // no transition exists for this action from any active state
-    | 'guard-failed'        // a matching transition exists but its guard blocked it
-    | 'no-active-source';   // the action's source state is not currently active
+    | 'terminal-state' // workflow has already reached a terminal state
+    | 'invalid-action' // no transition exists for this action from any active state
+    | 'guard-failed' // a matching transition exists but its guard blocked it
+    | 'no-active-source'; // the action's source state is not currently active
   readonly activeStates: readonly string[];
 }
 

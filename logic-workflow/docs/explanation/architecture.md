@@ -12,7 +12,6 @@ states/   guards/
 types/
 ```
 
-
 ## The four layers
 
 ### `types/`
@@ -32,13 +31,13 @@ Concrete implementations of `IState` and `IGuard`. Import only from `types/`. Ne
 
 The engine, builder, instance, and state/guard registries. Imports from `types/`, `states/`, and `guards/`. Five files:
 
-| File | Responsibility |
-|------|---------------|
-| `builder.ts` | Fluent `WorkflowBuilder` — accumulates the graph definition |
-| `workflow.ts` | Immutable `Workflow` factory — `createInstance`, `restoreInstance`, `getDefinition` |
-| `instance.ts` | Mutable `WorkflowInstance` — holds snapshot, exposes `dispatch`, `canExecute`, etc. |
-| `engine.ts` | Pure, stateless `WorkflowEngine` — computes the next snapshot from a current snapshot + action |
-| `registry.ts` | `StateRegistry` and `GuardRegistry` — lookup maps with explicit error messages |
+| File          | Responsibility                                                                                 |
+| ------------- | ---------------------------------------------------------------------------------------------- |
+| `builder.ts`  | Fluent `WorkflowBuilder` — accumulates the graph definition                                    |
+| `workflow.ts` | Immutable `Workflow` factory — `createInstance`, `restoreInstance`, `getDefinition`            |
+| `instance.ts` | Mutable `WorkflowInstance` — holds snapshot, exposes `dispatch`, `canExecute`, etc.            |
+| `engine.ts`   | Pure, stateless `WorkflowEngine` — computes the next snapshot from a current snapshot + action |
+| `registry.ts` | `StateRegistry` and `GuardRegistry` — lookup maps with explicit error messages                 |
 
 ### `visualization/`
 
@@ -46,18 +45,15 @@ Stateless exporters. Import only from `types/` (they need `WorkflowDefinition` a
 
 This is enforced by keeping visualization as a separate package entry point (`logic-workflow/visualization`). Tree-shakers strip it when unused.
 
-
 ## Why one-directional imports?
 
 Bidirectional imports create invisible coupling. If `core/engine.ts` imported `MermaidExporter` to generate debug output, a visualization bug could corrupt the engine, and a visualization change would require re-testing the engine. The direction constraint eliminates this class of problem.
 
 The rule is also a forcing function for interface design. If you find yourself wanting to import "upward", it is a signal that the abstraction boundary is wrong — the shared concept should be extracted into `types/`, not shared via a cross-layer import.
 
-
 ## The `ExecutionContext` exception
 
 `nodes/` (if present in future extensions) may import `ExecutionContext` from `core/`. `ExecutionContext` is a pure data carrier — it holds runtime state but contains no methods that reach back into the engine. It is the only permitted upward import and must remain a data-only type.
-
 
 ## File map
 

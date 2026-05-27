@@ -135,7 +135,9 @@ describe('Invariant: history accuracy', () => {
   it('history captures entered and exited states', async () => {
     const inst = linear.createInstance('h-004');
     const result = await inst.dispatch('NEXT', {});
-    if (!result.success) throw new Error('expected success');
+    if (!result.success) {
+      throw new Error('expected success');
+    }
     expect(result.exitedStates).toContain('s1');
     expect(result.enteredStates).toContain('s2');
   });
@@ -163,7 +165,9 @@ describe('Invariant: snapshot serialization round-trip', () => {
   it('restoreInstance from a serialized snapshot produces identical behaviour', async () => {
     const inst1 = linear.createInstance('snap-002');
     await inst1.dispatch('NEXT', {});
-    const snap = JSON.parse(JSON.stringify(inst1.getSnapshot())) as ReturnType<typeof inst1.getSnapshot>;
+    const snap = JSON.parse(JSON.stringify(inst1.getSnapshot())) as ReturnType<
+      typeof inst1.getSnapshot
+    >;
 
     const inst2 = linear.restoreInstance(snap);
     // Restored instance should be at state s2; dispatching NEXT should move to s3 (terminal)
@@ -185,8 +189,12 @@ describe('Invariant: terminal state rejects all dispatches', () => {
     const r2 = await inst.dispatch('SKIP', {});
     expect(r1.success).toBe(false);
     expect(r2.success).toBe(false);
-    if (!r1.success) expect(r1.reason).toBe('terminal-state');
-    if (!r2.success) expect(r2.reason).toBe('terminal-state');
+    if (!r1.success) {
+      expect(r1.reason).toBe('terminal-state');
+    }
+    if (!r2.success) {
+      expect(r2.reason).toBe('terminal-state');
+    }
   });
 
   it('version does not change after terminal rejection', async () => {
@@ -244,7 +252,9 @@ describe('Invariant: WaitState full lifecycle', () => {
     await inst.dispatch('ENTER', {});
     const result = await inst.dispatch('COMPLETE', {});
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.reason).toBe('no-active-source');
+    if (!result.success) {
+      expect(result.reason).toBe('no-active-source');
+    }
   });
 
   it('resolveWait promotes waiting → active', async () => {
@@ -268,9 +278,9 @@ describe('Invariant: WaitState full lifecycle', () => {
     const inst = subWf.createInstance('sw-005');
     await inst.dispatch('ENTER', {});
     inst.resolveWait('external', externalSnap);
-    const resolveEntry = inst.getSnapshot().history.find(
-      (e) => e.action.startsWith('__resolve_wait'),
-    );
+    const resolveEntry = inst
+      .getSnapshot()
+      .history.find((e) => e.action.startsWith('__resolve_wait'));
     expect(resolveEntry?.payload).toMatchObject({ instanceId: 'child' });
   });
 });

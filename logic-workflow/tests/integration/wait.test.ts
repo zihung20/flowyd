@@ -49,7 +49,9 @@ describe('WaitState SOP — vendor onboarding', () => {
     // kyc-check is waiting, not active — no active source for KYC_PASSED
     const result = await inst.dispatch('KYC_PASSED', {});
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.reason).toBe('no-active-source');
+    if (!result.success) {
+      expect(result.reason).toBe('no-active-source');
+    }
   });
 
   it('promotes the state to active after resolveWait is called', async () => {

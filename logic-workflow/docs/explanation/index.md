@@ -1,7 +1,6 @@
 # Explanation
 
-The explanation section is **understanding-oriented**. These articles discuss *why* the library is designed the way it is — the reasoning behind decisions, the trade-offs considered, and the mental models that make everything fit together. You do not need to read these to use the library, but they will help you extend it confidently.
-
+The explanation section is **understanding-oriented**. These articles discuss _why_ the library is designed the way it is — the reasoning behind decisions, the trade-offs considered, and the mental models that make everything fit together. You do not need to read these to use the library, but they will help you extend it confidently.
 
 ## Contents
 

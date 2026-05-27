@@ -16,7 +16,12 @@ describe('AndGuard', () => {
 
   it('short-circuits on first failure', async () => {
     let secondCalled = false;
-    const second = { evaluate: (): Promise<boolean> => { secondCalled = true; return Promise.resolve(true); } };
+    const second = {
+      evaluate: (): Promise<boolean> => {
+        secondCalled = true;
+        return Promise.resolve(true);
+      },
+    };
     const g = new AndGuard([new NeverGuard(), second]);
     await g.evaluate(makeCtx());
     expect(secondCalled).toBe(false);

@@ -32,7 +32,7 @@ export class InjectedGuard implements IGuard<unknown> {
     if (!fn) {
       throw new Error(
         `Guard "${this.name}" has not been injected. ` +
-        `Call instance.injectGuard("${this.name}", fn) before dispatching.`,
+          `Call instance.injectGuard("${this.name}", fn) before dispatching.`,
       );
     }
     return fn(ctx);

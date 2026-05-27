@@ -44,15 +44,15 @@ Scaffold a completely self-contained single-page application in `web-runner/` th
 
 ### Stack
 
-| Concern | Choice |
-|---------|--------|
-| Build tool | Vite 6 (ESM-native, fast HMR) |
-| UI framework | React 19 |
-| Styling | Tailwind CSS v4 (`@tailwindcss/vite` plugin — no postcss config needed) |
-| Graph canvas | `@xyflow/react` v12 (React Flow rebranded + rewritten for React 19) |
-| State machine | `logic-workflow` (local file link) |
-| Schema | `zod` (peer dep — same version as parent) |
-| Language | TypeScript 5.8 strict |
+| Concern       | Choice                                                                  |
+| ------------- | ----------------------------------------------------------------------- |
+| Build tool    | Vite 6 (ESM-native, fast HMR)                                           |
+| UI framework  | React 19                                                                |
+| Styling       | Tailwind CSS v4 (`@tailwindcss/vite` plugin — no postcss config needed) |
+| Graph canvas  | `@xyflow/react` v12 (React Flow rebranded + rewritten for React 19)     |
+| State machine | `logic-workflow` (local file link)                                      |
+| Schema        | `zod` (peer dep — same version as parent)                               |
+| Language      | TypeScript 5.8 strict                                                   |
 
 ---
 
@@ -91,30 +91,31 @@ web-runner/
   "private": true,
   "type": "module",
   "scripts": {
-    "dev":     "vite",
-    "build":   "tsc --noEmit && vite build",
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
-    "logic-workflow":  "file:../",
-    "react":           "^19.0.0",
-    "react-dom":       "^19.0.0",
-    "@xyflow/react":   "^12.0.0",
-    "zod":             "^3.23.8"
+    "logic-workflow": "file:../",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "@xyflow/react": "^12.0.0",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@types/react":         "^19.0.0",
-    "@types/react-dom":     "^19.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.0",
-    "@tailwindcss/vite":    "^4.0.0",
-    "tailwindcss":          "^4.0.0",
-    "typescript":           "^5.8.0",
-    "vite":                 "^6.0.0"
+    "@tailwindcss/vite": "^4.0.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.8.0",
+    "vite": "^6.0.0"
   }
 }
 ```
 
 Key changes from older plan:
+
 - **`react` / `react-dom` 19** — no `autoprefixer` or `postcss` needed; Tailwind v4 handles this internally
 - **`@xyflow/react` v12** — replaces the retired `reactflow` v11 package; full React 19 compatibility, new `useNodesState` / `useEdgesState` hooks API
 - **`@tailwindcss/vite` v4** — Vite plugin replaces the postcss pipeline entirely; `tailwind.config.ts` is gone; configuration lives in CSS via `@theme` blocks if needed
@@ -140,6 +141,7 @@ The workflow must be buildable entirely from the types in `logic-workflow` — n
 #### `src/App.tsx` — Orchestrator
 
 Responsibilities:
+
 1. Creates `demoWorkflow.createInstance('runner-001')` on first mount and calls `wireGuards(inst)`.
 2. Holds `snapshot: InstanceSnapshot` in `useState`. The instance object is stored in a `useRef` (mutable, not reactive).
 3. Exposes a `dispatch(action, payload)` callback that:
@@ -153,10 +155,10 @@ State shape:
 
 ```ts
 interface RunnerContext {
-  workflow:  Workflow<AnyActions>;      // stable ref, never changes
-  snapshot:  InstanceSnapshot;          // updated after every successful dispatch
-  dispatch:  (action: string, payload: unknown) => Promise<void>;
-  lastError: string | null;             // 'guard-failed' | 'terminal-state' | null
+  workflow: Workflow<AnyActions>; // stable ref, never changes
+  snapshot: InstanceSnapshot; // updated after every successful dispatch
+  dispatch: (action: string, payload: unknown) => Promise<void>;
+  lastError: string | null; // 'guard-failed' | 'terminal-state' | null
 }
 ```
 
@@ -173,16 +175,19 @@ snapshot                  ─┘
 ```
 
 `JsonGraph.nodes` → mapped to `@xyflow/react` `Node[]`:
+
 - `position` computed via a BFS topological sort (column = depth, row = sibling index). No external layout lib needed — the graph is a DAG with bounded width.
 - Each node gets `type: 'stateNode'` pointing to `StateNode.tsx`.
 - Node `data` carries: `{ label, kind, status, isInitial, isTerminal, targets?, join? }`.
 
 `JsonGraph.edges` → mapped to `@xyflow/react` `Edge[]`:
+
 - `label` = the action name
 - `animated` = `true` when the source state's status is `active`
 - `style` — dashed stroke when `hasGuard: true`
 
 `StateNode.tsx` renders a rounded card using `@xyflow/react`'s `Handle` component for connection points:
+
 - Background by `status`: `idle`=slate-100, `active`=blue-500, `waiting`=amber-400, `completed`=green-500
 - Icon suffix by `kind`: ⑂ fork, ⑁ join, ⤴ sub-workflow, none for step
 - Bold label, small kind chip below
@@ -197,11 +202,11 @@ Pure utility module. Walks a `ZodTypeAny` and returns a `FieldDescriptor[]`:
 
 ```ts
 type FieldDescriptor =
-  | { kind: 'string';   name: string; optional: boolean }
-  | { kind: 'number';   name: string; optional: boolean }
-  | { kind: 'boolean';  name: string; optional: boolean }
-  | { kind: 'enum';     name: string; optional: boolean; options: string[] }
-  | { kind: 'unknown';  name: string; optional: boolean };  // fallback → free-text
+  | { kind: 'string'; name: string; optional: boolean }
+  | { kind: 'number'; name: string; optional: boolean }
+  | { kind: 'boolean'; name: string; optional: boolean }
+  | { kind: 'enum'; name: string; optional: boolean; options: string[] }
+  | { kind: 'unknown'; name: string; optional: boolean }; // fallback → free-text
 ```
 
 Implementation strategy using Zod's first-party type names (accessed via `schema._def.typeName` against `ZodFirstPartyTypeKind`):
@@ -220,10 +225,7 @@ ZodDefault  → unwrap inner, carry default value
 Exported function signature:
 
 ```ts
-export function describeSchema(
-  schema: ZodTypeAny,
-  parentKey?: string,
-): FieldDescriptor[];
+export function describeSchema(schema: ZodTypeAny, parentKey?: string): FieldDescriptor[];
 ```
 
 This is a pure function with no side-effects. It is tested independently of the React tree.
@@ -233,6 +235,7 @@ This is a pure function with no side-effects. It is tested independently of the 
 #### `src/components/DynamicForm.tsx` — SDUI Action Form
 
 Reads from `RunnerContext`:
+
 - `snapshot` → `inst.getAvailableTransitions()` gives the list of action names currently dispatchable
 - `workflow.getDefinition().actionSchemas` → keyed by action name, gives `ZodSchema<unknown>`
 
@@ -255,6 +258,7 @@ All inputs are controlled (value + onChange). The collected payload object is ty
 #### `src/components/HistoryPanel.tsx`
 
 Maps `snapshot.history` (most-recent-first) into a scrollable list. Each entry shows:
+
 - Action name (bold)
 - Timestamp (relative, e.g. "3s ago")
 - Entered states (green chips) / Exited states (gray chips)
@@ -324,13 +328,13 @@ an explicit `as` cast.
 **Result:** 11 eliminatable casts removed. 6 remain at explicit storage-boundary or
 generic-accumulation sites (all justified by comments):
 
-| Cast | Location | Reason |
-|---|---|---|
-| `this as unknown as WorkflowBuilder<...>` × 2 | `builder.ts` | Generic accumulation — TypeScript cannot widen the generic without an explicit cast |
-| `schema as ZodSchema<unknown>` | `builder.ts` | Contravariant storage boundary |
-| `fn as GuardFn<unknown>` | `registry.ts` | Contravariant storage boundary |
-| `transition.guard as GuardFn/IGuard<unknown>` | `builder.ts` | Contravariant storage boundary |
-| `ctx as GuardContext<T>` | `guards/primitives.ts` | Type restoration after validated erasure |
+| Cast                                          | Location               | Reason                                                                              |
+| --------------------------------------------- | ---------------------- | ----------------------------------------------------------------------------------- |
+| `this as unknown as WorkflowBuilder<...>` × 2 | `builder.ts`           | Generic accumulation — TypeScript cannot widen the generic without an explicit cast |
+| `schema as ZodSchema<unknown>`                | `builder.ts`           | Contravariant storage boundary                                                      |
+| `fn as GuardFn<unknown>`                      | `registry.ts`          | Contravariant storage boundary                                                      |
+| `transition.guard as GuardFn/IGuard<unknown>` | `builder.ts`           | Contravariant storage boundary                                                      |
+| `ctx as GuardContext<T>`                      | `guards/primitives.ts` | Type restoration after validated erasure                                            |
 
 **Dead code deleted:**
 
@@ -343,13 +347,14 @@ generic-accumulation sites (all justified by comments):
 
 **`vitest.workspace.ts`** defines three isolated test runners:
 
-| Project | Include glob | Purpose |
-|---|---|---|
-| `unit` | `src/**/*.test.ts` | Pure in-memory tests co-located with source |
-| `integration` | `tests/integration/**/*.test.ts` | Cross-module state-machine workflows |
-| `e2e` | `tests/e2e/**/*.test.ts` | System-wide invariant assertions |
+| Project       | Include glob                     | Purpose                                     |
+| ------------- | -------------------------------- | ------------------------------------------- |
+| `unit`        | `src/**/*.test.ts`               | Pure in-memory tests co-located with source |
+| `integration` | `tests/integration/**/*.test.ts` | Cross-module state-machine workflows        |
+| `e2e`         | `tests/e2e/**/*.test.ts`         | System-wide invariant assertions            |
 
 **`package.json` scripts added:**
+
 - `test:unit` — `vitest run --project unit`
 - `test:integration` — `vitest run --project integration`
 - `test:e2e` — `vitest run --project e2e`
@@ -363,28 +368,29 @@ generic-accumulation sites (all justified by comments):
 
 **Moved to `src/` (unit project):**
 
-| Old path | New path |
-|---|---|
-| `tests/guards/*.test.ts` (5 files) | `src/guards/*.test.ts` |
-| `tests/core/builder.test.ts` | `src/core/builder.test.ts` |
-| `tests/core/engine.test.ts` | `src/core/engine.test.ts` |
-| `tests/helpers.ts` | `src/testing/helpers.ts` |
+| Old path                           | New path                   |
+| ---------------------------------- | -------------------------- |
+| `tests/guards/*.test.ts` (5 files) | `src/guards/*.test.ts`     |
+| `tests/core/builder.test.ts`       | `src/core/builder.test.ts` |
+| `tests/core/engine.test.ts`        | `src/core/engine.test.ts`  |
+| `tests/helpers.ts`                 | `src/testing/helpers.ts`   |
 
 **New unit tests (co-located in `src/`):**
 
-| File | What it covers |
-|---|---|
-| `src/types/state.test.ts` | `StateKind` / `StateStatus` enum string values and member counts |
-| `src/states/step-state.test.ts` | Constructor, `kind`, label default, empty-id guard |
-| `src/states/fork-state.test.ts` | Empty targets throws, targets frozen copy, label option |
-| `src/states/join-state.test.ts` | `all` / `any` / quorum modes, empty requires throws |
-| `src/states/sub-workflow-state.test.ts` | `subWorkflowName` stored, label option |
-| `src/core/registry.test.ts` | Duplicate registration, missing get, snapshot independence, guard overwrite |
-| `src/core/instance.test.ts` | Snapshot round-trip, `getAvailableTransitions`, `canExecute` dry-run, `resolveSubWorkflow` error paths |
+| File                                    | What it covers                                                                                         |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `src/types/state.test.ts`               | `StateKind` / `StateStatus` enum string values and member counts                                       |
+| `src/states/step-state.test.ts`         | Constructor, `kind`, label default, empty-id guard                                                     |
+| `src/states/fork-state.test.ts`         | Empty targets throws, targets frozen copy, label option                                                |
+| `src/states/join-state.test.ts`         | `all` / `any` / quorum modes, empty requires throws                                                    |
+| `src/states/sub-workflow-state.test.ts` | `subWorkflowName` stored, label option                                                                 |
+| `src/core/registry.test.ts`             | Duplicate registration, missing get, snapshot independence, guard overwrite                            |
+| `src/core/instance.test.ts`             | Snapshot round-trip, `getAvailableTransitions`, `canExecute` dry-run, `resolveSubWorkflow` error paths |
 
 **New E2E invariant tests (`tests/e2e/workflow-invariants.test.ts`):**
 
 21 tests asserting structural invariants that must hold for any workflow:
+
 - Version counter starts at 0, increments by 1 per successful dispatch, unchanged on failure
 - History length equals successful dispatch count; timestamps are ISO-8601 and in-range
 - `JSON.parse(JSON.stringify(snapshot))` round-trip preserves all fields
@@ -413,6 +419,6 @@ grep -rn ' as I[A-Z]\| as StateStatus' src/ | grep -v '\.test\.'
 
 ---
 
-## Phase 4: Persistence Adapter Pattern
+## Phase 4: refactor bad code
 
 _Not yet planned._

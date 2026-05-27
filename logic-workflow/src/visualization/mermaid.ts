@@ -1,4 +1,4 @@
-import type { WorkflowDefinition, InstanceSnapshot } from '../types/index.js';
+import type { WorkflowDefinition, InstanceSnapshot, AnyState } from '../types/index.js';
 import { StateKind, StateStatus } from '../types/index.js';
 import type { IExporter } from './exporter.js';
 
@@ -7,13 +7,25 @@ import type { IExporter } from './exporter.js';
  * highlighting when a snapshot is provided.
  */
 const STATUS_CLASS: Partial<Record<StateStatus, string>> = {
-  [StateStatus.Active]:    'active',
-  [StateStatus.Waiting]:   'waiting',
+  [StateStatus.Active]: 'active',
+  [StateStatus.Waiting]: 'waiting',
   [StateStatus.Completed]: 'completed',
 };
 
 function sanitizeId(id: string): string {
   return id.replace(/[^a-zA-Z0-9_]/g, '_');
+}
+
+function stateDeclarationLine(state: AnyState, label: string, sid: string): string {
+  switch (state.kind) {
+    case StateKind.Fork:
+    case StateKind.Join:
+      return `  state "${label}" as ${sid}`;
+    case StateKind.Wait:
+      return `  state "${label} [${state.externalName}]" as ${sid}`;
+    case StateKind.Step:
+      return `  ${sid} : ${label}`;
+  }
 }
 
 /**
@@ -22,10 +34,14 @@ function sanitizeId(id: string): string {
  */
 function kindSuffix(kind: StateKind): string {
   switch (kind) {
-    case StateKind.Fork:        return ' ⑂';
-    case StateKind.Join:        return ' ⑁';
-    case StateKind.Wait: return ' ⤴';
-    default:                    return '';
+    case StateKind.Fork:
+      return ' ⑂';
+    case StateKind.Join:
+      return ' ⑁';
+    case StateKind.Wait:
+      return ' ⤴';
+    default:
+      return '';
   }
 }
 
@@ -54,13 +70,7 @@ export const MermaidExporter: IExporter<string> = {
       const sid = sanitizeId(id);
       const label = `${state.label}${kindSuffix(state.kind)}`;
 
-      if (state.kind === StateKind.Fork || state.kind === StateKind.Join) {
-        lines.push(`  state "${label}" as ${sid}`);
-      } else if (state.kind === StateKind.Wait) {
-        lines.push(`  state "${label} [${state.externalName}]" as ${sid}`);
-      } else {
-        lines.push(`  ${sid} : ${label}`);
-      }
+      lines.push(stateDeclarationLine(state, label, sid));
     }
 
     lines.push('');
@@ -71,7 +81,7 @@ export const MermaidExporter: IExporter<string> = {
     // Transitions
     for (const t of definition.transitions) {
       const from = sanitizeId(t.from);
-      const to   = sanitizeId(t.to);
+      const to = sanitizeId(t.to);
       lines.push(`  ${from} --> ${to} : ${t.on}`);
     }
 
@@ -108,7 +118,9 @@ export const MermaidExporter: IExporter<string> = {
       lines.push('');
       for (const [id, status] of Object.entries(snapshot.stateStatuses)) {
         const cls = STATUS_CLASS[status];
-        if (cls) lines.push(`  class ${sanitizeId(id)} ${cls}`);
+        if (cls) {
+          lines.push(`  class ${sanitizeId(id)} ${cls}`);
+        }
       }
     }
 

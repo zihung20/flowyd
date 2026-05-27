@@ -2,7 +2,6 @@
 
 Guards are async predicates attached to transitions. If a guard returns `false`, the transition does not fire and the instance state is unchanged.
 
-
 ## The guard evaluation sequence
 
 1. Payload is validated against the action's Zod schema (throws `ZodError` on failure).
@@ -10,7 +9,6 @@ Guards are async predicates attached to transitions. If a guard returns `false`,
 3. Each transition's guard is evaluated.
 4. Transitions whose guard returns `true` fire; the rest are silently skipped.
 5. If **no** transitions fired, dispatch returns `{ success: false, reason: 'guard-failed' }`.
-
 
 ## Guard.inject — resolve at runtime
 
@@ -33,23 +31,23 @@ inst.injectGuard('isManager', async (ctx) => {
 ```
 
 Dispatching without injecting the required guard throws:
+
 ```
 Error: Guard "isManager" has not been injected. Call instance.injectGuard("isManager", fn).
 ```
-
 
 ## Guard.fn — inline predicate
 
 Use `Guard.fn` for guards that can be expressed as a pure function with no external dependencies.
 
 ```ts
-Guard.fn<{ role: string }>((ctx) => ctx.payload.role === 'admin')
+Guard.fn<{ role: string }>((ctx) => ctx.payload.role === 'admin');
 ```
 
 The `ctx` object exposes:
+
 - `ctx.payload` — the validated action payload (type comes from the generic parameter)
 - `ctx.instanceState` — read-only view of all state statuses
-
 
 ## Guard.stateCompleted / Guard.stateActive
 
@@ -57,14 +55,13 @@ Pre-built guards that inspect the live instance:
 
 ```ts
 // Only allow APPROVE if the legal-review state has already completed
-Guard.stateCompleted('legal-review')
+Guard.stateCompleted('legal-review');
 
 // Only allow ESCALATE if the incident-triage state is currently active
-Guard.stateActive('incident-triage')
+Guard.stateActive('incident-triage');
 ```
 
 Useful for encoding ordering constraints without adding explicit intermediate states.
-
 
 ## Guard.and / Guard.or / Guard.not — composition
 
@@ -76,30 +73,25 @@ Guard.and([
   Guard.inject('isManager'),
   Guard.stateCompleted('legal-review'),
   Guard.not(Guard.inject('isOnLeave')),
-])
+]);
 
 // At least one must pass
-Guard.or([
-  Guard.inject('isSupervisor'),
-  Guard.inject('isAdmin'),
-])
+Guard.or([Guard.inject('isSupervisor'), Guard.inject('isAdmin')]);
 
 // Invert any guard
-Guard.not(Guard.inject('isBlocked'))
+Guard.not(Guard.inject('isBlocked'));
 ```
 
 Composition is arbitrarily deep — `Guard.and` and `Guard.or` accept any `IGuard[]`.
-
 
 ## Guard.always / Guard.never
 
 Sentinel values useful in tests:
 
 ```ts
-Guard.always()   // always returns true
-Guard.never()    // always returns false
+Guard.always(); // always returns true
+Guard.never(); // always returns false
 ```
-
 
 ## Multiple transitions on the same action
 
@@ -110,7 +102,6 @@ You can attach multiple transitions from the same state on the same action, each
 .addTransition({ from: 's', to: 'a', on: 'DECIDE', guard: Guard.inject('isApprover') })
 .addTransition({ from: 's', to: 'b', on: 'DECIDE', guard: Guard.not(Guard.inject('isApprover')) })
 ```
-
 
 ## Guard injections are not persisted
 

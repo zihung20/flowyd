@@ -305,3 +305,16 @@ After every code change:
 - Added `direction LR` to Mermaid output for horizontal left-to-right layout.
 - Added `classDef active/waiting/completed` blocks so live-status colour annotations render in mermaid.live and GitHub without extra configuration.
 - Added export toolbar to `SingleRunner`: **Copy Mermaid** (clipboard), **Download .mmd**, **Download JSON**, **Mermaid Live ↗** (opens with pako-compressed URL via native `CompressionStream`). 167 tests pass; all pipeline steps clean.
+
+### [v0.10.1] 2026-05-27 — Enforce curly braces on all if statements
+
+- Added `"curly": "error"` to `.eslintrc.json` — every `if`/`else` body must have braces, no exceptions. Chosen over `multi-line` to eliminate the Prettier interaction: if a one-liner exceeds `printWidth`, Prettier wraps it to the next line, which `multi-line` would then flag — requiring braces anyway. Always-braces cuts that cycle.
+- Ran `pnpm lint:fix` to auto-add braces across all violations, then `pnpm format` to reformat. 167 tests pass; all pipeline steps clean.
+
+### [v0.10.0] 2026-05-27 — Prettier setup + clean-code refactors
+
+- Added Prettier (`^3.8.3`) with `.prettierrc` (printWidth 100, singleQuote, trailingComma all) and `pnpm format` / `pnpm format:check` scripts.
+- Ran `pnpm format` across the codebase — removed manual column-alignment in object literals throughout `src/`, `tests/`, `examples/`, and `docs/`.
+- Refactored `mermaid.ts`: extracted `stateDeclarationLine()` helper with an exhaustive `switch` to replace a three-branch if-else chain.
+- Refactored `json-graph.ts`: replaced three sequential `if (state.kind === ...)` checks with a single `switch` block.
+- Expanded `CONTRIBUTING.md` with a comprehensive Code Style section covering formatting, naming, conditionals (early returns, boolean expressions, switch vs if-else), casting (discriminated-union narrowing, non-null assertions, `unknown` over `any`), Zod, error handling, and comments. 167 tests pass; all pipeline steps clean.

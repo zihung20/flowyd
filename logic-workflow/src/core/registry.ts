@@ -31,7 +31,9 @@ export class StateRegistry {
    */
   get(id: string): AnyState {
     const state = this.states.get(id);
-    if (!state) throw new Error(`State "${id}" is not registered`);
+    if (!state) {
+      throw new Error(`State "${id}" is not registered`);
+    }
     return state;
   }
 

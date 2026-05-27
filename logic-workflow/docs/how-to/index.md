@@ -2,7 +2,6 @@
 
 How-to guides are **task-oriented**. Each guide answers a specific question: "How do I…?" They assume you already understand the basics — if you are new to `logic-workflow`, start with the [Tutorial](/tutorials/first-workflow) first.
 
-
 ## Available guides
 
 ### [Run steps in parallel](./parallel-branches)

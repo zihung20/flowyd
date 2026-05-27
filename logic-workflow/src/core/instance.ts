@@ -113,7 +113,9 @@ export class WorkflowInstance<TActions extends ActionPayloadMap> {
 
     const actions = new Set<string>();
     for (const t of this.definition.transitions) {
-      if (activeStates.has(t.from)) actions.add(t.on);
+      if (activeStates.has(t.from)) {
+        actions.add(t.on);
+      }
     }
     return [...actions];
   }
@@ -176,7 +178,9 @@ export class WorkflowInstance<TActions extends ActionPayloadMap> {
     dryRun = false,
   ): Promise<DispatchResult> {
     const schema = this.definition.actionSchemas.get(action);
-    if (!schema) throw new Error(`Action "${action}" is not registered in workflow "${this.definition.name}"`);
+    if (!schema) {
+      throw new Error(`Action "${action}" is not registered in workflow "${this.definition.name}"`);
+    }
 
     const validatedPayload = schema.parse(payload);
 
@@ -278,11 +282,17 @@ export class WorkflowInstance<TActions extends ActionPayloadMap> {
       workflowName,
       getStateStatus: getStatus,
       getActiveStates: () =>
-        Object.entries(statuses).filter(([, s]) => s === StateStatus.Active).map(([id]) => id),
+        Object.entries(statuses)
+          .filter(([, s]) => s === StateStatus.Active)
+          .map(([id]) => id),
       getWaitingStates: () =>
-        Object.entries(statuses).filter(([, s]) => s === StateStatus.Waiting).map(([id]) => id),
+        Object.entries(statuses)
+          .filter(([, s]) => s === StateStatus.Waiting)
+          .map(([id]) => id),
       getCompletedStates: () =>
-        Object.entries(statuses).filter(([, s]) => s === StateStatus.Completed).map(([id]) => id),
+        Object.entries(statuses)
+          .filter(([, s]) => s === StateStatus.Completed)
+          .map(([id]) => id),
       isStateCompleted: (id: string) => getStatus(id) === StateStatus.Completed,
       isStateActive: (id: string) => getStatus(id) === StateStatus.Active,
       isStateWaiting: (id: string) => getStatus(id) === StateStatus.Waiting,

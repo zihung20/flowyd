@@ -45,10 +45,7 @@
  */
 
 import { z } from 'zod';
-import {
-  createWorkflow,
-  Guard,
-} from '../src/index.js';
+import { createWorkflow, Guard } from '../src/index.js';
 import { MermaidExporter, JsonGraphExporter } from '../src/visualization/index.js';
 
 // ─── Domain types (roles come in via JWT/session in a real system) ─────────────
@@ -57,24 +54,30 @@ type OccRole = 'controller' | 'duty-manager' | 'supervisor' | 'station-master';
 
 interface OccActor {
   staffId: string;
-  role:    OccRole;
-  name:    string;
+  role: OccRole;
+  name: string;
 }
 
 // ─── Schema definitions ───────────────────────────────────────────────────────
 
 const IncidentVerifySchema = z.object({
-  verifiedBy:    z.object({ staffId: z.string(), role: z.string() }),
-  incidentType:  z.enum(['signal-fault', 'train-breakdown', 'door-fault', 'track-obstruction', 'power-failure']),
-  affectedLine:  z.string(),
-  affectedKm:    z.number(),
-  summary:       z.string(),
+  verifiedBy: z.object({ staffId: z.string(), role: z.string() }),
+  incidentType: z.enum([
+    'signal-fault',
+    'train-breakdown',
+    'door-fault',
+    'track-obstruction',
+    'power-failure',
+  ]),
+  affectedLine: z.string(),
+  affectedKm: z.number(),
+  summary: z.string(),
 });
 
 const EscalateSchema = z.object({
-  escalatedBy:  z.object({ staffId: z.string(), role: z.string() }),
-  dmStaffId:    z.string(),
-  urgency:      z.enum(['P1', 'P2', 'P3']),
+  escalatedBy: z.object({ staffId: z.string(), role: z.string() }),
+  dmStaffId: z.string(),
+  urgency: z.enum(['P1', 'P2', 'P3']),
 });
 
 const AuthoriseSchema = z.object({
@@ -83,53 +86,53 @@ const AuthoriseSchema = z.object({
 });
 
 const NotifyOpsSchema = z.object({
-  notifiedBy:   z.object({ staffId: z.string() }),
-  channel:      z.enum(['radio', 'phone', 'operations-system']),
-  confirmedAt:  z.string(),
+  notifiedBy: z.object({ staffId: z.string() }),
+  channel: z.enum(['radio', 'phone', 'operations-system']),
+  confirmedAt: z.string(),
 });
 
 const NotifyStnSchema = z.object({
-  notifiedBy:    z.object({ staffId: z.string() }),
+  notifiedBy: z.object({ staffId: z.string() }),
   stationsCount: z.number().int().min(1),
-  method:        z.enum(['PA', 'OCC-intercom', 'phone']),
+  method: z.enum(['PA', 'OCC-intercom', 'phone']),
 });
 
 const NotifyPublicSchema = z.object({
-  notifiedBy:   z.object({ staffId: z.string() }),
+  notifiedBy: z.object({ staffId: z.string() }),
   channelsUsed: z.array(z.enum(['twitter', 'lta-datamall', 'display-boards', 'announcement'])),
 });
 
 const BusBridgeSchema = z.object({
   authorisedBy: z.object({ staffId: z.string(), role: z.string() }),
-  busBridgeRef: z.string(),   // reference ID for the sub-workflow
+  busBridgeRef: z.string(), // reference ID for the sub-workflow
 });
 
 const BusBridgeActiveSchema = z.object({
   confirmedBy: z.object({ staffId: z.string() }),
-  busCount:    z.number().int().min(1),
-  firstBusAt:  z.string(),
+  busCount: z.number().int().min(1),
+  firstBusAt: z.string(),
 });
 
 const ServiceRestoredSchema = z.object({
   confirmedBy: z.object({ staffId: z.string(), role: z.string() }),
-  restoredAt:  z.string(),
-  remarks:     z.string().optional(),
+  restoredAt: z.string(),
+  remarks: z.string().optional(),
 });
 
 const FileReportSchema = z.object({
-  filedBy:    z.object({ staffId: z.string(), role: z.string() }),
-  reportRef:  z.string(),
-  rootCause:  z.string(),
-  duration:   z.number().positive(),   // minutes
+  filedBy: z.object({ staffId: z.string(), role: z.string() }),
+  reportRef: z.string(),
+  rootCause: z.string(),
+  duration: z.number().positive(), // minutes
 });
 
 // ─── Role guard factories ──────────────────────────────────────────────────────
 
 // These would normally resolve from an auth token in a real system.
 // Here we use Guard.inject() so they can be provided at runtime.
-const isController   = Guard.inject('isController');
-const isDutyManager  = Guard.inject('isDutyManager');
-const isSupervisor   = Guard.inject('isSupervisor');
+const isController = Guard.inject('isController');
+const isDutyManager = Guard.inject('isDutyManager');
+const isSupervisor = Guard.inject('isSupervisor');
 
 // ─── Workflow definition ──────────────────────────────────────────────────────
 
@@ -151,46 +154,83 @@ const occDisruptionSop = createWorkflow({
     'incident-closed',
   ],
 })
-  .defineAction('VERIFY',              IncidentVerifySchema)
-  .defineAction('ESCALATE_TO_DM',      EscalateSchema)
-  .defineAction('AUTHORISE_RESPONSE',  AuthoriseSchema)
-  .defineAction('NOTIFY_OPS_TEAM',     NotifyOpsSchema)
-  .defineAction('NOTIFY_STN_MASTERS',  NotifyStnSchema)
-  .defineAction('NOTIFY_PUBLIC',       NotifyPublicSchema)
-  .defineAction('START_BUS_BRIDGE',    BusBridgeSchema)
-  .defineAction('BUS_BRIDGE_ACTIVE',   BusBridgeActiveSchema)
-  .defineAction('SERVICE_RESTORED',    ServiceRestoredSchema)
-  .defineAction('FILE_REPORT',         FileReportSchema)
+  .defineAction('VERIFY', IncidentVerifySchema)
+  .defineAction('ESCALATE_TO_DM', EscalateSchema)
+  .defineAction('AUTHORISE_RESPONSE', AuthoriseSchema)
+  .defineAction('NOTIFY_OPS_TEAM', NotifyOpsSchema)
+  .defineAction('NOTIFY_STN_MASTERS', NotifyStnSchema)
+  .defineAction('NOTIFY_PUBLIC', NotifyPublicSchema)
+  .defineAction('START_BUS_BRIDGE', BusBridgeSchema)
+  .defineAction('BUS_BRIDGE_ACTIVE', BusBridgeActiveSchema)
+  .defineAction('SERVICE_RESTORED', ServiceRestoredSchema)
+  .defineAction('FILE_REPORT', FileReportSchema)
 
   // States
-  .addStep('incident-detected',     { label: 'Incident Detected' })
-  .addStep('incident-verified',     { label: 'Incident Verified' })
+  .addStep('incident-detected', { label: 'Incident Detected' })
+  .addStep('incident-verified', { label: 'Incident Verified' })
   .addStep('duty-manager-notified', { label: 'DM Notified' })
-  .addStep('response-authorised',   { label: 'Response Authorised' })
-  .addFork('notification-fork',     { label: 'Notification Fork', targets: ['ops-team', 'stn-masters', 'public-comms'] })
-  .addStep('ops-team',              { label: 'Ops Team Notified' })
-  .addStep('stn-masters',           { label: 'Station Masters Notified' })
-  .addStep('public-comms',          { label: 'Public Comms Notified' })
-  .addJoin('notification-join',     { label: 'All Parties Notified', requires: ['ops-team', 'stn-masters', 'public-comms'], mode: 'all' })
-  .addWait('bus-bridging',          { label: 'Bus Bridging', externalName: 'bus-bridging-sop' })
-  .addStep('service-disrupted',     { label: 'Disruption Active' })
-  .addStep('service-restored',      { label: 'Service Restored' })
-  .addStep('incident-closed',       { label: 'Incident Closed' })
+  .addStep('response-authorised', { label: 'Response Authorised' })
+  .addFork('notification-fork', {
+    label: 'Notification Fork',
+    targets: ['ops-team', 'stn-masters', 'public-comms'],
+  })
+  .addStep('ops-team', { label: 'Ops Team Notified' })
+  .addStep('stn-masters', { label: 'Station Masters Notified' })
+  .addStep('public-comms', { label: 'Public Comms Notified' })
+  .addJoin('notification-join', {
+    label: 'All Parties Notified',
+    requires: ['ops-team', 'stn-masters', 'public-comms'],
+    mode: 'all',
+  })
+  .addWait('bus-bridging', { label: 'Bus Bridging', externalName: 'bus-bridging-sop' })
+  .addStep('service-disrupted', { label: 'Disruption Active' })
+  .addStep('service-restored', { label: 'Service Restored' })
+  .addStep('incident-closed', { label: 'Incident Closed' })
 
   .setInitial('incident-detected')
   .setTerminal(['incident-closed'])
 
-  .addTransition({ from: 'incident-detected',     to: 'incident-verified',     on: 'VERIFY',             guard: isController })
-  .addTransition({ from: 'incident-verified',     to: 'duty-manager-notified', on: 'ESCALATE_TO_DM',     guard: isController })
-  .addTransition({ from: 'duty-manager-notified', to: 'response-authorised',   on: 'AUTHORISE_RESPONSE', guard: isDutyManager })
-  .addTransition({ from: 'response-authorised',   to: 'notification-fork',     on: 'NOTIFY_OPS_TEAM' })   // fork entry — action name is reused below
-  .addTransition({ from: 'ops-team',              to: 'notification-join',     on: 'NOTIFY_OPS_TEAM' })
-  .addTransition({ from: 'stn-masters',           to: 'notification-join',     on: 'NOTIFY_STN_MASTERS' })
-  .addTransition({ from: 'public-comms',          to: 'notification-join',     on: 'NOTIFY_PUBLIC' })
-  .addTransition({ from: 'notification-join',     to: 'bus-bridging',          on: 'START_BUS_BRIDGE',   guard: isDutyManager })
-  .addTransition({ from: 'bus-bridging',          to: 'service-disrupted',     on: 'BUS_BRIDGE_ACTIVE' })
-  .addTransition({ from: 'service-disrupted',     to: 'service-restored',      on: 'SERVICE_RESTORED',   guard: isController })
-  .addTransition({ from: 'service-restored',      to: 'incident-closed',       on: 'FILE_REPORT',        guard: isSupervisor })
+  .addTransition({
+    from: 'incident-detected',
+    to: 'incident-verified',
+    on: 'VERIFY',
+    guard: isController,
+  })
+  .addTransition({
+    from: 'incident-verified',
+    to: 'duty-manager-notified',
+    on: 'ESCALATE_TO_DM',
+    guard: isController,
+  })
+  .addTransition({
+    from: 'duty-manager-notified',
+    to: 'response-authorised',
+    on: 'AUTHORISE_RESPONSE',
+    guard: isDutyManager,
+  })
+  .addTransition({ from: 'response-authorised', to: 'notification-fork', on: 'NOTIFY_OPS_TEAM' }) // fork entry — action name is reused below
+  .addTransition({ from: 'ops-team', to: 'notification-join', on: 'NOTIFY_OPS_TEAM' })
+  .addTransition({ from: 'stn-masters', to: 'notification-join', on: 'NOTIFY_STN_MASTERS' })
+  .addTransition({ from: 'public-comms', to: 'notification-join', on: 'NOTIFY_PUBLIC' })
+  .addTransition({
+    from: 'notification-join',
+    to: 'bus-bridging',
+    on: 'START_BUS_BRIDGE',
+    guard: isDutyManager,
+  })
+  .addTransition({ from: 'bus-bridging', to: 'service-disrupted', on: 'BUS_BRIDGE_ACTIVE' })
+  .addTransition({
+    from: 'service-disrupted',
+    to: 'service-restored',
+    on: 'SERVICE_RESTORED',
+    guard: isController,
+  })
+  .addTransition({
+    from: 'service-restored',
+    to: 'incident-closed',
+    on: 'FILE_REPORT',
+    guard: isSupervisor,
+  })
 
   .build();
 
@@ -216,17 +256,17 @@ async function runDisruptionSop() {
   console.log('\n=== Simulation: Signal Fault on NS Line, km 18.4 ===\n');
 
   // Personnel on shift
-  const ctrl:    OccActor = { staffId: 'OCC-C01', role: 'controller',     name: 'Controller Chen' };
-  const dm:      OccActor = { staffId: 'OCC-D03', role: 'duty-manager',   name: 'Duty Manager Lim' };
-  const supv:    OccActor = { staffId: 'OCC-S01', role: 'supervisor',     name: 'Supervisor Tan' };
+  const ctrl: OccActor = { staffId: 'OCC-C01', role: 'controller', name: 'Controller Chen' };
+  const dm: OccActor = { staffId: 'OCC-D03', role: 'duty-manager', name: 'Duty Manager Lim' };
+  const supv: OccActor = { staffId: 'OCC-S01', role: 'supervisor', name: 'Supervisor Tan' };
 
   const inst = occDisruptionSop.createInstance('INC-20240520-0042');
 
   // Inject role guards — in production these read from the caller's auth token
   inst
-    .injectGuard('isController',  async () => currentActor?.role === 'controller')
+    .injectGuard('isController', async () => currentActor?.role === 'controller')
     .injectGuard('isDutyManager', async () => currentActor?.role === 'duty-manager')
-    .injectGuard('isSupervisor',  async () => currentActor?.role === 'supervisor');
+    .injectGuard('isSupervisor', async () => currentActor?.role === 'supervisor');
 
   // Track who is performing the current action (simulates request context)
   let currentActor: OccActor | null = null;
@@ -234,19 +274,19 @@ async function runDisruptionSop() {
   // ── Step 1: Controller detects and verifies the incident ────────────────────
   currentActor = ctrl;
   await inst.dispatch('VERIFY', {
-    verifiedBy:   { staffId: ctrl.staffId, role: ctrl.role },
+    verifiedBy: { staffId: ctrl.staffId, role: ctrl.role },
     incidentType: 'signal-fault',
     affectedLine: 'NS',
-    affectedKm:   18.4,
-    summary:      'Signal failure at Jurong East junction — trains holding at JE and BN',
+    affectedKm: 18.4,
+    summary: 'Signal failure at Jurong East junction — trains holding at JE and BN',
   });
   logStep('1. Incident verified by Controller', inst.getCurrentStates());
 
   // ── Step 2: Controller escalates to Duty Manager ────────────────────────────
   await inst.dispatch('ESCALATE_TO_DM', {
     escalatedBy: { staffId: ctrl.staffId, role: ctrl.role },
-    dmStaffId:   dm.staffId,
-    urgency:     'P1',
+    dmStaffId: dm.staffId,
+    urgency: 'P1',
   });
   logStep('2. Escalated to DM', inst.getCurrentStates());
 
@@ -262,30 +302,30 @@ async function runDisruptionSop() {
   // NOTIFY_OPS_TEAM on 'response-authorised' triggers the fork entry
   currentActor = ctrl;
   await inst.dispatch('NOTIFY_OPS_TEAM', {
-    notifiedBy:  { staffId: ctrl.staffId },
-    channel:     'operations-system',
+    notifiedBy: { staffId: ctrl.staffId },
+    channel: 'operations-system',
     confirmedAt: new Date().toISOString(),
   });
   logStep('4. Fork entered → 3 streams active', inst.getCurrentStates());
 
   // ── Step 5: Each stream completes independently ─────────────────────────────
   await inst.dispatch('NOTIFY_STN_MASTERS', {
-    notifiedBy:    { staffId: ctrl.staffId },
+    notifiedBy: { staffId: ctrl.staffId },
     stationsCount: 5,
-    method:        'OCC-intercom',
+    method: 'OCC-intercom',
   });
   logStep('5. Station masters notified', inst.getCurrentStates());
 
   await inst.dispatch('NOTIFY_PUBLIC', {
-    notifiedBy:   { staffId: ctrl.staffId },
+    notifiedBy: { staffId: ctrl.staffId },
     channelsUsed: ['display-boards', 'announcement', 'twitter'],
   });
   logStep('6. Public comms notified', inst.getCurrentStates());
 
   // Final ops-team notification — triggers JoinState auto-activation
   await inst.dispatch('NOTIFY_OPS_TEAM', {
-    notifiedBy:  { staffId: ctrl.staffId },
-    channel:     'radio',
+    notifiedBy: { staffId: ctrl.staffId },
+    channel: 'radio',
     confirmedAt: new Date().toISOString(),
   });
   logStep('7. Join activated (all notified)', inst.getCurrentStates());
@@ -314,26 +354,26 @@ async function runDisruptionSop() {
   currentActor = ctrl;
   await inst.dispatch('BUS_BRIDGE_ACTIVE', {
     confirmedBy: { staffId: ctrl.staffId },
-    busCount:    12,
-    firstBusAt:  new Date().toISOString(),
+    busCount: 12,
+    firstBusAt: new Date().toISOString(),
   });
   logStep('10. Bus bridge active — disruption managed', inst.getCurrentStates());
 
   // ── Step 9: Service restored after engineers fix the signal ─────────────────
   await inst.dispatch('SERVICE_RESTORED', {
     confirmedBy: { staffId: ctrl.staffId, role: ctrl.role },
-    restoredAt:  new Date().toISOString(),
-    remarks:     'Signal equipment replaced by P-Way team. Test runs completed.',
+    restoredAt: new Date().toISOString(),
+    remarks: 'Signal equipment replaced by P-Way team. Test runs completed.',
   });
   logStep('11. Service restored', inst.getCurrentStates());
 
   // ── Step 10: Supervisor closes with post-incident report ────────────────────
   currentActor = supv;
   await inst.dispatch('FILE_REPORT', {
-    filedBy:   { staffId: supv.staffId, role: supv.role },
+    filedBy: { staffId: supv.staffId, role: supv.role },
     reportRef: 'PIR-20240520-0042',
     rootCause: 'Degraded signal relay at NS-18 — scheduled replacement overdue by 14 days',
-    duration:  87,
+    duration: 87,
   });
   logStep('12. Report filed — incident closed', inst.getCurrentStates());
 
@@ -353,17 +393,17 @@ async function runDisruptionSop() {
   const blocked = occDisruptionSop.createInstance('INC-BLOCKED-DEMO');
   let blockedActor: OccActor | null = null;
   blocked
-    .injectGuard('isController',  async () => blockedActor?.role === 'controller')
+    .injectGuard('isController', async () => blockedActor?.role === 'controller')
     .injectGuard('isDutyManager', async () => blockedActor?.role === 'duty-manager')
-    .injectGuard('isSupervisor',  async () => blockedActor?.role === 'supervisor');
+    .injectGuard('isSupervisor', async () => blockedActor?.role === 'supervisor');
 
   blockedActor = stnMaster;
   const denyResult = await blocked.dispatch('VERIFY', {
-    verifiedBy:   { staffId: stnMaster.staffId, role: stnMaster.role },
+    verifiedBy: { staffId: stnMaster.staffId, role: stnMaster.role },
     incidentType: 'track-obstruction',
     affectedLine: 'EW',
-    affectedKm:   5.1,
-    summary:      'Object on track reported by driver',
+    affectedKm: 5.1,
+    summary: 'Object on track reported by driver',
   });
 
   if (!denyResult.success) {
@@ -377,7 +417,12 @@ async function runDisruptionSop() {
   console.log(`  Nodes   : ${graph.nodes.length}`);
   console.log(`  Edges   : ${graph.edges.length}`);
   console.log(`  Actions : ${graph.meta.actionNames.join(', ')}`);
-  console.log(`  Guarded transitions: ${graph.edges.filter((e) => e.hasGuard).map((e) => e.action).join(', ')}`);
+  console.log(
+    `  Guarded transitions: ${graph.edges
+      .filter((e) => e.hasGuard)
+      .map((e) => e.action)
+      .join(', ')}`,
+  );
 }
 
 runDisruptionSop().catch(console.error);

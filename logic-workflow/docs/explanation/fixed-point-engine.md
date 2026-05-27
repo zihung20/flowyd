@@ -4,7 +4,6 @@ The engine must handle `ForkState` (which immediately activates multiple states)
 
 The fixed-point loop is how all of this resolves in a single `dispatch` call.
 
-
 ## The algorithm
 
 After applying the explicit transitions for a dispatched action, the engine enters a loop:
@@ -24,7 +23,6 @@ loop:
 
 This is a **fixed-point iteration** (also called Kleene iteration). The loop terminates when a full pass produces no new state changes. Because states only move forward (`idle → active → completed`) and never backwards, the loop is guaranteed to terminate.
 
-
 ## Why it matters
 
 Consider this graph:
@@ -43,16 +41,13 @@ start ──GO──▶ fork-1 ⑂
 
 Without the fixed-point loop, activating `join-1` would require the caller to dispatch a second action to enter `fork-2`. With the loop, a single `GO` dispatch resolves the entire chain — `fork-1` fires, `a` and `b` activate, then on later dispatches `join-1` fires and immediately `fork-2` fires, all within a single `dispatch` call.
 
-
 ## Termination proof
 
 The state space is finite. Every state has exactly four statuses: `idle`, `active`, `waiting`, `completed`. Transitions are monotonic — a state can only move to a later status, never backwards. Therefore the number of possible state-space configurations is bounded, and each iteration of the fixed-point loop strictly decreases the number of `idle` states or terminates unchanged. The loop must terminate in at most `|states|` iterations.
 
-
 ## Fork atomicity
 
 A `ForkState` is entered and completed in the same iteration of the fixed-point loop — it is never left in `active` status between iterations. This means `getCurrentStates()` will never return a `ForkState` ID. Forks are transient by design: they are routing nodes, not positions.
-
 
 ## JoinState activation condition
 

@@ -145,7 +145,10 @@ describe('WorkflowBuilder', () => {
       .addStep('electrical')
       .addStep('safety-systems')
       // requires autocompletes to the declared state union:
-      .addJoin('all-clear', { requires: ['mechanical', 'electrical', 'safety-systems'], mode: 'all' })
+      .addJoin('all-clear', {
+        requires: ['mechanical', 'electrical', 'safety-systems'],
+        mode: 'all',
+      })
       .addStep('done')
       .setInitial('start')
       .setTerminal(['done'])
@@ -169,8 +172,8 @@ describe('WorkflowBuilder', () => {
       .setTerminal(['passed'])
       .addTransition({
         from: 'pending',
-        to:   'passed',
-        on:   'SCORE',
+        to: 'passed',
+        on: 'SCORE',
         guard: (ctx) => ctx.payload.score >= 80,
       })
       .build();

@@ -25,7 +25,9 @@ describe('Engine — terminal state', () => {
     await inst.dispatch('GO', {});
     const result = await inst.dispatch('GO', {});
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.reason).toBe('terminal-state');
+    if (!result.success) {
+      expect(result.reason).toBe('terminal-state');
+    }
   });
 
   it('snapshot.isTerminal is true after terminal state is reached', async () => {
@@ -55,14 +57,18 @@ describe('Engine — no-active-source', () => {
     await inst.dispatch('GO', {});
     const result = await inst.dispatch('BACK', {});
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.reason).toBe('no-active-source');
+    if (!result.success) {
+      expect(result.reason).toBe('no-active-source');
+    }
   });
 
   it('returns invalid-action when the action has no transitions at all', async () => {
     const inst = linear.createInstance('e-004');
     const result = await inst.dispatch('BACK', {});
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.reason).toBe('invalid-action');
+    if (!result.success) {
+      expect(result.reason).toBe('invalid-action');
+    }
   });
 });
 
@@ -78,7 +84,9 @@ describe('Engine — invalid-action', () => {
       .build();
 
     const inst = wf.createInstance('e-inv-001');
-    await expect(inst.dispatch('GO' as const, {} as never)).resolves.toMatchObject({ success: true });
+    await expect(inst.dispatch('GO' as const, {} as never)).resolves.toMatchObject({
+      success: true,
+    });
   });
 });
 
@@ -97,7 +105,9 @@ describe('Engine — guard evaluation', () => {
     inst.injectGuard('canGo', () => false);
     const result = await inst.dispatch('GO', {});
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.reason).toBe('guard-failed');
+    if (!result.success) {
+      expect(result.reason).toBe('guard-failed');
+    }
     expect(inst.getCurrentStates()).toEqual(['a']);
   });
 
@@ -144,7 +154,9 @@ describe('Engine — guard evaluation', () => {
     const inst = wf.createInstance('ng-001');
     const result = await inst.dispatch('GO', {});
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.reason).toBe('guard-failed');
+    if (!result.success) {
+      expect(result.reason).toBe('guard-failed');
+    }
   });
 });
 
@@ -152,7 +164,9 @@ describe('Engine — DispatchResult shape on success', () => {
   it('includes enteredStates and exitedStates', async () => {
     const inst = linear.createInstance('rs-001');
     const result = await inst.dispatch('GO', {});
-    if (!result.success) throw new Error('expected success');
+    if (!result.success) {
+      throw new Error('expected success');
+    }
     expect(result.enteredStates).toContain('b');
     expect(result.exitedStates).toContain('a');
   });
@@ -160,7 +174,9 @@ describe('Engine — DispatchResult shape on success', () => {
   it('includes the updated snapshot', async () => {
     const inst = linear.createInstance('rs-002');
     const result = await inst.dispatch('GO', {});
-    if (!result.success) throw new Error('expected success');
+    if (!result.success) {
+      throw new Error('expected success');
+    }
     expect(result.snapshot.version).toBe(1);
     expect(result.snapshot.stateStatuses['b']).toBe(StateStatus.Active);
   });
@@ -186,7 +202,9 @@ describe('Engine — Fork fan-out', () => {
   it('activates all three targets when fork is entered', async () => {
     const inst = forked.createInstance('fe-001');
     const result = await inst.dispatch('START', {});
-    if (!result.success) throw new Error('expected success');
+    if (!result.success) {
+      throw new Error('expected success');
+    }
     expect([...result.enteredStates].sort()).toEqual(['x', 'y', 'z']);
     expect([...inst.getCurrentStates()].sort()).toEqual(['x', 'y', 'z']);
   });

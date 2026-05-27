@@ -87,7 +87,9 @@ export class WorkflowEngine {
 
     for (const candidate of candidates) {
       const allowed = candidate.guard ? await candidate.guard.evaluate(guardCtx) : true;
-      if (allowed) passing.push(candidate);
+      if (allowed) {
+        passing.push(candidate);
+      }
     }
 
     if (passing.length === 0) {
@@ -100,7 +102,11 @@ export class WorkflowEngine {
     }
 
     // Compute resulting state changes without mutating the instance
-    const result = WorkflowEngine.computeTransitions(passing, definition, currentSnapshot.stateStatuses);
+    const result = WorkflowEngine.computeTransitions(
+      passing,
+      definition,
+      currentSnapshot.stateStatuses,
+    );
 
     // Determine if the workflow has reached a terminal state
     const isTerminal = definition.terminalStateIds.some(
@@ -166,8 +172,12 @@ export class WorkflowEngine {
     while (changed) {
       changed = false;
       for (const [id, state] of definition.states) {
-        if (state.kind !== StateKind.Join) continue;
-        if (newStatuses.get(id) !== StateStatus.Idle) continue;
+        if (state.kind !== StateKind.Join) {
+          continue;
+        }
+        if (newStatuses.get(id) !== StateStatus.Idle) {
+          continue;
+        }
 
         if (WorkflowEngine.joinConditionMet(state, newStatuses)) {
           newStatuses.set(id, StateStatus.Active);
@@ -194,7 +204,9 @@ export class WorkflowEngine {
     entered: string[],
   ): void {
     const state = definition.states.get(stateId);
-    if (!state) throw new Error(`State "${stateId}" referenced in a transition but not registered`);
+    if (!state) {
+      throw new Error(`State "${stateId}" referenced in a transition but not registered`);
+    }
 
     switch (state.kind) {
       case StateKind.Step:
@@ -232,8 +244,12 @@ export class WorkflowEngine {
       (id) => statuses.get(id) === StateStatus.Completed,
     ).length;
 
-    if (join.mode === 'all') return completedCount === join.requires.length;
-    if (join.mode === 'any') return completedCount >= 1;
+    if (join.mode === 'all') {
+      return completedCount === join.requires.length;
+    }
+    if (join.mode === 'any') {
+      return completedCount >= 1;
+    }
     return completedCount >= join.mode;
   }
 

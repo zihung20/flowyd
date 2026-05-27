@@ -2,7 +2,6 @@
 
 `WaitState` lets a parent workflow pause until an external signal arrives — a third-party API, a background job, a webhook, or any other asynchronous process — before continuing.
 
-
 ## How it works
 
 When the engine enters a `WaitState`:
@@ -15,7 +14,6 @@ When the engine enters a `WaitState`:
 
 The engine has **no polling, no callbacks, no I/O**. The `externalName` string is purely documentary.
 
-
 ## Code
 
 ```ts
@@ -26,7 +24,7 @@ const vendorOnboarding = createWorkflow({
   name: 'vendor-onboarding',
   states: ['draft', 'kyc-check', 'approved', 'rejected'],
 })
-  .defineAction('SUBMIT',     z.object({ vendorId: z.string() }))
+  .defineAction('SUBMIT', z.object({ vendorId: z.string() }))
   .defineAction('KYC_PASSED', z.object({}))
   .defineAction('KYC_FAILED', z.object({ reason: z.string() }))
 
@@ -37,12 +35,11 @@ const vendorOnboarding = createWorkflow({
 
   .setInitial('draft')
   .setTerminal(['approved', 'rejected'])
-  .addTransition({ from: 'draft',     to: 'kyc-check', on: 'SUBMIT' })
-  .addTransition({ from: 'kyc-check', to: 'approved',  on: 'KYC_PASSED' })
-  .addTransition({ from: 'kyc-check', to: 'rejected',  on: 'KYC_FAILED' })
+  .addTransition({ from: 'draft', to: 'kyc-check', on: 'SUBMIT' })
+  .addTransition({ from: 'kyc-check', to: 'approved', on: 'KYC_PASSED' })
+  .addTransition({ from: 'kyc-check', to: 'rejected', on: 'KYC_FAILED' })
   .build();
 ```
-
 
 ## Service-layer pattern
 
@@ -53,7 +50,7 @@ Your service is responsible for orchestrating the external process and signallin
 async function onKycComplete(
   parentInstanceId: string,
   passed: boolean,
-  kycSnapshot: InstanceSnapshot,  // optional — stored for audit
+  kycSnapshot: InstanceSnapshot, // optional — stored for audit
 ) {
   // 1. Load the parent instance
   const row = await db.workflowSnapshots.findUnique({ where: { id: parentInstanceId } });
@@ -71,12 +68,11 @@ async function onKycComplete(
   if (result.success) {
     await db.workflowSnapshots.update({
       where: { id: parentInstanceId },
-      data:  { snapshot: inst.getSnapshot() },
+      data: { snapshot: inst.getSnapshot() },
     });
   }
 }
 ```
-
 
 ## `resolveWait` signature
 
@@ -93,14 +89,14 @@ inst.resolveWait(
 - Optionally stores `externalSnapshot` in the history for auditability.
 
 **Throws** if:
+
 - `stateId` is not a `WaitState`.
 - The state is not currently `waiting`.
-
 
 ## Querying the paused position
 
 ```ts
-inst.getCurrentStates()
+inst.getCurrentStates();
 // Returns IDs of all states with status 'active' OR 'waiting'.
 // 'waiting' states are included because they represent where the workflow is.
 ```

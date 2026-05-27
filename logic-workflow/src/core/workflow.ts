@@ -65,7 +65,7 @@ export class Workflow<TActions extends ActionPayloadMap> {
     if (snapshot.workflowName !== this.definition.name) {
       throw new Error(
         `Cannot restore snapshot: workflow name mismatch. ` +
-        `Expected "${this.definition.name}", got "${snapshot.workflowName}"`,
+          `Expected "${this.definition.name}", got "${snapshot.workflowName}"`,
       );
     }
     return new WorkflowInstance<TActions>(this.definition, structuredClone(snapshot));

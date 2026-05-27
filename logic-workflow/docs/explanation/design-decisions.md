@@ -2,18 +2,17 @@
 
 This article explains the reasoning behind the library's most distinctive choices. Each decision reflects a constraint that was considered and consciously accepted.
 
-
 ## Zod as the single source of truth for types
 
 Every payload type in the library is derived from a Zod schema via `z.infer<typeof MySchema>`. Writing a TypeScript `interface` and then mirroring it in a Zod schema duplicates the contract — the two inevitably drift.
 
 Zod schemas serve triple duty:
+
 1. **TypeScript type** — `z.infer<>` produces the type for free
 2. **Runtime validator** — called by the engine before every `dispatch`
 3. **Schema introspection** — a future JSON Schema or OpenAPI exporter can derive its output from the same Zod object
 
 This is why `defineAction(name, schema)` accepts a `ZodSchema` directly rather than a plain TypeScript type.
-
 
 ## No silent failures — everything throws
 
@@ -22,7 +21,6 @@ The library has a rule: functions that can fail must throw. They do not return `
 The motivation is observability. A `null` return from `getNode(id)` puts the burden on every caller to check and handle it. One caller who forgets creates a silent failure that surfaces as a confusing downstream error — often in production. A thrown `Error` with a precise message surfaces immediately at the call site.
 
 The only exception to this rule is `dispatch`, which returns `TransitionBlocked` for domain failures (`guard-failed`, `terminal-state`, etc.) rather than throwing. This is intentional: those are valid, expected outcomes that the caller's business logic must handle. They are not programming errors. Contrast with payload validation failure, which throws `ZodError` — that is always a bug in the caller.
-
 
 ## Purely functional persistence
 
@@ -35,13 +33,11 @@ This decoupling has several benefits:
 - **Auditability** — the snapshot is human-readable JSON; you can inspect it directly in any database client
 - **Version conflicts** — `snapshot.version` gives you a free optimistic-concurrency token; no additional infrastructure required
 
-
 ## The engine has no I/O
 
 `WorkflowEngine` is a pure function: given a snapshot and an action, it returns a new snapshot. It does not call `setTimeout`, `fetch`, or any other I/O primitive. Guards that need I/O (database lookups, auth checks) are injected at runtime via `injectGuard` — the engine calls them as opaque `() => Promise<boolean>` callbacks.
 
 This makes the engine deterministic and synchronously testable: inject a guard that resolves to a fixed value and run the engine. No mocking, no waiting.
-
 
 ## Guard injections are not persisted
 
@@ -53,7 +49,6 @@ This is an explicit, visible requirement rather than a hidden footgun. The error
 Error: Guard "isManager" has not been injected. Call instance.injectGuard("isManager", fn).
 ```
 
-
 ## Visualization is a separate entry point
 
 The `MermaidExporter` and `JsonGraphExporter` live in `logic-workflow/visualization` — a separate package entry point. This means:
@@ -63,7 +58,6 @@ The `MermaidExporter` and `JsonGraphExporter` live in `logic-workflow/visualizat
 3. Future exporters (e.g., SVG, BPMN) can be added without touching any core file
 
 The physical separation enforces the architectural rule at the toolchain level, not just by convention.
-
 
 ## WorkflowBuilder: Config-First state declaration
 

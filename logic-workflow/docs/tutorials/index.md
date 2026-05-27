@@ -2,13 +2,11 @@
 
 Tutorials are **learning-oriented**. They take you from nothing to a working result, step by step. You do not need to understand every detail to follow along — understanding comes from doing.
 
-
 ## Available tutorials
 
 ### [Build your first workflow](./first-workflow)
 
 Start here. You will build a complete purchase-order approval workflow from scratch: define actions, wire states, inject a guard, dispatch events, and persist the result. Takes about 10–15 minutes.
-
 
 ## What comes next?
 

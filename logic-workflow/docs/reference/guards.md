@@ -7,7 +7,6 @@ import { Guard } from 'logic-workflow';
 import type { IGuard, GuardFn, GuardContext } from 'logic-workflow';
 ```
 
-
 ## IGuard interface
 
 ```ts
@@ -16,22 +15,19 @@ interface IGuard<TPayload = unknown> {
 }
 ```
 
-
 ## GuardContext
 
 ```ts
 interface GuardContext<TPayload> {
-  payload:       TPayload;                 // the validated action payload
-  instanceState: ReadonlyInstanceState;    // current status of all states
-  resolveGuard:  (name: string) => IGuard; // internal; used by InjectedGuard
+  payload: TPayload; // the validated action payload
+  instanceState: ReadonlyInstanceState; // current status of all states
+  resolveGuard: (name: string) => IGuard; // internal; used by InjectedGuard
 }
 ```
-
 
 ## Guard factory
 
 All guards are constructed through the `Guard` namespace. Do not instantiate guard classes directly — the factory is the public API.
-
 
 ### `Guard.inject`
 
@@ -42,11 +38,10 @@ Guard.inject(name: string): InjectedGuard
 Declares a named guard placeholder resolved at runtime from `inst.injectGuard()`.
 
 ```ts
-Guard.inject('isManager')
+Guard.inject('isManager');
 ```
 
 **Throws** at evaluation time (not at build time) if the named guard has not been injected.
-
 
 ### `Guard.fn`
 
@@ -59,9 +54,8 @@ Guard.fn<TPayload>(
 Wraps an inline function as a guard.
 
 ```ts
-Guard.fn<{ role: string }>((ctx) => ctx.payload.role === 'admin')
+Guard.fn<{ role: string }>((ctx) => ctx.payload.role === 'admin');
 ```
-
 
 ### `Guard.stateCompleted`
 
@@ -72,9 +66,8 @@ Guard.stateCompleted(stateId: string): StateCompletedGuard
 Returns `true` when the named state has status `'completed'`.
 
 ```ts
-Guard.stateCompleted('legal-review')
+Guard.stateCompleted('legal-review');
 ```
-
 
 ### `Guard.stateActive`
 
@@ -83,7 +76,6 @@ Guard.stateActive(stateId: string): StateActiveGuard
 ```
 
 Returns `true` when the named state has status `'active'`.
-
 
 ### `Guard.and`
 
@@ -94,9 +86,8 @@ Guard.and(guards: IGuard[]): AndGuard
 Returns `true` only if **all** guards return `true`. Short-circuits on the first `false`.
 
 ```ts
-Guard.and([Guard.inject('isManager'), Guard.stateCompleted('legal-review')])
+Guard.and([Guard.inject('isManager'), Guard.stateCompleted('legal-review')]);
 ```
-
 
 ### `Guard.or`
 
@@ -107,9 +98,8 @@ Guard.or(guards: IGuard[]): OrGuard
 Returns `true` if **at least one** guard returns `true`. Short-circuits on the first `true`.
 
 ```ts
-Guard.or([Guard.inject('isSupervisor'), Guard.inject('isAdmin')])
+Guard.or([Guard.inject('isSupervisor'), Guard.inject('isAdmin')]);
 ```
-
 
 ### `Guard.not`
 
@@ -120,9 +110,8 @@ Guard.not(guard: IGuard): NotGuard
 Inverts the result of the wrapped guard.
 
 ```ts
-Guard.not(Guard.inject('isBlocked'))
+Guard.not(Guard.inject('isBlocked'));
 ```
-
 
 ### `Guard.always`
 
@@ -132,7 +121,6 @@ Guard.always(): AlwaysGuard
 
 Always returns `true`. Useful as a test double or explicit unconditional transition.
 
-
 ### `Guard.never`
 
 ```ts
@@ -140,7 +128,6 @@ Guard.never(): NeverGuard
 ```
 
 Always returns `false`. Useful as a sentinel in test scenarios.
-
 
 ## Using a raw function as a guard
 

@@ -26,7 +26,10 @@
       "Bash(node *)",
       "Bash(npx playwright *)",
       "Bash(python3 -c \"import playwright; print\\('python playwright ok'\\)\")",
-      "Bash(npx --yes playwright --version)"
+      "Bash(npx --yes playwright --version)",
+      "Bash(pnpm add *)",
+      "Bash(pnpm format *)",
+      "Bash(pnpm lint:fix *)"
     ]
   }
 }

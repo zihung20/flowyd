@@ -8,7 +8,6 @@ import { MermaidExporter, JsonGraphExporter } from 'logic-workflow/visualization
 
 Both exporters are stateless — call them with a definition object and an optional snapshot.
 
-
 ## MermaidExporter
 
 ```ts
@@ -30,12 +29,12 @@ const diagram = MermaidExporter.export(workflow.getDefinition(), inst.getSnapsho
 
 ### State kind indicators
 
-| Kind | Label suffix |
-|------|-------------|
-| `step` | _(none)_ |
-| `fork` | ` ⑂` |
-| `join` | ` ⑁` |
-| `wait` | ` ⤴` |
+| Kind   | Label suffix |
+| ------ | ------------ |
+| `step` | _(none)_     |
+| `fork` | ` ⑂`         |
+| `join` | ` ⑁`         |
+| `wait` | ` ⤴`         |
 
 ### Live status overlay
 
@@ -49,11 +48,16 @@ class legal_review completed
 CSS classes emitted: `active`, `waiting`, `completed`. Style them in your renderer:
 
 ```css
-.active   { fill: #2196F3; }
-.waiting  { fill: #FF9800; }
-.completed { fill: #4CAF50; }
+.active {
+  fill: #2196f3;
+}
+.waiting {
+  fill: #ff9800;
+}
+.completed {
+  fill: #4caf50;
+}
 ```
-
 
 ## JsonGraphExporter
 
@@ -66,22 +70,21 @@ JsonGraphExporter.export(
 
 Returns a plain JSON-serialisable `{ nodes, edges }` object for use with D3.js, React Flow, Cytoscape.js, or any graph renderer.
 
-
 ### JsonGraph
 
 ```ts
 interface JsonGraph {
-  name:  string;
+  name: string;
   nodes: JsonGraphNode[];
   edges: JsonGraphEdge[];
   meta: {
-    initialStateId:   string;
+    initialStateId: string;
     terminalStateIds: string[];
-    actionNames:      string[];
+    actionNames: string[];
     instance?: {
-      instanceId:  string;
-      version:     number;
-      isTerminal:  boolean;
+      instanceId: string;
+      version: number;
+      isTerminal: boolean;
     };
   };
 }
@@ -91,18 +94,18 @@ interface JsonGraph {
 
 ```ts
 interface JsonGraphNode {
-  id:               string;
-  kind:             'step' | 'fork' | 'join' | 'wait';
-  label:            string;
-  isInitial:        boolean;
-  isTerminal:       boolean;
-  status?:          StateStatus;   // present only when a snapshot is provided
-  targets?:         string[];      // ForkState only
+  id: string;
+  kind: 'step' | 'fork' | 'join' | 'wait';
+  label: string;
+  isInitial: boolean;
+  isTerminal: boolean;
+  status?: StateStatus; // present only when a snapshot is provided
+  targets?: string[]; // ForkState only
   join?: {
     requires: string[];
-    mode:     string | number;
-  };                               // JoinState only
-  externalName?: string;           // WaitState only
+    mode: string | number;
+  }; // JoinState only
+  externalName?: string; // WaitState only
 }
 ```
 
@@ -110,14 +113,13 @@ interface JsonGraphNode {
 
 ```ts
 interface JsonGraphEdge {
-  id:       string;   // "{from}__{action}__{to}__{index}"
-  from:     string;
-  to:       string;
-  action:   string;
+  id: string; // "{from}__{action}__{to}__{index}"
+  from: string;
+  to: string;
+  action: string;
   hasGuard: boolean;
 }
 ```
-
 
 ## Getting the definition
 

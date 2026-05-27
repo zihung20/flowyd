@@ -10,49 +10,45 @@ type DispatchResult = TransitionSuccess | TransitionBlocked;
 import type { DispatchResult, TransitionSuccess, TransitionBlocked } from 'logic-workflow';
 ```
 
-
 ## TransitionSuccess
 
 ```ts
 interface TransitionSuccess {
-  success:       true;
-  action:        string;
-  enteredStates: readonly string[];   // states that became active/waiting in this tick
-  exitedStates:  readonly string[];   // states that completed in this tick
-  snapshot:      InstanceSnapshot;    // the new snapshot (already committed internally)
+  success: true;
+  action: string;
+  enteredStates: readonly string[]; // states that became active/waiting in this tick
+  exitedStates: readonly string[]; // states that completed in this tick
+  snapshot: InstanceSnapshot; // the new snapshot (already committed internally)
 }
 ```
 
 When `success` is `true`, the internal instance state has already been updated. Save `inst.getSnapshot()` to your database.
 
-
 ## TransitionBlocked
 
 ```ts
 interface TransitionBlocked {
-  success:      false;
-  action:       string;
+  success: false;
+  action: string;
   reason:
-    | 'terminal-state'    // workflow has already ended
-    | 'invalid-action'    // no transitions exist for this action name
-    | 'no-active-source'  // action exists but none of its source states are active
-    | 'guard-failed';     // all matching transitions were blocked by guards
+    | 'terminal-state' // workflow has already ended
+    | 'invalid-action' // no transitions exist for this action name
+    | 'no-active-source' // action exists but none of its source states are active
+    | 'guard-failed'; // all matching transitions were blocked by guards
   activeStates: string[];
 }
 ```
 
 When `success` is `false`, **the instance state is unchanged**. No persistence is needed.
 
-
 ## Reason reference
 
-| Reason | Meaning | Typical HTTP response |
-|--------|---------|----------------------|
-| `terminal-state` | The workflow has already reached a terminal state | 409 Conflict |
-| `invalid-action` | The action name has no transitions defined | 400 Bad Request |
-| `no-active-source` | The action is defined but no active state has this transition | 400 Bad Request |
-| `guard-failed` | Transitions exist and source states are active, but all guards blocked | 403 Forbidden |
-
+| Reason             | Meaning                                                                | Typical HTTP response |
+| ------------------ | ---------------------------------------------------------------------- | --------------------- |
+| `terminal-state`   | The workflow has already reached a terminal state                      | 409 Conflict          |
+| `invalid-action`   | The action name has no transitions defined                             | 400 Bad Request       |
+| `no-active-source` | The action is defined but no active state has this transition          | 400 Bad Request       |
+| `guard-failed`     | Transitions exist and source states are active, but all guards blocked | 403 Forbidden         |
 
 ## Pattern: exhaustive switch
 
@@ -74,7 +70,6 @@ if (!result.success) {
 // result.success is true here
 await db.save(inst.getSnapshot());
 ```
-
 
 ## Throws vs returns failure
 
