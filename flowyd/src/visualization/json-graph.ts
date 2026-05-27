@@ -28,6 +28,7 @@ export interface JsonGraphNode {
  * A directed edge in the serialised JSON graph.
  */
 export interface JsonGraphEdge {
+  /** Auto-generated opaque identifier — do not parse or persist. Treat as stable only within a single export call. */
   id: string;
   from: string;
   to: string;

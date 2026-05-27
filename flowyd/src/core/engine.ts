@@ -31,10 +31,10 @@ interface EvaluationResult {
  * Pure, stateless engine that evaluates a dispatched action against the
  * current instance state and computes the resulting state changes.
  *
- * The engine never mutates the instance directly — it returns a computed
- * `EvaluationResult` which `WorkflowInstance` applies atomically. This
- * separation means the engine is trivially unit-testable and can be
- * exercised with any state snapshot.
+ * The engine never mutates the instance directly — it returns a new
+ * `DispatchResult` (including an updated snapshot on success) that
+ * `WorkflowInstance` applies atomically. This separation means the engine
+ * is trivially unit-testable and can be exercised with any state snapshot.
  */
 export class WorkflowEngine {
   /**
@@ -49,6 +49,8 @@ export class WorkflowEngine {
    * @param context         - The accumulated instance context, passed through to guards.
    * @returns A `DispatchResult` discriminated union. On success, includes the
    *          updated snapshot and lists of entered/exited states.
+   * @throws Any error thrown by a guard's `evaluate()` method — guard errors
+   *         are not caught by the engine and propagate directly to the caller.
    */
   static async dispatch(
     definition: WorkflowDefinition,
@@ -68,7 +70,6 @@ export class WorkflowEngine {
       };
     }
 
-    // Find all transitions that could fire: source is active AND action matches
     const candidates = definition.transitions.filter(
       (t) => t.on === action && instanceState.isStateActive(t.from),
     );
@@ -83,7 +84,6 @@ export class WorkflowEngine {
       };
     }
 
-    // Evaluate guards for each candidate
     const guardCtx = WorkflowEngine.buildGuardContext(payload, instanceState, guardRegistry, context);
     const passing: TransitionDefinition[] = [];
 
@@ -103,14 +103,12 @@ export class WorkflowEngine {
       };
     }
 
-    // Compute resulting state changes without mutating the instance
     const result = WorkflowEngine.computeTransitions(
       passing,
       definition,
       currentSnapshot.stateStatuses,
     );
 
-    // Determine if the workflow has reached a terminal state
     const isTerminal = definition.terminalStateIds.some(
       (id) => result.newStatuses.get(id) === StateStatus.Active,
     );
@@ -162,7 +160,6 @@ export class WorkflowEngine {
     const enteredStates: string[] = [];
     const exitedStates: string[] = [];
 
-    // Apply each passing transition
     for (const t of transitions) {
       newStatuses.set(t.from, StateStatus.Completed);
       exitedStates.push(t.from);
@@ -226,7 +223,7 @@ export class WorkflowEngine {
       }
 
       case StateKind.Join:
-        // JoinState activation is deferred to the fixed-point loop above;
+        // JoinState activation is deferred to the fixed-point loop in computeTransitions;
         // no status change is applied here.
         break;
 
@@ -258,7 +255,7 @@ export class WorkflowEngine {
   /**
    * Constructs the `GuardContext` passed to every guard during evaluation.
    *
-   * Provides the typed payload, the accumulated instance context, the live
+   * Provides the validated payload, the accumulated instance context, the live
    * instance state view, and the guard resolution function for `InjectedGuard`
    * lookups.
    */

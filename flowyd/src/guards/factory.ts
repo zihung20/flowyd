@@ -9,7 +9,7 @@ import { AlwaysGuard, NeverGuard, FnGuard } from './primitives.js';
 /**
  * Factory namespace for constructing and composing guards.
  *
- * All methods return an `IGuard<unknown>` so guards can be freely stored in
+ * All guards implement `IGuard<unknown>` so they can be freely stored in
  * `TransitionDefinition.guard` without carrying payload-type parameters at
  * the graph definition level. Payload typing is enforced at the
  * `instance.injectGuard<TPayload>()` and `Guard.fn<TPayload>()` call sites.
@@ -59,6 +59,7 @@ export const Guard = {
    * Short-circuits on the first failure.
    *
    * @param guards - At least two guards to evaluate in order.
+   * @throws {Error} If fewer than two guards are provided.
    */
   and(guards: IGuard<unknown>[]): AndGuard {
     return new AndGuard(guards);
@@ -69,6 +70,7 @@ export const Guard = {
    * Short-circuits on the first success.
    *
    * @param guards - At least two guards to evaluate in order.
+   * @throws {Error} If fewer than two guards are provided.
    */
   or(guards: IGuard<unknown>[]): OrGuard {
     return new OrGuard(guards);
@@ -84,11 +86,15 @@ export const Guard = {
   },
 
   /**
-   * Wraps a typed inline function as a guard, for cases where you prefer
-   * not to register a named injectable.
+   * Wraps a typed function as a guard. Useful when the same guard logic is
+   * shared across multiple transitions — store it in a variable and pass it
+   * to each `addTransition` call. For one-off inline guards prefer the arrow
+   * function shorthand directly on `addTransition`'s `guard:` property.
    *
    * ```ts
-   * Guard.fn<ApprovePayload, MyContext>((ctx) => ctx.context.score >= 80)
+   * const highScore = Guard.fn<ApprovePayload, MyContext>((ctx) => ctx.context.score >= 80);
+   * builder.addTransition({ from: 'a', to: 'b', on: 'APPROVE', guard: highScore });
+   * builder.addTransition({ from: 'a', to: 'c', on: 'APPROVE', guard: highScore });
    * ```
    *
    * @template T        - The expected payload type. Validated by the action
