@@ -118,6 +118,7 @@ const snapshot = inst.getSnapshot();  // plain JSON — save wherever you want
 - **Typed instance context** — `setContext(schema)` makes context required at `createInstance` time; guards read it via `ctx.context`; `getContext()` returns `TContext | undefined` with no cast
 - **Fully generic type chain** — `WorkflowDefinition<TContext>`, `InstanceSnapshot<TContext>`, `HistoryEntry<TContext>`, `DispatchResult<TContext>` — context type flows end-to-end with no boundary casts
 - **Rewind** — `instance.rewind(version)` returns an independent deep-cloned `InstanceSnapshot<TContext>` for any past version, with accurate stateStatuses and context
+- **Typed instance queries** — `getCurrentStates()` returns `TStates[]`; `getAvailableTransitions()` returns `(keyof TActions & string)[]`; state-ID and action-name unions propagate from the builder all the way to the instance
 - **Composable guards** — `Guard.inject`, `Guard.fn`, `Guard.and`, `Guard.or`, `Guard.not`
 - **Built-in visualization** — Mermaid `stateDiagram-v2` and JSON graph for React Flow / D3
 

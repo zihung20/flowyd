@@ -309,7 +309,7 @@ export class WorkflowBuilder<
    * @returns A compiled `Workflow<TActions, TContext>` ready to create instances.
    * @throws {Error} If any structural invariant is violated.
    */
-  build(): Workflow<TActions, TContext> {
+  build(): Workflow<TActions, TContext, TStates> {
     if (!this.initialStateId) {
       throw new Error('Workflow requires exactly one initial state (call setInitial)');
     }
@@ -372,7 +372,7 @@ export class WorkflowBuilder<
       }),
     };
 
-    return new Workflow<TActions, TContext>(definition);
+    return new Workflow<TActions, TContext, TStates>(definition);
   }
 }
 

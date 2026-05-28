@@ -115,7 +115,8 @@ describe('WorkflowInstance — getStateStatus', () => {
   it('throws for an unregistered state id', () => {
     const wf = makeLinear();
     const inst = wf.createInstance('ss-001');
-    expect(() => inst.getStateStatus('nonexistent')).toThrow('"nonexistent"');
+    // Cast bypasses TStates to exercise the runtime guard for dynamic/untyped callers.
+    expect(() => inst.getStateStatus('nonexistent' as 'a' | 'b')).toThrow('"nonexistent"');
   });
 
   it('returns Idle for states not yet reached', () => {

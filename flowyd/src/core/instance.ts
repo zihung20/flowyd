@@ -39,7 +39,7 @@ import { WorkflowEngine } from './engine.js';
  * @template TContext - Type of the instance context declared via
  *                      `WorkflowBuilder.setContext()`. Defaults to `unknown`.
  */
-export class WorkflowInstance<TActions extends ActionPayloadMap, TContext = unknown> {
+export class WorkflowInstance<TActions extends ActionPayloadMap, TContext = unknown, TStates extends string = string> {
   private readonly guardRegistry = new GuardRegistry();
 
   /** @internal Created exclusively by `Workflow._createInstance` and `Workflow._restoreInstance`. */
@@ -105,10 +105,11 @@ export class WorkflowInstance<TActions extends ActionPayloadMap, TContext = unkn
    * `waiting` states are included because they represent steps the workflow
    * is currently "at" (blocked on an external process).
    */
-  getCurrentStates(): string[] {
+  getCurrentStates(): TStates[] {
+    // Cast is safe: stateStatuses keys are exclusively registered state IDs, which are TStates by construction.
     return Object.entries(this.snapshot.stateStatuses)
       .filter(([, s]) => s === StateStatus.Active || s === StateStatus.Waiting)
-      .map(([id]) => id);
+      .map(([id]) => id) as TStates[];
   }
 
   /**
@@ -117,7 +118,7 @@ export class WorkflowInstance<TActions extends ActionPayloadMap, TContext = unkn
    * @param stateId - A state ID registered in the workflow definition.
    * @throws {Error} If no state with this ID exists in the definition.
    */
-  getStateStatus(stateId: string): StateStatus {
+  getStateStatus(stateId: TStates): StateStatus {
     if (!this.definition.states.has(stateId)) {
       throw new Error(`State "${stateId}" is not registered in workflow "${this.definition.name}"`);
     }
@@ -136,7 +137,7 @@ export class WorkflowInstance<TActions extends ActionPayloadMap, TContext = unkn
    * Use this for UI affordances (e.g. which buttons to show). Use
    * `canExecute` to check whether the guard will actually pass.
    */
-  getAvailableTransitions(): string[] {
+  getAvailableTransitions(): (keyof TActions & string)[] {
     const activeStates = new Set(
       Object.entries(this.snapshot.stateStatuses)
         .filter(([, s]) => s === StateStatus.Active)
@@ -149,7 +150,9 @@ export class WorkflowInstance<TActions extends ActionPayloadMap, TContext = unkn
         actions.add(t.on);
       }
     }
-    return [...actions];
+    // Cast is safe: transition.on values are registered via addTransition, which constrains
+    // them to keyof TActions & string at the builder level.
+    return [...actions] as (keyof TActions & string)[];
   }
 
   /**

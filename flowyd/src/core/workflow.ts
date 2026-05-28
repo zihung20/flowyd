@@ -1,4 +1,4 @@
-import type { WorkflowDefinition, ActionPayloadMap, InstanceSnapshot, HistoryEntry } from '../types/index.js';
+import type { WorkflowDefinition, ActionPayloadMap, InstanceSnapshot } from '../types/index.js';
 import { StateStatus } from '../types/index.js';
 import { WorkflowInstance } from './instance.js';
 
@@ -15,7 +15,7 @@ import { WorkflowInstance } from './instance.js';
  * @template TContext - Type of the instance context declared via
  *                      `WorkflowBuilder.setContext()`. Defaults to `unknown`.
  */
-export class Workflow<TActions extends ActionPayloadMap, TContext = unknown> {
+export class Workflow<TActions extends ActionPayloadMap, TContext = unknown, TStates extends string = string> {
   /** @internal */
   constructor(private readonly definition: WorkflowDefinition<TContext>) {}
 
@@ -35,7 +35,7 @@ export class Workflow<TActions extends ActionPayloadMap, TContext = unknown> {
   createInstance(
     instanceId: string,
     ...args: unknown extends TContext ? [context?: TContext] : [context: TContext]
-  ): WorkflowInstance<TActions, TContext> {
+  ): WorkflowInstance<TActions, TContext, TStates> {
     const now = new Date().toISOString();
 
     const stateStatuses: Record<string, StateStatus> = {};
@@ -68,7 +68,7 @@ export class Workflow<TActions extends ActionPayloadMap, TContext = unknown> {
       ? { ...snapshotBase, context: validatedContext }
       : snapshotBase;
 
-    return new WorkflowInstance<TActions, TContext>(this.definition, snapshot);
+    return new WorkflowInstance<TActions, TContext, TStates>(this.definition, snapshot);
   }
 
   /**
@@ -83,14 +83,14 @@ export class Workflow<TActions extends ActionPayloadMap, TContext = unknown> {
    * @returns A `WorkflowInstance<TActions, TContext>` in the exact state captured by the snapshot.
    * @throws {Error} If the snapshot's `workflowName` does not match this definition.
    */
-  restoreInstance(snapshot: InstanceSnapshot<TContext>): WorkflowInstance<TActions, TContext> {
+  restoreInstance(snapshot: InstanceSnapshot<TContext>): WorkflowInstance<TActions, TContext, TStates> {
     if (snapshot.workflowName !== this.definition.name) {
       throw new Error(
         `Cannot restore snapshot: workflow name mismatch. ` +
           `Expected "${this.definition.name}", got "${snapshot.workflowName}"`,
       );
     }
-    return new WorkflowInstance<TActions, TContext>(this.definition, structuredClone(snapshot));
+    return new WorkflowInstance<TActions, TContext, TStates>(this.definition, structuredClone(snapshot));
   }
 
   /** Returns the underlying definition for use by visualisation exporters. */
