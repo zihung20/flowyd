@@ -40,18 +40,13 @@ import { WorkflowEngine } from './engine.js';
  *                      `WorkflowBuilder.setContext()`. Defaults to `unknown`.
  */
 export class WorkflowInstance<TActions extends ActionPayloadMap, TContext = unknown> {
-  private snapshot: InstanceSnapshot;
   private readonly guardRegistry = new GuardRegistry();
 
   /** @internal Created exclusively by `Workflow._createInstance` and `Workflow._restoreInstance`. */
   constructor(
     private readonly definition: WorkflowDefinition,
-    snapshot: InstanceSnapshot,
-  ) {
-    this.snapshot = snapshot;
-  }
-
-  // ─── Guard injection ──────────────────────────────────────────────────────
+    private snapshot: InstanceSnapshot,
+  ) {}
 
   /**
    * Registers a named guard function for use by `Guard.inject('name')`

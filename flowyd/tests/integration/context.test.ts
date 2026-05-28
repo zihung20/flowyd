@@ -49,8 +49,13 @@ describe('context — createInstance', () => {
     expect(inst.getContext()).toEqual({ isDutyManager: false, score: 55 });
   });
 
-  it('context is undefined when createInstance is called without one', () => {
-    const wf = makeApprovalWf();
+  it('context is undefined when no schema was declared and no context is passed', () => {
+    const wf = createWorkflow({ name: 'no-ctx' })
+      .defineAction('GO', Empty)
+      .addStep('a').addStep('b')
+      .setInitial('a').setTerminal(['b'])
+      .addTransition({ from: 'a', to: 'b', on: 'GO' })
+      .build();
     const inst = wf.createInstance('ctx-003');
     expect(inst.getContext()).toBeUndefined();
   });
@@ -61,7 +66,7 @@ describe('context — createInstance', () => {
 describe('context — setContext / getContext', () => {
   it('updates context and returns this for chaining', () => {
     const wf = makeApprovalWf();
-    const inst = wf.createInstance('ctx-010');
+    const inst = wf.createInstance('ctx-010', { isDutyManager: false, score: 0 });
     const returned = inst.setContext({ isDutyManager: true, score: 88 });
     expect(returned).toBe(inst);
     expect(inst.getContext()).toEqual({ isDutyManager: true, score: 88 });
@@ -76,7 +81,7 @@ describe('context — setContext / getContext', () => {
 
   it('persists context in the snapshot after setContext', () => {
     const wf = makeApprovalWf();
-    const inst = wf.createInstance('ctx-012');
+    const inst = wf.createInstance('ctx-012', { isDutyManager: false, score: 0 });
     inst.setContext({ isDutyManager: true, score: 81 });
     expect(inst.getSnapshot().context).toEqual({ isDutyManager: true, score: 81 });
   });
@@ -281,12 +286,33 @@ describe('context — compile-time type safety', () => {
 
   it('setContext rejects wrong context shape at compile time', () => {
     const wf = makeApprovalWf();
-    const inst = wf.createInstance('t-002');
+    const inst = wf.createInstance('t-002', { isDutyManager: false, score: 0 });
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     function _typeOnly() {
       // @ts-expect-error — isDutyManager must be boolean
       inst.setContext({ isDutyManager: 'yes', score: 80 });
     }
     expect(inst).toBeDefined();
+  });
+
+  it('createInstance requires context when setContext was called on the builder', () => {
+    const wf = makeApprovalWf();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    function _typeOnly() {
+      // @ts-expect-error — context is required when a schema was declared
+      wf.createInstance('t-003');
+    }
+    expect(wf).toBeDefined();
+  });
+
+  it('createInstance does not require context when no schema was declared', () => {
+    const wf = createWorkflow({ name: 'no-ctx-2' })
+      .defineAction('GO', Empty)
+      .addStep('a').addStep('b')
+      .setInitial('a').setTerminal(['b'])
+      .addTransition({ from: 'a', to: 'b', on: 'GO' })
+      .build();
+    // no @ts-expect-error — context is optional here
+    expect(() => wf.createInstance('t-004')).not.toThrow();
   });
 });

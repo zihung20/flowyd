@@ -115,6 +115,7 @@ const snapshot = inst.getSnapshot();  // plain JSON — save wherever you want
 - **Parallel branches** — `ForkState` fans out; `JoinState` synchronises (`all` / `any` / quorum)
 - **External wait states** — `WaitState` pauses until `resolveWait` is called
 - **Purely functional persistence** — `getSnapshot()` / `restoreInstance()`, no storage opinions
+- **Typed instance context** — `setContext(schema)` makes context required at `createInstance` time; guards read it via `ctx.context`
 - **Composable guards** — `Guard.inject`, `Guard.fn`, `Guard.and`, `Guard.or`, `Guard.not`
 - **Built-in visualization** — Mermaid `stateDiagram-v2` and JSON graph for React Flow / D3
 

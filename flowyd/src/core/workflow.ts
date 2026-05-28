@@ -26,13 +26,16 @@ export class Workflow<TActions extends ActionPayloadMap, TContext = unknown> {
    * @param instanceId - A caller-supplied unique identifier for this run
    *                     (e.g. a UUID, database primary key, or order number).
    *                     Used in snapshots and history entries for correlation.
-   * @param context    - Initial context for this instance. Typed as `TContext`
-   *                     when `setContext()` was called on the builder. Pass the
-   *                     data your guards need to evaluate this specific run
-   *                     (e.g. the requester's role, computed scores).
+   * @param context    - Initial context for this instance. **Required** when
+   *                     `setContext()` was called on the builder (`TContext` is
+   *                     concrete); omitted when no context schema was declared
+   *                     (`TContext` is `unknown`).
    * @returns A new `WorkflowInstance<TActions, TContext>` ready for guard injection and dispatch.
    */
-  createInstance(instanceId: string, context?: TContext): WorkflowInstance<TActions, TContext> {
+  createInstance(
+    instanceId: string,
+    ...args: unknown extends TContext ? [context?: TContext] : [context: TContext]
+  ): WorkflowInstance<TActions, TContext> {
     const now = new Date().toISOString();
 
     const stateStatuses: Record<string, StateStatus> = {};
@@ -41,6 +44,9 @@ export class Workflow<TActions extends ActionPayloadMap, TContext = unknown> {
     }
     stateStatuses[this.definition.initialStateId] = StateStatus.Active;
 
+    // Conditional rest params collapse to TContext | undefined at runtime; the
+    // overload signature enforces presence when TContext is concrete.
+    const context = (args as [TContext | undefined])[0];
     const validatedContext = context !== undefined
       ? this.definition.contextSchema?.parse(context) ?? context
       : undefined;
