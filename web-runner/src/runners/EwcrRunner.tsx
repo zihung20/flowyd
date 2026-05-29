@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
-import type { DispatchResult, InstanceSnapshot } from 'logic-workflow';
-import { StateStatus } from 'logic-workflow';
+import type { DispatchResult, InstanceSnapshot } from 'flowyd';
+import { StateStatus } from 'flowyd';
 import { RunnerContext } from '../context';
 import {
   ewcrWorkflow, makeAllInstances, SECTION_IDS,

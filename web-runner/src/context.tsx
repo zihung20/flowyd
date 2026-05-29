@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { InstanceSnapshot, WorkflowDefinition } from 'logic-workflow';
+import type { InstanceSnapshot, WorkflowDefinition } from 'flowyd';
 
 export interface RunnerContextValue {
   definition:       WorkflowDefinition;

@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import { ReactFlow, Controls, MiniMap, Background, BackgroundVariant } from '@xyflow/react';
 import type { Node, Edge } from '@xyflow/react';
-import { JsonGraphExporter } from 'logic-workflow/visualization';
-import type { JsonGraph, JsonGraphNode, JsonGraphEdge } from 'logic-workflow/visualization';
+import { JsonGraphExporter } from 'flowyd/visualization';
+import type { JsonGraph, JsonGraphNode, JsonGraphEdge } from 'flowyd/visualization';
 // @dagrejs/dagre v3 bundles graphlib; the `any` casts below isolate the interop
 // surface so the rest of the file remains fully typed.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

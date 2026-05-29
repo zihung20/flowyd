@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
-import type { DispatchResult, InstanceSnapshot, WorkflowDefinition } from 'logic-workflow';
-import { MermaidExporter, JsonGraphExporter } from 'logic-workflow/visualization';
+import type { DispatchResult, InstanceSnapshot, WorkflowDefinition } from 'flowyd';
+import { MermaidExporter, JsonGraphExporter } from 'flowyd/visualization';
 import { RunnerContext } from '../context';
 import { WorkflowGraph } from '../components/WorkflowGraph';
 import { DynamicForm } from '../components/DynamicForm';
