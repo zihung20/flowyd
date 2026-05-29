@@ -108,12 +108,11 @@ export class Workflow<
   /**
    * Returns the underlying definition for use by visualisation exporters.
    *
-   * The return type is the type-erased `WorkflowDefinition<TContext>` (=
-   * `WorkflowDefinition<TContext, string>`) because visualisation operates on
-   * plain string state IDs and does not need the `TStates` literal union.
+   * @returns The compiled `WorkflowDefinition<TContext, string>` — type-erased
+   *          to `string` for `TStates` because the visualisation layer operates
+   *          on plain state ID strings and does not need the literal union.
    */
-  getDefinition(): WorkflowDefinition<TContext> {
-    // Cast is safe: widening TStates to string; visualisation reads IDs as strings only.
+  getDefinition() {
     return this.definition;
   }
 }

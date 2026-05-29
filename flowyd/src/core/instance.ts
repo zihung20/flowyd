@@ -73,8 +73,6 @@ export class WorkflowInstance<
     return this;
   }
 
-  // ─── Context ──────────────────────────────────────────────────────────────
-
   /**
    * Replaces the accumulated instance context and persists it in the snapshot.
    *
@@ -106,8 +104,6 @@ export class WorkflowInstance<
   getContext(): TContext | undefined {
     return this.snapshot.context;
   }
-
-  // ─── Query ────────────────────────────────────────────────────────────────
 
   /**
    * Returns the IDs of all states currently in `active` or `waiting` status.
@@ -147,7 +143,7 @@ export class WorkflowInstance<
    */
   getAvailableTransitions(): (keyof TActions & string)[] {
     const activeStates = new Set(
-      Object.entries(this.snapshot.stateStatuses)
+      typedEntries(this.snapshot.stateStatuses)
         .filter(([, s]) => s === StateStatus.Active)
         .map(([id]) => id),
     );
@@ -178,8 +174,6 @@ export class WorkflowInstance<
     const result = await this.dispatch(action, payload, true);
     return result.success;
   }
-
-  // ─── Advance ──────────────────────────────────────────────────────────────
 
   /**
    * Dispatches an action against the current instance state.

@@ -37,11 +37,10 @@ function kindSuffix(kind: StateKind): string {
   switch (kind) {
     case StateKind.Fork:
     case StateKind.Join:
+    case StateKind.Step:
       return '';
     case StateKind.Wait:
       return ' ⤴';
-    default:
-      return '';
   }
 }
 
@@ -65,7 +64,6 @@ export const MermaidExporter: IExporter<string> = {
   export(definition: WorkflowDefinition, snapshot?: InstanceSnapshot): string {
     const lines: string[] = ['stateDiagram-v2'];
 
-    // State declarations with labels
     for (const [id, state] of definition.states) {
       const sid = sanitizeId(id);
       const label = `${state.label}${kindSuffix(state.kind)}`;
@@ -75,17 +73,14 @@ export const MermaidExporter: IExporter<string> = {
 
     lines.push('');
 
-    // Initial state arrow
     lines.push(`  [*] --> ${sanitizeId(definition.initialStateId)}`);
 
-    // All action-triggered transitions — includes fan-in edges to join states with their labels
     for (const t of definition.transitions) {
       const from = sanitizeId(t.from);
       const to = sanitizeId(t.to);
       lines.push(`  ${from} --> ${to} : ${t.on}`);
     }
 
-    // ForkState fan-out arrows (no label — fork bar is self-explanatory)
     for (const [id, state] of definition.states) {
       if (state.kind === StateKind.Fork) {
         for (const target of state.targets) {
@@ -94,12 +89,10 @@ export const MermaidExporter: IExporter<string> = {
       }
     }
 
-    // Terminal state arrows
     for (const id of definition.terminalStateIds) {
       lines.push(`  ${sanitizeId(id)} --> [*]`);
     }
 
-    // Live status annotations when a snapshot is provided
     if (snapshot) {
       lines.push('');
       lines.push('  classDef active    fill:#3b82f6,color:#fff,stroke:#2563eb');

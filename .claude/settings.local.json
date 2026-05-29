@@ -39,7 +39,8 @@
       "Bash(npx license-checker *)",
       "Bash(pnpm test:perf *)",
       "Bash(printf 'pnpm test:perf\\\\n')",
-      "Bash(chmod +x /Users/zihung20/Desktop/workflow/flowyd/.husky/pre-commit)"
+      "Bash(chmod +x /Users/zihung20/Desktop/workflow/flowyd/.husky/pre-commit)",
+      "Bash(python3 *)"
     ]
   }
 }

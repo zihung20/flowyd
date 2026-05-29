@@ -37,6 +37,12 @@ export class StateRegistry {
     return state;
   }
 
+  /**
+   * Returns `true` if a state with the given `id` has been registered.
+   *
+   * @param id - The state ID to look up.
+   * @returns `true` if the state exists in the registry; `false` otherwise.
+   */
   has(id: string): boolean {
     return this.states.has(id);
   }
