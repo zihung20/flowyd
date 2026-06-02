@@ -6,6 +6,8 @@ import type {
   IGuard,
   GuardFn,
   AnyState,
+  StateHooks,
+  HookFn,
 } from '../types/index.js';
 import type { JoinMode } from '../types/state.js';
 import { StateKind } from '../types/index.js';
@@ -73,6 +75,7 @@ export class WorkflowBuilder<
   private readonly stateRegistry = new StateRegistry();
   private readonly transitions: TransitionDefinition[] = [];
   private readonly actionSchemas = new Map<string, ZodSchema<unknown>>();
+  private readonly hookMap = new Map<string, StateHooks<TContext>>();
   private initialStateId: string | null = null;
   private terminalStateIds: string[] = [];
   private contextSchema: ZodSchema<unknown> | undefined = undefined;
@@ -148,6 +151,20 @@ export class WorkflowBuilder<
   }
 
   /**
+   * Records `onEnter`/`onExit` hooks for a state if provided.
+   * Hooks are stored type-erased; the builder's generic constraints enforce
+   * correct types at each call site.
+   */
+  private recordHooks(id: string, onEnter?: HookFn<TContext>, onExit?: HookFn<TContext>): void {
+    if (onEnter !== undefined || onExit !== undefined) {
+      this.hookMap.set(id, {
+        ...(onEnter !== undefined && { onEnter }),
+        ...(onExit !== undefined && { onExit }),
+      });
+    }
+  }
+
+  /**
    * Creates and registers a `StepState` — the fundamental SOP milestone that
    * waits for an explicit dispatched action before advancing.
    *
@@ -159,15 +176,24 @@ export class WorkflowBuilder<
    * on entry (inferred at `build()` time) — no extra option needed.
    *
    * @param id      - Unique state identifier. Becomes part of `TStates` after this call.
-   * @param options - Optional display label (defaults to `id`).
+   * @param options - Optional display label and lifecycle hooks.
    * @returns The same builder with `TStates` widened to `TStates | K`.
    * @throws {Error} If a state with the same `id` is already registered.
    */
   addStep<K extends string>(
     id: K,
-    options: { label?: string } = {},
+    options: {
+      label?: string;
+      onEnter?: HookFn<TContext>;
+      onExit?: HookFn<TContext>;
+    } = {},
   ): WorkflowBuilder<TActions, TStates | K, TContext> {
     this.stateRegistry.register(new StepState(id, options));
+    this.recordHooks(
+      id,
+      options.onEnter,
+      options.onExit,
+    );
     return this as WorkflowBuilder<TActions, TStates | K, TContext>;
   }
 
@@ -181,15 +207,25 @@ export class WorkflowBuilder<
    *
    * @param id      - Unique state identifier for the fork node.
    * @param options - `targets`: non-empty array of already-registered state IDs to activate in parallel.
-   *                  `label`: optional display label.
+   *                  `label`: optional display label. `onEnter`/`onExit`: optional lifecycle hooks.
    * @returns The same builder with `TStates` widened to `TStates | K`.
    * @throws {Error} If `targets` is empty or if the `id` is already registered.
    */
   addFork<K extends string>(
     id: K,
-    options: { label?: string; targets: [TStates, ...TStates[]] },
+    options: {
+      label?: string;
+      targets: [TStates, ...TStates[]];
+      onEnter?: HookFn<TContext>;
+      onExit?: HookFn<TContext>;
+    },
   ): WorkflowBuilder<TActions, TStates | K, TContext> {
     this.stateRegistry.register(new ForkState(id, options));
+    this.recordHooks(
+      id,
+      options.onEnter,
+      options.onExit,
+    );
     return this as WorkflowBuilder<TActions, TStates | K, TContext>;
   }
 
@@ -204,15 +240,26 @@ export class WorkflowBuilder<
    * @param id      - Unique state identifier for the join node.
    * @param options - `requires`: non-empty array of already-registered prerequisite state IDs.
    *                  `mode`:    `'all'` (default) | `'any'` | a quorum number.
-   *                  `label`:   optional display label.
+   *                  `label`:   optional display label. `onEnter`/`onExit`: optional lifecycle hooks.
    * @returns The same builder with `TStates` widened to `TStates | K`.
    * @throws {Error} If `requires` is empty or if the `id` is already registered.
    */
   addJoin<K extends string>(
     id: K,
-    options: { label?: string; requires: [TStates, ...TStates[]]; mode?: JoinMode },
+    options: {
+      label?: string;
+      requires: [TStates, ...TStates[]];
+      mode?: JoinMode;
+      onEnter?: HookFn<TContext>;
+      onExit?: HookFn<TContext>;
+    },
   ): WorkflowBuilder<TActions, TStates | K, TContext> {
     this.stateRegistry.register(new JoinState(id, options));
+    this.recordHooks(
+      id,
+      options.onEnter,
+      options.onExit,
+    );
     return this as WorkflowBuilder<TActions, TStates | K, TContext>;
   }
 
@@ -222,15 +269,25 @@ export class WorkflowBuilder<
    *
    * @param id      - Unique state identifier for the wait node.
    * @param options - `externalName`: name of the external process being waited on.
-   *                  `label`:        optional display label.
+   *                  `label`:        optional display label. `onEnter`/`onExit`: optional lifecycle hooks.
    * @returns The same builder with `TStates` widened to `TStates | K`.
    * @throws {Error} If a state with the same `id` is already registered.
    */
   addWait<K extends string>(
     id: K,
-    options: { label?: string; externalName: string },
+    options: {
+      label?: string;
+      externalName: string;
+      onEnter?: HookFn<TContext>;
+      onExit?: HookFn<TContext>;
+    },
   ): WorkflowBuilder<TActions, TStates | K, TContext> {
     this.stateRegistry.register(new WaitState(id, options));
+    this.recordHooks(
+      id,
+      options.onEnter,
+      options.onExit,
+    );
     return this as WorkflowBuilder<TActions, TStates | K, TContext>;
   }
 
@@ -300,6 +357,74 @@ export class WorkflowBuilder<
   }
 
   /**
+   * Runs graph-level reachability and dead-end checks after structural validation.
+   * Collects all violations and throws a single combined error.
+   *
+   * @param states - The registered state map (already structurally validated).
+   * @throws {Error} If any graph invariant is violated.
+   */
+  private validateGraph(states: ReadonlyMap<string, AnyState>): void {
+    const errors: string[] = [];
+
+    // DFS reachability from the initial state.
+    // Edges: transitions (from→to), fork fan-out (fork→target), join activation (requires→join).
+    const reachable = new Set<string>();
+    const stack = [this.initialStateId];
+    while (stack.length > 0) {
+      const id = stack.pop()!;
+      if (reachable.has(id)) {
+        continue;
+      }
+      reachable.add(id);
+      for (const t of this.transitions) {
+        if (t.from === id) {
+          stack.push(t.to);
+        }
+      }
+      const state = states.get(id);
+      if (state?.kind === StateKind.Fork) {
+        for (const target of state.targets) {
+          stack.push(target);
+        }
+      }
+      for (const [jid, s] of states) {
+        if (s.kind === StateKind.Join && s.requires.includes(id)) {
+          stack.push(jid);
+        }
+      }
+    }
+
+    for (const id of states.keys()) {
+      if (!reachable.has(id)) {
+        errors.push(`State "${id}" is unreachable from initial state "${this.initialStateId}"`);
+      }
+    }
+
+    if (!this.terminalStateIds.some((id) => reachable.has(id))) {
+      errors.push(
+        `No terminal state is reachable from "${this.initialStateId}" — the workflow can never complete`,
+      );
+    }
+
+    const outgoing = new Set(this.transitions.map((t) => t.from));
+    for (const [id, state] of states) {
+      const blocksForeverWhenEntered =
+        !this.terminalStateIds.includes(id) &&
+        (state.kind === StateKind.Wait || state.kind === StateKind.Join) &&
+        !outgoing.has(id);
+      if (blocksForeverWhenEntered) {
+        errors.push(
+          `${state.kind === StateKind.Wait ? 'WaitState' : 'JoinState'} "${id}" has no outgoing transitions and is not terminal`,
+        );
+      }
+    }
+
+    if (errors.length > 0) {
+      throw new Error(`Workflow "${this.name}" has graph errors:\n  - ${errors.join('\n  - ')}`);
+    }
+  }
+
+  /**
    * Validates the workflow structure and returns an immutable `Workflow` instance.
    *
    * Structural checks:
@@ -313,8 +438,16 @@ export class WorkflowBuilder<
    * - `ForkState.targets` must all be registered states
    * - `JoinState.requires` must all be registered states
    *
+   * Graph-level checks (run after all structural checks pass):
+   * - Every registered state must be reachable from the initial state
+   * - At least one terminal state must be reachable (workflow can terminate)
+   * - Non-terminal `WaitState` and `JoinState` nodes must have at least one
+   *   outgoing transition (otherwise the workflow is permanently stuck once
+   *   that state is entered)
+   *
    * @returns A compiled `Workflow<TActions, TContext>` ready to create instances.
-   * @throws {Error} If any structural invariant is violated.
+   * @throws {Error} If any structural or graph invariant is violated. The message
+   *                 lists all violations found in one pass.
    */
   build(): Workflow<TActions, TContext, TStates> {
     if (!this.initialStateId) {
@@ -364,6 +497,8 @@ export class WorkflowBuilder<
       }
     }
 
+    this.validateGraph(states);
+
     // All four casts below are safe by registration invariant: `build()` has already
     // verified every ID appears in `states`. The builder's internal storage is
     // type-erased (`string`) because `TStates` accumulates via type-level widening,
@@ -382,6 +517,9 @@ export class WorkflowBuilder<
       ...(this.contextSchema !== undefined && {
         // contextSchema stored as ZodSchema<unknown>; TContext is sealed at build() time.
         contextSchema: this.contextSchema as ZodSchema<TContext>,
+      }),
+      ...(this.hookMap.size > 0 && {
+        stateHooks: new Map([...this.hookMap].map(([id, h]) => [id as TStates, h])),
       }),
     };
 

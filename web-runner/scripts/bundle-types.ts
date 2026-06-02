@@ -29,8 +29,8 @@ function bundle(pkgDir: string, entryFile: string, moduleName: string): string {
     const dir = dirname(filePath);
 
     for (const m of raw.matchAll(/(?:import|export)\s[^'"]*from\s+['"](\.[^'"]+)['"]/g)) {
-      const p = m[1]!.replace(/\.js$/, '');
-      for (const c of [resolve(dir, p + '.d.ts'), resolve(dir, p, 'index.d.ts')]) {
+      const p = m[1]!.replace(/\.m?js$/, '');
+      for (const c of [resolve(dir, p + '.d.ts'), resolve(dir, p + '.d.mts'), resolve(dir, p, 'index.d.ts'), resolve(dir, p, 'index.d.mts')]) {
         if (existsSync(c)) { buildAliasMaps(c); break; }
       }
     }
@@ -61,8 +61,8 @@ function bundle(pkgDir: string, entryFile: string, moduleName: string): string {
 
     // Recurse depth-first so dependencies appear before dependents.
     for (const m of raw.matchAll(/(?:import|export)\s[^'"]*from\s+['"](\.[^'"]+)['"]/g)) {
-      const p = m[1]!.replace(/\.js$/, '');
-      for (const c of [resolve(dir, p + '.d.ts'), resolve(dir, p, 'index.d.ts')]) {
+      const p = m[1]!.replace(/\.m?js$/, '');
+      for (const c of [resolve(dir, p + '.d.ts'), resolve(dir, p + '.d.mts'), resolve(dir, p, 'index.d.ts'), resolve(dir, p, 'index.d.mts')]) {
         if (existsSync(c)) { collectDecls(c, false); break; }
       }
     }
@@ -137,6 +137,6 @@ writeFileSync(resolve(root, 'src/types/zod.bundle.d.ts'), zodOut);
 console.log('zod.bundle.d.ts:', zodOut.split('\n').length, 'lines');
 
 // ── flowyd ───────────────────────────────────────────────────────────────────
-const flowydOut = bundle(resolve(root, '../flowyd/dist'), 'index.d.ts', 'flowyd');
+const flowydOut = bundle(resolve(root, '../flowyd/dist'), 'index.d.mts', 'flowyd');
 writeFileSync(resolve(root, 'src/types/flowyd.bundle.d.ts'), flowydOut);
 console.log('flowyd.bundle.d.ts:', flowydOut.split('\n').length, 'lines');

@@ -1,6 +1,7 @@
 import type { ZodSchema } from 'zod';
 import type { AnyState } from './state.js';
 import type { TransitionDefinition } from './transition.js';
+import type { StateHooks } from './instance.js';
 
 /**
  * Maps action names to their validated payload types.
@@ -52,4 +53,15 @@ export interface WorkflowDefinition<TContext = unknown, TStates extends string =
    * `undefined` when no context schema was declared.
    */
   readonly contextSchema?: ZodSchema<TContext>;
+
+  /**
+   * Per-state lifecycle hooks declared via the `onEnter`/`onExit` options on
+   * `addStep`, `addFork`, `addJoin`, and `addWait`. Keyed by state ID.
+   * `undefined` when no hooks were declared.
+   *
+   * Hooks are function references — they live in the definition (code) and are
+   * never included in instance snapshots (data). Re-injection is not required
+   * after `restoreInstance` because the definition is always rebuilt from source.
+   */
+  readonly stateHooks?: ReadonlyMap<TStates, StateHooks<TContext>>;
 }

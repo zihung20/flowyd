@@ -26,4 +26,7 @@ export type {
   DispatchResult,
   ActionPayloadMap,
   WorkflowDefinition,
+  HookContext,
+  HookFn,
+  StateHooks,
 } from './types/index.js';

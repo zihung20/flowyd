@@ -196,6 +196,51 @@ describe('Perf: fork/join fixed-point loop scaling', () => {
   }
 });
 
+// ─── Benchmark 5: Serialisation round-trip cost at depth ──────────────────────
+
+describe('Perf: JSON serialisation round-trip (stringify + restoreInstance)', () => {
+  /**
+   * Models the persistence hot path: after every dispatch the caller calls
+   * JSON.stringify(getSnapshot()) to write to storage, and later
+   * JSON.parse + restoreInstance to reload. Cost is O(H × S) for stringify
+   * and O(S) for restoreInstance. We measure the full round-trip at three
+   * history depths to surface growth.
+   */
+  for (const n of [50, 200, 500]) {
+    it(`round-trip after ${n - 1} dispatches on a ${n}-state chain`, async () => {
+      const wf = buildLinearChain(n);
+      const inst = wf.createInstance(`rt-${n}`);
+      for (let i = 0; i < n - 1; i++) {
+        await inst.dispatch('NEXT', {});
+      }
+
+      const RUNS = 100;
+      const stringifySamples: number[] = [];
+      const restoreSamples: number[] = [];
+
+      for (let r = 0; r < RUNS; r++) {
+        const t0 = performance.now();
+        const json = JSON.stringify(inst.getSnapshot());
+        stringifySamples.push(performance.now() - t0);
+
+        const t1 = performance.now();
+        wf.restoreInstance(JSON.parse(json) as Parameters<typeof wf.restoreInstance>[0]);
+        restoreSamples.push(performance.now() - t1);
+      }
+
+      const avgStringify = mean(stringifySamples);
+      const avgRestore = mean(restoreSamples);
+      console.log(
+        `\n  [rt-${n}]` +
+          `  history=${n - 1}` +
+          `  avg stringify=${avgStringify.toFixed(3)}ms` +
+          `  avg restoreInstance=${avgRestore.toFixed(3)}ms` +
+          `  avg total=${(avgStringify + avgRestore).toFixed(3)}ms`,
+      );
+    }, 30_000);
+  }
+});
+
 // ─── Benchmark 4: getSnapshot() deep clone cost at depth ─────────────────────
 
 describe('Perf: getSnapshot() structuredClone cost at different history depths', () => {

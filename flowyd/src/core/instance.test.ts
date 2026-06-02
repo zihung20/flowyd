@@ -527,3 +527,165 @@ describe('WorkflowInstance — payload strictness', () => {
     ).rejects.toThrow();
   });
 });
+
+describe('WorkflowInstance — onEnter / onExit hooks', () => {
+  it('onEnter fires when a state is entered', async () => {
+    const entered: string[] = [];
+    const wf = createWorkflow({ name: 'hook-enter' })
+      .defineAction('GO', z.object({}))
+      .addStep('start')
+      .addStep('end', { onEnter: ({ stateId }) => { entered.push(stateId); } })
+      .setInitial('start')
+      .setTerminal(['end'])
+      .addTransition({ from: 'start', to: 'end', on: 'GO' })
+      .build();
+
+    await wf.createInstance('h-001').dispatch('GO', {});
+    expect(entered).toEqual(['end']);
+  });
+
+  it('onExit fires when a state is exited', async () => {
+    const exited: string[] = [];
+    const wf = createWorkflow({ name: 'hook-exit' })
+      .defineAction('GO', z.object({}))
+      .addStep('start', { onExit: ({ stateId }) => { exited.push(stateId); } })
+      .addStep('end')
+      .setInitial('start')
+      .setTerminal(['end'])
+      .addTransition({ from: 'start', to: 'end', on: 'GO' })
+      .build();
+
+    await wf.createInstance('h-002').dispatch('GO', {});
+    expect(exited).toEqual(['start']);
+  });
+
+  it('onExit fires before onEnter', async () => {
+    const log: string[] = [];
+    const wf = createWorkflow({ name: 'hook-order' })
+      .defineAction('GO', z.object({}))
+      .addStep('start', { onExit: () => { log.push('exit:start'); } })
+      .addStep('end', { onEnter: () => { log.push('enter:end'); } })
+      .setInitial('start')
+      .setTerminal(['end'])
+      .addTransition({ from: 'start', to: 'end', on: 'GO' })
+      .build();
+
+    await wf.createInstance('h-003').dispatch('GO', {});
+    expect(log).toEqual(['exit:start', 'enter:end']);
+  });
+
+  it('async hooks are awaited before dispatch resolves', async () => {
+    let resolved = false;
+    const wf = createWorkflow({ name: 'hook-async' })
+      .defineAction('GO', z.object({}))
+      .addStep('start')
+      .addStep('end', {
+        onEnter: async () => {
+          await new Promise<void>((r) => setTimeout(r, 10));
+          resolved = true;
+        },
+      })
+      .setInitial('start')
+      .setTerminal(['end'])
+      .addTransition({ from: 'start', to: 'end', on: 'GO' })
+      .build();
+
+    await wf.createInstance('h-004').dispatch('GO', {});
+    expect(resolved).toBe(true);
+  });
+
+  it('hook receives typed context', async () => {
+    let seen: { score: number } | undefined;
+    const wf = createWorkflow({ name: 'hook-ctx' })
+      .defineAction('GO', z.object({}))
+      .setContext(z.object({ score: z.number() }))
+      .addStep('start')
+      .addStep('end', { onEnter: ({ context }) => { seen = context; } })
+      .setInitial('start')
+      .setTerminal(['end'])
+      .addTransition({ from: 'start', to: 'end', on: 'GO' })
+      .build();
+
+    await wf.createInstance('h-005', { score: 99 }).dispatch('GO', {});
+    expect(seen).toEqual({ score: 99 });
+  });
+
+  it('hook receives correct stateId', async () => {
+    const ids: string[] = [];
+    const wf = createWorkflow({ name: 'hook-id' })
+      .defineAction('GO', z.object({}))
+      .addStep('start', { onExit: ({ stateId }) => { ids.push(stateId); } })
+      .addStep('end', { onEnter: ({ stateId }) => { ids.push(stateId); } })
+      .setInitial('start')
+      .setTerminal(['end'])
+      .addTransition({ from: 'start', to: 'end', on: 'GO' })
+      .build();
+
+    await wf.createInstance('h-006').dispatch('GO', {});
+    expect(ids).toEqual(['start', 'end']);
+  });
+
+  it('hooks do not fire on canExecute dry-run', async () => {
+    const fired: string[] = [];
+    const wf = createWorkflow({ name: 'hook-dryrun' })
+      .defineAction('GO', z.object({}))
+      .addStep('start', { onExit: () => { fired.push('exit'); } })
+      .addStep('end', { onEnter: () => { fired.push('enter'); } })
+      .setInitial('start')
+      .setTerminal(['end'])
+      .addTransition({ from: 'start', to: 'end', on: 'GO' })
+      .build();
+
+    const inst = wf.createInstance('h-007');
+    await inst.canExecute('GO', {});
+    expect(fired).toEqual([]);
+  });
+
+  it('onEnter fires for a JoinState when it auto-activates via fixed-point loop', async () => {
+    const entered: string[] = [];
+    const wf = createWorkflow({ name: 'hook-join' })
+      .defineAction('START', z.object({}))
+      .defineAction('DONE_A', z.object({}))
+      .defineAction('DONE_B', z.object({}))
+      .defineAction('FINISH', z.object({}))
+      .addStep('start')
+      .addStep('branch-a')
+      .addStep('branch-b')
+      .addFork('fork', { targets: ['branch-a', 'branch-b'] })
+      .addJoin('joined', {
+        requires: ['branch-a', 'branch-b'],
+        onEnter: ({ stateId }) => { entered.push(stateId); },
+      })
+      .addStep('done')
+      .setInitial('start')
+      .setTerminal(['done'])
+      .addTransition({ from: 'start', to: 'fork', on: 'START' })
+      .addTransition({ from: 'branch-a', to: 'joined', on: 'DONE_A' })
+      .addTransition({ from: 'branch-b', to: 'joined', on: 'DONE_B' })
+      .addTransition({ from: 'joined', to: 'done', on: 'FINISH' })
+      .build();
+
+    const inst = wf.createInstance('h-join-001');
+    await inst.dispatch('START', {});
+    await inst.dispatch('DONE_A', {});
+    expect(entered).toEqual([]); // join not yet active — branch-b still pending
+    await inst.dispatch('DONE_B', {}); // triggers fixed-point: join auto-activates
+    expect(entered).toEqual(['joined']);
+  });
+
+  it('hook throwing propagates out of dispatch (snapshot already committed)', async () => {
+    const wf = createWorkflow({ name: 'hook-throw' })
+      .defineAction('GO', z.object({}))
+      .addStep('start')
+      .addStep('end', { onEnter: () => { throw new Error('hook-error'); } })
+      .setInitial('start')
+      .setTerminal(['end'])
+      .addTransition({ from: 'start', to: 'end', on: 'GO' })
+      .build();
+
+    const inst = wf.createInstance('h-008');
+    await expect(inst.dispatch('GO', {})).rejects.toThrow('hook-error');
+    // Snapshot was committed before the hook ran — instance is terminal
+    expect(inst.isTerminal()).toBe(true);
+  });
+});

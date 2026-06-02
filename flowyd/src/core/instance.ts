@@ -6,6 +6,7 @@ import type {
   InstanceSnapshot,
   ReadonlyInstanceState,
   GuardFn,
+  HookContext,
 } from '../types/index.js';
 
 /**
@@ -29,7 +30,6 @@ import { typedEntries, typedFromEntries } from './utils.js';
  * completely independent — concurrent executions of the same workflow
  * definition share no state.
  *
- * **Persistence pattern**
  * After every `dispatch`, call `instance.getSnapshot()` and write the result
  * to your database. To resume, load the JSON and pass it to
  * `workflow.restoreInstance(snapshot)`. Guard injections are not part of the
@@ -233,6 +233,7 @@ export class WorkflowInstance<
 
     if (result.success && !dryRun) {
       this.snapshot = result.snapshot;
+      await this.runHooks(result.exitedStates, result.enteredStates);
     }
 
     return result;
@@ -367,15 +368,11 @@ export class WorkflowInstance<
       for (const id of entry.exitedStates) {
         stateStatuses.set(id, StateStatus.Completed);
       }
+      const isResolvingWait = entry.action.startsWith('__resolve_wait:');
       for (const id of entry.enteredStates) {
-        const isResolveWait = entry.action.startsWith('__resolve_wait:');
         const state = this.definition.states.get(id);
-        stateStatuses.set(
-          id,
-          !isResolveWait && state?.kind === StateKind.Wait
-            ? StateStatus.Waiting
-            : StateStatus.Active,
-        );
+        const isEnteringWait = !isResolvingWait && state?.kind === StateKind.Wait;
+        stateStatuses.set(id, isEnteringWait ? StateStatus.Waiting : StateStatus.Active);
       }
     }
 
@@ -400,6 +397,35 @@ export class WorkflowInstance<
     const result: InstanceSnapshot<TContext, TStates> =
       contextAtN !== undefined ? { ...base, context: contextAtN } : base;
     return structuredClone(result);
+  }
+
+  /**
+   * Fires `onExit` hooks for exited states then `onEnter` hooks for entered
+   * states. Runs after the snapshot has been committed. If a hook throws, the
+   * error propagates unwrapped — the snapshot is already updated at that point.
+   *
+   * `onExit` / `onEnter` are intentionally sequential (not parallel) so hook
+   * execution order is deterministic.
+   */
+  private async runHooks(exitedStates: readonly TStates[], enteredStates: readonly TStates[]): Promise<void> {
+    const hooks = this.definition.stateHooks;
+    if (!hooks) {
+      return;
+    }
+
+    const view = this.buildReadonlyView();
+    const ctx = (id: TStates): HookContext<TContext> => ({
+      stateId: id,
+      instanceState: view,
+      context: this.snapshot.context as TContext,
+    });
+
+    for (const id of exitedStates) {
+      await hooks.get(id)?.onExit?.(ctx(id));
+    }
+    for (const id of enteredStates) {
+      await hooks.get(id)?.onEnter?.(ctx(id));
+    }
   }
 
   /**

@@ -117,10 +117,12 @@ describe('WorkflowBuilder', () => {
       .addStep('branch-a')
       .addStep('branch-b')
       .addFork('fork', { targets: ['branch-a', 'branch-b'] })
+      .addJoin('joined', { requires: ['branch-a', 'branch-b'] })
       .addStep('done')
       .setInitial('start')
       .setTerminal(['done'])
       .addTransition({ from: 'start', to: 'fork', on: 'GO' })
+      .addTransition({ from: 'joined', to: 'done', on: 'GO' })
       .build();
 
     expect(workflow).toBeDefined();
@@ -154,6 +156,94 @@ describe('WorkflowBuilder', () => {
       .build();
 
     expect(workflow).toBeDefined();
+  });
+
+  describe('graph validation', () => {
+    it('throws on unreachable state', () => {
+      const b = createWorkflow({ name: 'unreachable' })
+        .defineAction('GO', z.object({}))
+        .addStep('start')
+        .addStep('end')
+        .addStep('orphan') // no incoming transitions
+        .setInitial('start')
+        .setTerminal(['end'])
+        .addTransition({ from: 'start', to: 'end', on: 'GO' });
+      expect(() => b.build()).toThrow('unreachable');
+    });
+
+    it('throws when no terminal state is reachable', () => {
+      const b = createWorkflow({ name: 'no-exit' })
+        .defineAction('GO', z.object({}))
+        .addStep('start')
+        .addStep('loop')
+        .addStep('done')
+        .setInitial('start')
+        .setTerminal(['done'])
+        .addTransition({ from: 'start', to: 'loop', on: 'GO' })
+        .addTransition({ from: 'loop', to: 'start', on: 'GO' }); // done is unreachable
+      expect(() => b.build()).toThrow('never complete');
+    });
+
+    it('throws on non-terminal WaitState with no outgoing transitions', () => {
+      // 'done' is reachable via ABORT so there are no extra errors — only the dead-end WaitState.
+      const b = createWorkflow({ name: 'dead-wait' })
+        .defineAction('GO', z.object({}))
+        .defineAction('ABORT', z.object({}))
+        .addStep('start')
+        .addWait('blocked', { externalName: 'ext' })
+        .addStep('done')
+        .setInitial('start')
+        .setTerminal(['done'])
+        .addTransition({ from: 'start', to: 'blocked', on: 'GO' })
+        .addTransition({ from: 'start', to: 'done', on: 'ABORT' });
+      expect(() => b.build()).toThrow('WaitState');
+    });
+
+    it('throws on non-terminal JoinState with no outgoing transitions', () => {
+      // 'done' is reachable via ABORT so there are no extra errors — only the dead-end JoinState.
+      const b = createWorkflow({ name: 'dead-join' })
+        .defineAction('GO', z.object({}))
+        .defineAction('ABORT', z.object({}))
+        .addStep('start')
+        .addStep('branch-a')
+        .addStep('branch-b')
+        .addFork('fork', { targets: ['branch-a', 'branch-b'] })
+        .addJoin('joined', { requires: ['branch-a', 'branch-b'] })
+        .addStep('done')
+        .setInitial('start')
+        .setTerminal(['done'])
+        .addTransition({ from: 'start', to: 'fork', on: 'GO' })
+        .addTransition({ from: 'start', to: 'done', on: 'ABORT' });
+      expect(() => b.build()).toThrow('JoinState');
+    });
+
+    it('collects multiple graph errors in one throw', () => {
+      const b = createWorkflow({ name: 'multi-error' })
+        .defineAction('GO', z.object({}))
+        .addStep('start')
+        .addStep('orphan')
+        .addWait('dead-wait', { externalName: 'ext' })
+        .addStep('done')
+        .setInitial('start')
+        .setTerminal(['done'])
+        .addTransition({ from: 'start', to: 'dead-wait', on: 'GO' })
+        .addTransition({ from: 'start', to: 'done', on: 'GO' });
+      let msg = '';
+      try { b.build(); } catch (e) { msg = (e as Error).message; }
+      expect(msg).toContain('orphan');
+      expect(msg).toContain('WaitState');
+    });
+
+    it('accepts a WaitState that is itself terminal', () => {
+      const b = createWorkflow({ name: 'wait-terminal' })
+        .defineAction('GO', z.object({}))
+        .addStep('start')
+        .addWait('final', { externalName: 'ext' })
+        .setInitial('start')
+        .setTerminal(['final'])
+        .addTransition({ from: 'start', to: 'final', on: 'GO' });
+      expect(() => b.build()).not.toThrow();
+    });
   });
 
   it('infers guard payload type from the action schema', () => {

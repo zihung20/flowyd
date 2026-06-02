@@ -32,7 +32,8 @@
       "Bash(printf 'pnpm test:perf\\\\n')",
       "Bash(python3 *)",
       "Bash(pnpm tsc *)",
-      "Bash(xargs ls -la)"
+      "Bash(xargs ls -la)",
+      "Bash(pnpm tsx *)"
     ]
   }
 }

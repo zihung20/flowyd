@@ -140,6 +140,42 @@ export interface TransitionBlocked<
 }
 
 /**
+ * Data passed to `onEnter` and `onExit` hook functions.
+ *
+ * @template TContext - The instance context type.
+ */
+export interface HookContext<TContext = unknown> {
+  /** The ID of the state being entered or exited. */
+  readonly stateId: string;
+  /** Read-only view of instance state at the moment the hook fires (post-transition). */
+  readonly instanceState: ReadonlyInstanceState;
+  /** The accumulated instance context at the time of the transition. */
+  readonly context: TContext;
+}
+
+/**
+ * Signature for a user-supplied state lifecycle hook.
+ *
+ * @template TContext - The instance context type.
+ */
+export type HookFn<TContext = unknown> = (ctx: HookContext<TContext>) => void | Promise<void>;
+
+/**
+ * Optional `onEnter` / `onExit` callbacks attached to a single state.
+ *
+ * Defined with method shorthand (bivariant parameter checking) so that a
+ * concretely-typed `StateHooks<TContext>` is assignable to the type-erased
+ * `StateHooks<unknown>` stored in `WorkflowDefinition` — the same approach
+ * used by `IGuard.evaluate`.
+ *
+ * @template TContext - The instance context type.
+ */
+export interface StateHooks<TContext = unknown> {
+  onEnter?(ctx: HookContext<TContext>): void | Promise<void>;
+  onExit?(ctx: HookContext<TContext>): void | Promise<void>;
+}
+
+/**
  * Discriminated union returned by every `dispatch` call.
  *
  * @template TContext - Context type of the owning instance. Defaults to `unknown`.

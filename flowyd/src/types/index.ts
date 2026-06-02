@@ -20,6 +20,9 @@ export type {
   TransitionSuccess,
   TransitionBlocked,
   DispatchResult,
+  HookContext,
+  HookFn,
+  StateHooks,
 } from './instance.js';
 
 export type { ActionPayloadMap, WorkflowDefinition } from './workflow.js';
