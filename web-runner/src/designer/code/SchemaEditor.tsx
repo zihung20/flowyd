@@ -24,14 +24,17 @@ export function SchemaEditor({ id, value, onChange }: Props) {
   }
 
   return (
-    <div className="rounded border border-border overflow-hidden" onKeyDown={e => e.stopPropagation()}>
+    <div
+      className="border-border overflow-hidden rounded border"
+      onKeyDown={(e) => e.stopPropagation()}
+    >
       <Editor
         path={`file:///schema-${id}.ts`}
         height="80px"
         language="typescript"
         value={value || EMPTY_SCHEMA}
         theme="vs-dark"
-        onChange={v => onChange(v ?? EMPTY_SCHEMA)}
+        onChange={(v) => onChange(v ?? EMPTY_SCHEMA)}
         beforeMount={handleBeforeMount}
         options={{
           fontSize: 12,

@@ -18,7 +18,9 @@ function loadWorkflow(): DesignerWorkflow {
         nodes: data.nodes ?? DEFAULT_WORKFLOW.nodes,
       };
     }
-  } catch { /* ignore corrupt data */ }
+  } catch {
+    /* ignore corrupt data */
+  }
   return DEFAULT_WORKFLOW;
 }
 

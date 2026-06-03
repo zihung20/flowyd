@@ -11,6 +11,10 @@ interface Props {
 export function ShowCodeModal({ workflow, onClose }: Props) {
   const code = generateCode(workflow);
 
+  function handleCopy() {
+    navigator.clipboard.writeText(code);
+  }
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose();
@@ -22,23 +26,25 @@ export function ShowCodeModal({ workflow, onClose }: Props) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
-      <div className="flex flex-col w-full max-w-3xl mx-4 h-[80vh] rounded-lg overflow-hidden shadow-2xl border border-slate-700">
+      <div className="mx-4 flex h-[80vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-slate-700 shadow-2xl">
         {/* Header */}
-        <div className="shrink-0 flex items-center px-4 h-10 bg-[#252526] border-b border-[#3c3c3c]">
-          <span className="text-[12px] text-slate-400 font-mono">workflow.ts</span>
+        <div className="flex h-10 shrink-0 items-center border-b border-[#3c3c3c] bg-[#252526] px-4">
+          <span className="font-mono text-[12px] text-slate-400">workflow.ts</span>
           <span className="ml-auto flex items-center gap-3">
             <span className="text-[11px] text-slate-600">TypeScript · flowyd</span>
             <button
-              onClick={() => void navigator.clipboard.writeText(code)}
-              className="text-[11px] text-slate-400 hover:text-slate-200 transition-colors"
+              onClick={handleCopy}
+              className="text-[11px] text-slate-400 transition-colors hover:text-slate-200"
             >
               Copy
             </button>
             <button
               onClick={onClose}
-              className="text-slate-400 hover:text-slate-200 transition-colors text-sm leading-none"
+              className="text-sm leading-none text-slate-400 transition-colors hover:text-slate-200"
               title="Close (Esc)"
             >
               ✕
@@ -47,7 +53,7 @@ export function ShowCodeModal({ workflow, onClose }: Props) {
         </div>
 
         {/* Editor */}
-        <div className="flex-1 min-h-0 bg-[#1e1e1e]">
+        <div className="min-h-0 flex-1 bg-[#1e1e1e]">
           <CodeEditor defaultValue={code} />
         </div>
       </div>

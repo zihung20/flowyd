@@ -1,7 +1,5 @@
-import { useState } from 'react';
 import { Link, useParams, Navigate } from 'react-router-dom';
 import { SingleRunner } from '../runners/SingleRunner';
-import { EwcrRunner } from '../runners/EwcrRunner';
 import { purchaseOrderWorkflow } from '../workflows/purchase-order';
 import { predepartureWorkflow } from '../workflows/predeparture';
 import { incidentWorkflow } from '../workflows/incident';
@@ -32,12 +30,6 @@ const EXAMPLES = [
     tags: ['50 states', 'context', '8× fork/join', 'wait'],
     desc: '50-state multi-environment release: 8 parallel phases, WaitState observation, Guard.and CTO gate',
   },
-  {
-    id: 'ewcr',
-    label: 'EWCR Grid',
-    tags: ['multi-instance', 'cross-guard'],
-    desc: '40 electrical sections — each waits for its neighbours before isolating or restoring',
-  },
 ] as const;
 
 type ExampleId = (typeof EXAMPLES)[number]['id'];
@@ -52,13 +44,19 @@ function makePdInstance() {
 
 function makeReleasePipelineInstance() {
   const inst = releasePipelineWorkflow.createInstance(`rel-${Date.now()}`, {
-    version:     '2.4.0',
+    version: '2.4.0',
     releaseType: 'minor',
     isEmergency: false,
-    teamId:      'platform-eng',
+    teamId: 'platform-eng',
   });
   // All director / lead guards auto-approve in the demo
-  for (const name of ['qa-lead', 'engineering-director', 'security-director', 'product-director', 'cto']) {
+  for (const name of [
+    'qa-lead',
+    'engineering-director',
+    'security-director',
+    'product-director',
+    'cto',
+  ]) {
     inst.injectGuard(name, () => true);
   }
   return inst;
@@ -66,15 +64,15 @@ function makeReleasePipelineInstance() {
 
 function makeIncidentInstance() {
   const inst = incidentWorkflow.createInstance(`inc-${Date.now()}`, {
-    severity:       'P2',
-    isDataBreach:   false,
+    severity: 'P2',
+    isDataBreach: false,
     affectedSystem: 'payments-api',
   });
   inst.injectGuard('incident-manager', () => true);
   return inst;
 }
 
-const VALID_IDS = new Set<string>(EXAMPLES.map(e => e.id));
+const VALID_IDS = new Set<string>(EXAMPLES.map((e) => e.id));
 
 export default function ExamplesPage() {
   const { id } = useParams<{ id: string }>();
@@ -86,31 +84,34 @@ export default function ExamplesPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-slate-50 font-sans">
-      <nav className="shrink-0 bg-slate-900 border-b border-slate-700 flex items-stretch gap-0 px-2">
+    <div className="flex h-screen flex-col overflow-hidden bg-slate-50 font-sans">
+      <nav className="flex shrink-0 items-stretch gap-0 border-b border-slate-700 bg-slate-900 px-2">
         <Link
           to="/"
-          className="flex items-center px-3 text-slate-400 hover:text-white text-sm transition-colors border-b-2 border-transparent"
+          className="flex items-center border-b-2 border-transparent px-3 text-sm text-slate-400 transition-colors hover:text-white"
         >
           ← flowyd
         </Link>
-        <span className="flex items-center text-slate-600 text-sm px-1">/</span>
+        <span className="flex items-center px-1 text-sm text-slate-600">/</span>
 
-        {EXAMPLES.map(ex => (
+        {EXAMPLES.map((ex) => (
           <Link
             key={ex.id}
             to={`/examples/${ex.id}`}
             className={[
-              'flex flex-col items-start px-4 py-2.5 text-left transition-colors border-b-2',
+              'flex flex-col items-start border-b-2 px-4 py-2.5 text-left transition-colors',
               exId === ex.id
                 ? 'border-blue-400 bg-slate-800 text-white'
-                : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800',
+                : 'border-transparent text-slate-400 hover:bg-slate-800 hover:text-slate-200',
             ].join(' ')}
           >
-            <span className="text-sm font-semibold leading-tight">{ex.label}</span>
-            <span className="flex gap-1 mt-0.5">
-              {ex.tags.map(t => (
-                <span key={t} className="text-[10px] bg-slate-700 text-slate-300 rounded px-1 py-px leading-none">
+            <span className="text-sm leading-tight font-semibold">{ex.label}</span>
+            <span className="mt-0.5 flex gap-1">
+              {ex.tags.map((t) => (
+                <span
+                  key={t}
+                  className="rounded bg-slate-700 px-1 py-px text-[10px] leading-none text-slate-300"
+                >
                   {t}
                 </span>
               ))}
@@ -119,13 +120,13 @@ export default function ExamplesPage() {
         ))}
 
         <div className="ml-auto flex items-center px-4">
-          <span className="text-xs text-slate-500 max-w-xs hidden lg:block">
-            {EXAMPLES.find(e => e.id === exId)?.desc}
+          <span className="hidden max-w-xs text-xs text-slate-500 lg:block">
+            {EXAMPLES.find((e) => e.id === exId)?.desc}
           </span>
         </div>
       </nav>
 
-      <div className="flex-1 min-h-0">
+      <div className="min-h-0 flex-1">
         {exId === 'purchase-order' && (
           <SingleRunner
             key="po"
@@ -162,7 +163,6 @@ export default function ExamplesPage() {
             makeInstance={makeReleasePipelineInstance}
           />
         )}
-        {exId === 'ewcr' && <EwcrRunner key="ewcr" />}
       </div>
     </div>
   );

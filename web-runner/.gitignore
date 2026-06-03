@@ -15,8 +15,7 @@ out/
 # ============================================================
 # Generated Monaco type bundles (auto-regenerated on dev/build)
 # ============================================================
-src/types/zod.bundle.d.ts
-src/types/flowyd.bundle.d.ts
+type-bundles/
 
 # ============================================================
 # Vite cache

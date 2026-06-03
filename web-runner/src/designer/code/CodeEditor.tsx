@@ -15,7 +15,7 @@ interface Props {
 }
 
 export const CodeEditor = forwardRef<CodeEditorHandle, Props>(({ defaultValue, onChange }, ref) => {
-  const editorRef     = useRef<editor.IStandaloneCodeEditor | null>(null);
+  const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoInstance = useMonaco();
 
   // Belt-and-suspenders: register types whenever Monaco becomes available.
@@ -57,7 +57,7 @@ export const CodeEditor = forwardRef<CodeEditorHandle, Props>(({ defaultValue, o
       language="typescript"
       defaultValue={defaultValue}
       theme="vs-dark"
-      onChange={value => onChange?.(value ?? '')}
+      onChange={(value) => onChange?.(value ?? '')}
       beforeMount={handleBeforeMount}
       onMount={handleMount}
       options={{

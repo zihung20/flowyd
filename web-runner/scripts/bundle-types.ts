@@ -30,15 +30,23 @@ function bundle(pkgDir: string, entryFile: string, moduleName: string): string {
 
     for (const m of raw.matchAll(/(?:import|export)\s[^'"]*from\s+['"](\.[^'"]+)['"]/g)) {
       const p = m[1]!.replace(/\.m?js$/, '');
-      for (const c of [resolve(dir, p + '.d.ts'), resolve(dir, p + '.d.mts'), resolve(dir, p, 'index.d.ts'), resolve(dir, p, 'index.d.mts')]) {
-        if (existsSync(c)) { buildAliasMaps(c); break; }
+      for (const c of [
+        resolve(dir, p + '.d.ts'),
+        resolve(dir, p + '.d.mts'),
+        resolve(dir, p, 'index.d.ts'),
+        resolve(dir, p, 'index.d.mts'),
+      ]) {
+        if (existsSync(c)) {
+          buildAliasMaps(c);
+          break;
+        }
       }
     }
 
     // Build alias → localName map from export-alias lines.
     // e.g. `export { StateKind as S, type AnyState as a }` → { S: 'StateKind', a: 'AnyState' }
     const aliasMap = new Map<string, string>();
-    for (const exportLine of raw.matchAll(/^export\s+\{([^}]+)\}/mg)) {
+    for (const exportLine of raw.matchAll(/^export\s+\{([^}]+)\}/gm)) {
       for (const part of exportLine[1]!.split(',')) {
         const m = part.trim().match(/^(?:type\s+)?(\w+)\s+as\s+(\w+)$/);
         if (m) aliasMap.set(m[2]!, m[1]!); // alias → local
@@ -62,12 +70,20 @@ function bundle(pkgDir: string, entryFile: string, moduleName: string): string {
     // Recurse depth-first so dependencies appear before dependents.
     for (const m of raw.matchAll(/(?:import|export)\s[^'"]*from\s+['"](\.[^'"]+)['"]/g)) {
       const p = m[1]!.replace(/\.m?js$/, '');
-      for (const c of [resolve(dir, p + '.d.ts'), resolve(dir, p + '.d.mts'), resolve(dir, p, 'index.d.ts'), resolve(dir, p, 'index.d.mts')]) {
-        if (existsSync(c)) { collectDecls(c, false); break; }
+      for (const c of [
+        resolve(dir, p + '.d.ts'),
+        resolve(dir, p + '.d.mts'),
+        resolve(dir, p, 'index.d.ts'),
+        resolve(dir, p, 'index.d.mts'),
+      ]) {
+        if (existsSync(c)) {
+          collectDecls(c, false);
+          break;
+        }
       }
     }
 
-    const lines = raw.split('\n').filter(line => {
+    const lines = raw.split('\n').filter((line) => {
       const t = line.trim();
 
       if (isEntry) {
@@ -93,7 +109,7 @@ function bundle(pkgDir: string, entryFile: string, moduleName: string): string {
     // using public names resolved through the alias map.
     // e.g. `export { S as StateKind } from './chunk'` → `export { StateKind };`
     const resolved = isEntry
-      ? lines.map(line => {
+      ? lines.map((line) => {
           const m = line.match(/^export\s+\{([^}]+)\}\s+from\s+['"](\.[^'"]+)['"]/);
           if (!m) return line;
 
@@ -106,7 +122,7 @@ function bundle(pkgDir: string, entryFile: string, moduleName: string): string {
           })();
           const aliasMap = chunkPath ? (chunkAliasMap.get(chunkPath) ?? new Map()) : new Map();
 
-          const parts = m[1]!.split(',').map(part => {
+          const parts = m[1]!.split(',').map((part) => {
             const pm = part.trim().match(/^(\w+)(?:\s+as\s+(\w+))?$/);
             if (!pm) return part.trim();
             const chunkAlias = pm[1]!;
@@ -129,14 +145,14 @@ function bundle(pkgDir: string, entryFile: string, moduleName: string): string {
 
 const root = resolve(__dirname, '..');
 
-mkdirSync(resolve(root, 'src/types'), { recursive: true });
+mkdirSync(resolve(root, 'type-bundles'), { recursive: true });
 
 // ── zod ─────────────────────────────────────────────────────────────────────
 const zodOut = bundle(resolve(root, 'node_modules/zod/v3'), 'external.d.ts', 'zod');
-writeFileSync(resolve(root, 'src/types/zod.bundle.d.ts'), zodOut);
+writeFileSync(resolve(root, 'type-bundles/zod.bundle.d.ts'), zodOut);
 console.log('zod.bundle.d.ts:', zodOut.split('\n').length, 'lines');
 
 // ── flowyd ───────────────────────────────────────────────────────────────────
 const flowydOut = bundle(resolve(root, '../flowyd/dist'), 'index.d.mts', 'flowyd');
-writeFileSync(resolve(root, 'src/types/flowyd.bundle.d.ts'), flowydOut);
+writeFileSync(resolve(root, 'type-bundles/flowyd.bundle.d.ts'), flowydOut);
 console.log('flowyd.bundle.d.ts:', flowydOut.split('\n').length, 'lines');

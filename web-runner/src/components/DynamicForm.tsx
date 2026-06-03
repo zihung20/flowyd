@@ -1,58 +1,51 @@
-import { useEffect, useState } from "react";
-import { describeSchema } from "../lib/zod-introspect";
-import type { FieldDescriptor } from "../lib/zod-introspect";
-import { useRunner } from "../context";
+import { useEffect, useState } from 'react';
+import { describeSchema } from '../lib/zod-introspect';
+import type { FieldDescriptor } from '../lib/zod-introspect';
+import { useRunner } from '../context';
 
 // ─── Default value generator ──────────────────────────────────────────────────
 
 function autoDefault(field: FieldDescriptor): string | number | boolean {
-  if (field.kind === "boolean") return true;
-  if (field.kind === "enum") return field.options[0] ?? "";
+  if (field.kind === 'boolean') return true;
+  if (field.kind === 'enum') return field.options[0] ?? '';
 
-  if (field.kind === "number") {
+  if (field.kind === 'number') {
     // Use the schema minimum when present so Zod validation always passes.
     if (field.min !== undefined) return field.min;
     const n = field.name.toLowerCase();
-    if (n.includes("count") || n.includes("size") || n.includes("head"))
-      return 3;
-    if (n.includes("platform")) return 1;
+    if (n.includes('count') || n.includes('size') || n.includes('head')) return 3;
+    if (n.includes('platform')) return 1;
     return 1;
   }
 
   // string / unknown — pick a contextual default first, then pad to meet min length.
   const n = field.name.toLowerCase();
-  let base = "value";
-  if (/(by|lead|manager|officer|author|engineer)/.test(n)) base = "ENG-001";
+  let base = 'value';
+  if (/(by|lead|manager|officer|author|engineer)/.test(n)) base = 'ENG-001';
   else if (
-    n.includes("reason") ||
-    n.includes("description") ||
-    n.includes("summary") ||
-    n.includes("actions")
+    n.includes('reason') ||
+    n.includes('description') ||
+    n.includes('summary') ||
+    n.includes('actions')
   )
-    base = "Completed as scheduled";
-  else if (n.includes("url")) base = "https://example.com/doc";
-  else if (n.includes("sha")) base = "a".repeat(40);
-  else if (n.includes("switch") && n.includes("ref")) base = "SW-A01";
-  else if (n.includes("clearance") && n.includes("ref")) base = "CLR-001";
-  else if (n.endsWith("ref") || n.includes("ref")) base = "REF-001";
-  else if (n.endsWith("id") || n.includes("trainid") || n.includes("ticket"))
-    base = "ID-001";
-  else if (n.includes("at") || n.includes("expires"))
+    base = 'Completed as scheduled';
+  else if (n.includes('url')) base = 'https://example.com/doc';
+  else if (n.includes('sha')) base = 'a'.repeat(40);
+  else if (n.includes('switch') && n.includes('ref')) base = 'SW-A01';
+  else if (n.includes('clearance') && n.includes('ref')) base = 'CLR-001';
+  else if (n.endsWith('ref') || n.includes('ref')) base = 'REF-001';
+  else if (n.endsWith('id') || n.includes('trainid') || n.includes('ticket')) base = 'ID-001';
+  else if (n.includes('at') || n.includes('expires'))
     base = new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 16);
-  else if (
-    n.includes("note") ||
-    n.includes("finding") ||
-    n.includes("cause") ||
-    n.includes("fix")
-  )
-    base = "No issues noted";
-  else if (n.includes("channel")) base = "#incident-response";
-  else if (n.includes("version")) base = "1.0.0";
-  else if (n.includes("team")) base = "platform-eng";
+  else if (n.includes('note') || n.includes('finding') || n.includes('cause') || n.includes('fix'))
+    base = 'No issues noted';
+  else if (n.includes('channel')) base = '#incident-response';
+  else if (n.includes('version')) base = '1.0.0';
+  else if (n.includes('team')) base = 'platform-eng';
 
   // Pad to satisfy z.string().min(n) constraints.
-  const min = field.kind === "string" ? (field.min ?? 0) : 0;
-  return base.length >= min ? base : base.padEnd(min, "-");
+  const min = field.kind === 'string' ? (field.min ?? 0) : 0;
+  return base.length >= min ? base : base.padEnd(min, '-');
 }
 
 function buildDefaults(fields: FieldDescriptor[]): {
@@ -65,9 +58,9 @@ function buildDefaults(fields: FieldDescriptor[]): {
   const num: Record<string, string> = {};
   for (const f of fields) {
     const val = autoDefault(f);
-    if (f.kind === "boolean") {
+    if (f.kind === 'boolean') {
       bool[f.name] = val as boolean;
-    } else if (f.kind === "number") {
+    } else if (f.kind === 'number') {
       num[f.name] = String(val);
     } else {
       text[f.name] = String(val);
@@ -86,12 +79,16 @@ function coercePayload(
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const f of fields) {
-    if (f.kind === "boolean") out[f.name] = bool[f.name] ?? false;
-    else if (f.kind === "number") {
-      const raw = num[f.name] ?? "";
-      out[f.name] = raw === "" ? undefined : Number(raw);
+    if (f.kind === 'boolean') {
+      out[f.name] = bool[f.name] ?? false;
+    } else if (f.kind === 'number') {
+      const raw = num[f.name] ?? '';
+      out[f.name] = raw === '' ? undefined : Number(raw);
+    } else if (f.kind === 'array') {
+      const parts = (text[f.name] ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+      out[f.name] = f.itemKind === 'number' ? parts.map(Number) : parts;
     } else {
-      out[f.name] = text[f.name] ?? "";
+      out[f.name] = text[f.name] ?? '';
     }
   }
   return out;
@@ -100,10 +97,9 @@ function coercePayload(
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function DynamicForm() {
-  const { definition, snapshot, availableActions, dispatch, lastError } =
-    useRunner();
+  const { definition, snapshot, availableActions, dispatch, lastError } = useRunner();
 
-  const [selectedAction, setSelectedAction] = useState<string>("");
+  const [selectedAction, setSelectedAction] = useState<string>('');
   const [textValues, setTextValues] = useState<Record<string, string>>({});
   const [boolValues, setBoolValues] = useState<Record<string, boolean>>({});
   const [numValues, setNumValues] = useState<Record<string, string>>({});
@@ -112,7 +108,7 @@ export function DynamicForm() {
   // When the available actions change (new section selected, or state advanced),
   // pick the first available action and pre-populate all fields.
   useEffect(() => {
-    const next = availableActions[0] ?? "";
+    const next = availableActions[0] ?? '';
     setSelectedAction(next);
     if (next) {
       const schema = definition.actionSchemas.get(next);
@@ -140,9 +136,7 @@ export function DynamicForm() {
     }
   }
 
-  const schema = selectedAction
-    ? definition.actionSchemas.get(selectedAction)
-    : undefined;
+  const schema = selectedAction ? definition.actionSchemas.get(selectedAction) : undefined;
   const fields: FieldDescriptor[] = schema ? describeSchema(schema) : [];
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -159,36 +153,28 @@ export function DynamicForm() {
 
   if (snapshot.isTerminal) {
     return (
-      <div className="p-4 text-center text-sm text-green-700 font-medium">
+      <div className="p-4 text-center text-sm font-medium text-green-700">
         Section complete — power restored ✓
       </div>
     );
   }
 
   if (availableActions.length === 0) {
-    return (
-      <div className="p-4 text-center text-sm text-slate-400">
-        No actions available
-      </div>
-    );
+    return <div className="p-4 text-center text-sm text-slate-400">No actions available</div>;
   }
 
   return (
     <form
-      onSubmit={(e) => {
-        void handleSubmit(e);
-      }}
-      className="p-4 border-b border-slate-100 space-y-3 overflow-y-auto"
+      onSubmit={handleSubmit}
+      className="space-y-3 overflow-y-auto border-b border-slate-100 p-4"
     >
       {/* Action selector */}
       <div>
-        <label className="text-xs font-medium text-slate-500 uppercase tracking-wide">
-          Action
-        </label>
+        <label className="text-xs font-medium tracking-wide text-slate-500 uppercase">Action</label>
         <select
           value={selectedAction}
           onChange={(e) => handleActionChange(e.target.value)}
-          className="mt-1 w-full rounded border border-slate-200 px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-300"
+          className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1.5 text-sm focus:ring-2 focus:ring-blue-300 focus:outline-none"
         >
           {availableActions.map((a) => (
             <option key={a} value={a}>
@@ -203,10 +189,10 @@ export function DynamicForm() {
         <div key={field.name}>
           <label className="text-xs font-medium text-slate-600">
             {field.label}
-            {!field.optional && <span className="text-red-400 ml-0.5">*</span>}
+            {!field.optional && <span className="ml-0.5 text-red-400">*</span>}
           </label>
 
-          {field.kind === "boolean" && (
+          {field.kind === 'boolean' && (
             <div className="mt-1 flex items-center gap-2">
               <input
                 type="checkbox"
@@ -218,24 +204,19 @@ export function DynamicForm() {
                     [field.name]: e.target.checked,
                   }))
                 }
-                className="w-4 h-4 rounded border-slate-300 text-blue-500 focus:ring-blue-300"
+                className="h-4 w-4 rounded border-slate-300 text-blue-500 focus:ring-blue-300"
               />
-              <label
-                htmlFor={`f-${field.name}`}
-                className="text-sm text-slate-700"
-              >
+              <label htmlFor={`f-${field.name}`} className="text-sm text-slate-700">
                 {field.label}
               </label>
             </div>
           )}
 
-          {field.kind === "enum" && (
+          {field.kind === 'enum' && (
             <select
-              value={textValues[field.name] ?? ""}
-              onChange={(e) =>
-                setTextValues((p) => ({ ...p, [field.name]: e.target.value }))
-              }
-              className="mt-1 w-full rounded border border-slate-200 px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-300"
+              value={textValues[field.name] ?? ''}
+              onChange={(e) => setTextValues((p) => ({ ...p, [field.name]: e.target.value }))}
+              className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1.5 text-sm focus:ring-2 focus:ring-blue-300 focus:outline-none"
             >
               {field.options.map((o) => (
                 <option key={o} value={o}>
@@ -245,46 +226,49 @@ export function DynamicForm() {
             </select>
           )}
 
-          {field.kind === "number" && (
+          {field.kind === 'number' && (
             <input
               type="number"
-              value={numValues[field.name] ?? ""}
-              onChange={(e) =>
-                setNumValues((p) => ({ ...p, [field.name]: e.target.value }))
-              }
-              className="mt-1 w-full rounded border border-slate-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+              value={numValues[field.name] ?? ''}
+              onChange={(e) => setNumValues((p) => ({ ...p, [field.name]: e.target.value }))}
+              className="mt-1 w-full rounded border border-slate-200 px-2 py-1.5 text-sm focus:ring-2 focus:ring-blue-300 focus:outline-none"
             />
           )}
 
-          {(field.kind === "string" || field.kind === "unknown") && (
+          {field.kind === 'array' && (
+            <div>
+              <input
+                type="text"
+                value={textValues[field.name] ?? ''}
+                onChange={(e) => setTextValues((p) => ({ ...p, [field.name]: e.target.value }))}
+                placeholder="comma-separated values"
+                className="mt-1 w-full rounded border border-slate-200 px-2 py-1.5 text-sm focus:ring-2 focus:ring-blue-300 focus:outline-none"
+              />
+              <p className="mt-0.5 text-xs text-slate-400">Separate items with commas</p>
+            </div>
+          )}
+
+          {(field.kind === 'string' || field.kind === 'unknown') && (
             <input
               type="text"
-              value={textValues[field.name] ?? ""}
-              onChange={(e) =>
-                setTextValues((p) => ({ ...p, [field.name]: e.target.value }))
-              }
-              placeholder={
-                field.kind === "unknown" ? "JSON value" : field.label
-              }
-              className="mt-1 w-full rounded border border-slate-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+              value={textValues[field.name] ?? ''}
+              onChange={(e) => setTextValues((p) => ({ ...p, [field.name]: e.target.value }))}
+              placeholder={field.kind === 'unknown' ? 'JSON value' : field.label}
+              className="mt-1 w-full rounded border border-slate-200 px-2 py-1.5 text-sm focus:ring-2 focus:ring-blue-300 focus:outline-none"
             />
           )}
         </div>
       ))}
 
       {/* Guard failure hint */}
-      {lastError && (
-        <p className="text-xs text-red-500 bg-red-50 rounded px-2 py-1">
-          {lastError}
-        </p>
-      )}
+      {lastError && <p className="rounded bg-red-50 px-2 py-1 text-xs text-red-500">{lastError}</p>}
 
       <button
         type="submit"
         disabled={submitting || !selectedAction}
-        className="w-full rounded bg-blue-500 hover:bg-blue-600 disabled:opacity-40 text-white text-sm font-medium py-1.5 transition-colors"
+        className="w-full rounded bg-blue-500 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-40"
       >
-        {submitting ? "Dispatching…" : `Dispatch ${selectedAction}`}
+        {submitting ? 'Dispatching…' : `Dispatch ${selectedAction}`}
       </button>
     </form>
   );

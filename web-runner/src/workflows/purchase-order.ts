@@ -1,5 +1,5 @@
-import { z } from "zod";
-import { createWorkflow } from "flowyd";
+import { z } from 'zod';
+import { createWorkflow } from 'flowyd';
 
 const SubmitSchema = z.object({
   submittedBy: z.string().min(1),
@@ -28,33 +28,33 @@ const FulfillSchema = z.object({
 });
 
 export const purchaseOrderWorkflow = createWorkflow({
-  name: "purchase-order",
+  name: 'purchase-order',
 })
-  .defineAction("SUBMIT", SubmitSchema)
-  .defineAction("REVIEW", ReviewSchema)
-  .defineAction("APPROVE", ApproveSchema)
-  .defineAction("REJECT", RejectSchema)
-  .defineAction("FULFILL", FulfillSchema)
+  .defineAction('SUBMIT', SubmitSchema)
+  .defineAction('REVIEW', ReviewSchema)
+  .defineAction('APPROVE', ApproveSchema)
+  .defineAction('REJECT', RejectSchema)
+  .defineAction('FULFILL', FulfillSchema)
 
-  .addStep("draft", { label: "Draft" })
-  .addStep("submitted", { label: "Submitted" })
-  .addStep("under-review", { label: "Under Review" })
-  .addStep("approved", { label: "Approved" })
-  .addStep("rejected", { label: "Rejected" })
-  .addStep("fulfilled", { label: "Fulfilled" })
+  .addStep('draft', { label: 'Draft' })
+  .addStep('submitted', { label: 'Submitted' })
+  .addStep('under-review', { label: 'Under Review' })
+  .addStep('approved', { label: 'Approved' })
+  .addStep('rejected', { label: 'Rejected' })
+  .addStep('fulfilled', { label: 'Fulfilled' })
 
-  .setInitial("draft")
-  .setTerminal(["fulfilled", "rejected"])
+  .setInitial('draft')
+  .setTerminal(['fulfilled', 'rejected'])
 
-  .addTransition({ from: "draft", to: "submitted", on: "SUBMIT" })
-  .addTransition({ from: "submitted", to: "under-review", on: "REVIEW" })
+  .addTransition({ from: 'draft', to: 'submitted', on: 'SUBMIT' })
+  .addTransition({ from: 'submitted', to: 'under-review', on: 'REVIEW' })
   .addTransition({
-    from: "under-review",
-    to: "approved",
-    on: "APPROVE",
+    from: 'under-review',
+    to: 'approved',
+    on: 'APPROVE',
     guard: (ctx) => ctx.payload.approvedBy.trim().length > 0,
   })
-  .addTransition({ from: "under-review", to: "rejected", on: "REJECT" })
-  .addTransition({ from: "approved", to: "fulfilled", on: "FULFILL" })
+  .addTransition({ from: 'under-review', to: 'rejected', on: 'REJECT' })
+  .addTransition({ from: 'approved', to: 'fulfilled', on: 'FULFILL' })
 
   .build();

@@ -2,10 +2,11 @@ import { ZodFirstPartyTypeKind } from 'zod';
 import type { ZodTypeAny } from 'zod';
 
 export type FieldDescriptor =
-  | { kind: 'string';  name: string; label: string; optional: boolean; min?: number }
-  | { kind: 'number';  name: string; label: string; optional: boolean; min?: number; max?: number }
+  | { kind: 'string'; name: string; label: string; optional: boolean; min?: number }
+  | { kind: 'number'; name: string; label: string; optional: boolean; min?: number; max?: number }
   | { kind: 'boolean'; name: string; label: string; optional: boolean }
-  | { kind: 'enum';    name: string; label: string; optional: boolean; options: string[] }
+  | { kind: 'enum'; name: string; label: string; optional: boolean; options: string[] }
+  | { kind: 'array'; name: string; label: string; optional: boolean; itemKind: 'string' | 'number' | 'unknown' }
   | { kind: 'unknown'; name: string; label: string; optional: boolean };
 
 /**
@@ -21,7 +22,10 @@ export function describeSchema(schema: ZodTypeAny): FieldDescriptor[] {
 }
 
 function toLabel(key: string): string {
-  return key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim();
+  return key
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/_/g, ' ')
+    .trim();
 }
 
 function walk(schema: ZodTypeAny, key: string, optional: boolean): FieldDescriptor[] {
@@ -36,33 +40,33 @@ function walk(schema: ZodTypeAny, key: string, optional: boolean): FieldDescript
     }
 
     case ZodFirstPartyTypeKind.ZodOptional:
-      return walk(
-        (schema._def as { innerType: ZodTypeAny }).innerType,
-        key,
-        true,
-      );
+      return walk((schema._def as { innerType: ZodTypeAny }).innerType, key, true);
 
     case ZodFirstPartyTypeKind.ZodDefault:
-      return walk(
-        (schema._def as { innerType: ZodTypeAny }).innerType,
-        key,
-        optional,
-      );
+      return walk((schema._def as { innerType: ZodTypeAny }).innerType, key, optional);
 
     case ZodFirstPartyTypeKind.ZodString: {
       if (!key) return [];
       const checks = (schema._def as { checks: { kind: string; value?: number }[] }).checks;
-      const min = checks.find(c => c.kind === 'min')?.value;
+      const min = checks.find((c) => c.kind === 'min')?.value;
       return [{ kind: 'string', name: key, label, optional, ...(min !== undefined && { min }) }];
     }
 
     case ZodFirstPartyTypeKind.ZodNumber: {
       if (!key) return [];
       const checks = (schema._def as { checks: { kind: string; value?: number }[] }).checks;
-      const min = checks.find(c => c.kind === 'min')?.value;
-      const max = checks.find(c => c.kind === 'max')?.value;
-      return [{ kind: 'number', name: key, label, optional,
-        ...(min !== undefined && { min }), ...(max !== undefined && { max }) }];
+      const min = checks.find((c) => c.kind === 'min')?.value;
+      const max = checks.find((c) => c.kind === 'max')?.value;
+      return [
+        {
+          kind: 'number',
+          name: key,
+          label,
+          optional,
+          ...(min !== undefined && { min }),
+          ...(max !== undefined && { max }),
+        },
+      ];
     }
 
     case ZodFirstPartyTypeKind.ZodBoolean:
@@ -81,6 +85,16 @@ function walk(schema: ZodTypeAny, key: string, optional: boolean): FieldDescript
     case ZodFirstPartyTypeKind.ZodEnum: {
       const values = (schema._def as { values: string[] }).values;
       return key ? [{ kind: 'enum', name: key, label, optional, options: values }] : [];
+    }
+
+    case ZodFirstPartyTypeKind.ZodArray: {
+      const element = (schema._def as { type: ZodTypeAny }).type;
+      const elementType = element._def.typeName as ZodFirstPartyTypeKind;
+      const itemKind =
+        elementType === ZodFirstPartyTypeKind.ZodString ? 'string'
+        : elementType === ZodFirstPartyTypeKind.ZodNumber ? 'number'
+        : 'unknown';
+      return key ? [{ kind: 'array', name: key, label, optional, itemKind }] : [];
     }
 
     default:

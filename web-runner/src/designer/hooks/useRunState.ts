@@ -15,6 +15,12 @@ export type AnyWorkflow = {
   getDefinition(): WorkflowDefinition;
 };
 
+/**
+ * Discriminated union describing the live-run panel state:
+ * - `idle`    — no workflow compiled yet; run button is available.
+ * - `error`   — last compile/eval attempt failed; `message` shown inline.
+ * - `running` — a compiled workflow is active; dispatch panel is visible.
+ */
 export type RunState =
   | { mode: 'idle' }
   | { mode: 'error'; message: string }
@@ -29,6 +35,15 @@ export interface RunStateHandles {
 export function useRunState(): RunStateHandles {
   const [runState, setRunState] = useState<RunState>({ mode: 'idle' });
 
+  /**
+   * Compile the designer workflow to TypeScript, evaluate it, and transition
+   * `runState` to `running` or `error`.
+   *
+   * Errors from code generation or evaluation are caught and surfaced as
+   * `mode:'error'` rather than thrown — the run panel owns their display.
+   *
+   * @param workflow - Current designer workflow model to compile and run.
+   */
   const handleRun = useCallback(async (workflow: DesignerWorkflow) => {
     const code = generateCode(workflow);
     const result = await evaluateWorkflowCode(code);
@@ -36,7 +51,11 @@ export function useRunState(): RunStateHandles {
       setRunState({ mode: 'error', message: result.error });
       return;
     }
-    setRunState({ mode: 'running', definition: result.definition, workflow: result.workflow as AnyWorkflow });
+    setRunState({
+      mode: 'running',
+      definition: result.definition,
+      workflow: result.workflow as AnyWorkflow,
+    });
   }, []);
 
   return { runState, setRunState, handleRun };

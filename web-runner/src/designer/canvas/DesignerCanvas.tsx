@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useRef } from 'react';
 import {
-  ReactFlow, Background, BackgroundVariant, Controls,
-  useNodesState, useEdgesState,
+  ReactFlow,
+  Background,
+  BackgroundVariant,
+  Controls,
+  useNodesState,
+  useEdgesState,
 } from '@xyflow/react';
 import type { Node, Edge, Connection, NodeChange, EdgeChange, OnConnect } from '@xyflow/react';
 import { DesignerToolbar } from './DesignerToolbar';
@@ -16,18 +20,27 @@ function loadSavedPositions(): Map<string, { x: number; y: number }> {
   try {
     const raw = localStorage.getItem(POSITIONS_KEY);
     if (raw) return new Map(JSON.parse(raw) as [string, { x: number; y: number }][]);
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return new Map();
 }
 
 function savePositions(nodes: Node[]): void {
-  const data = nodes.map(n => [n.id, n.position] as [string, { x: number; y: number }]);
+  const data = nodes.map((n) => [n.id, n.position] as [string, { x: number; y: number }]);
   localStorage.setItem(POSITIONS_KEY, JSON.stringify(data));
 }
 
 function wfStructureKey(wf: DesignerWorkflow): string {
-  const n = wf.nodes.map(n => `${n.id}:${n.kind}:${n.label}:${n.isInitial ? 1 : 0}:${n.isTerminal ? 1 : 0}:${n.forkTargets.join(',')}`).join('|');
-  const e = wf.edges.map(e => `${e.id}:${e.fromNodeId}:${e.toNodeId}:${e.kind}:${e.actionName}`).join('|');
+  const n = wf.nodes
+    .map(
+      (n) =>
+        `${n.id}:${n.kind}:${n.label}:${n.isInitial ? 1 : 0}:${n.isTerminal ? 1 : 0}:${n.forkTargets.join(',')}`,
+    )
+    .join('|');
+  const e = wf.edges
+    .map((e) => `${e.id}:${e.fromNodeId}:${e.toNodeId}:${e.kind}:${e.actionName}`)
+    .join('|');
   return `${wf.name}||${n}||${e}`;
 }
 
@@ -39,20 +52,21 @@ function wfToRfNodes(
   return wf.nodes.map((n, i) => ({
     id: n.id,
     type: 'designer-node',
-    position:
-      existingPositions.get(n.id) ??
-      savedPositions.get(n.id) ??
-      { x: 80 + (i % 4) * 220, y: 80 + Math.floor(i / 4) * 140 },
+    position: existingPositions.get(n.id) ??
+      savedPositions.get(n.id) ?? { x: 80 + (i % 4) * 220, y: 80 + Math.floor(i / 4) * 140 },
     data: n as unknown as Record<string, unknown>,
   }));
 }
 
 function wfToRfEdges(wf: DesignerWorkflow): Edge[] {
-  return wf.edges.map(e => {
+  return wf.edges.map((e) => {
     if (e.kind === 'fork-target') {
       return {
-        id: e.id, source: e.fromNodeId, target: e.toNodeId,
-        label: '⑂ auto', animated: false,
+        id: e.id,
+        source: e.fromNodeId,
+        target: e.toNodeId,
+        label: '⑂ auto',
+        animated: false,
         style: { strokeDasharray: '5 3', stroke: '#7c3aed', strokeWidth: 1.5 },
         labelStyle: { fontSize: 11, fontFamily: 'monospace' },
         labelBgStyle: { fill: '#0f172a', fillOpacity: 0.9 },
@@ -61,8 +75,11 @@ function wfToRfEdges(wf: DesignerWorkflow): Edge[] {
     }
     if (e.kind === 'join-requires') {
       return {
-        id: e.id, source: e.fromNodeId, target: e.toNodeId,
-        label: '⑁ requires', animated: false,
+        id: e.id,
+        source: e.fromNodeId,
+        target: e.toNodeId,
+        label: '⑁ requires',
+        animated: false,
         style: { strokeDasharray: '5 3', stroke: '#0ea5e9', strokeWidth: 1.5 },
         labelStyle: { fontSize: 11, fontFamily: 'monospace' },
         labelBgStyle: { fill: '#0f172a', fillOpacity: 0.9 },
@@ -70,8 +87,11 @@ function wfToRfEdges(wf: DesignerWorkflow): Edge[] {
       };
     }
     return {
-      id: e.id, source: e.fromNodeId, target: e.toNodeId,
-      label: e.actionName || '—', animated: false,
+      id: e.id,
+      source: e.fromNodeId,
+      target: e.toNodeId,
+      label: e.actionName || '—',
+      animated: false,
       style: { stroke: '#64748b', strokeWidth: 1.5 },
       labelStyle: { fontSize: 11, fontFamily: 'monospace' },
       labelBgStyle: { fill: '#0f172a', fillOpacity: 0.85 },
@@ -83,8 +103,19 @@ function wfToRfEdges(wf: DesignerWorkflow): Edge[] {
 let nodeCounter = 1;
 function makeNewNode(kind: NodeKind, existingIds: Set<string>): DesignerNode {
   let id: string;
-  do { id = `${kind}-${nodeCounter++}`; } while (existingIds.has(id));
-  return { id, kind, label: id, isInitial: false, isTerminal: false, forkTargets: [], joinMode: 'all', waitExternalName: '' };
+  do {
+    id = `${kind}-${nodeCounter++}`;
+  } while (existingIds.has(id));
+  return {
+    id,
+    kind,
+    label: id,
+    isInitial: false,
+    isTerminal: false,
+    forkTargets: [],
+    joinMode: 'all',
+    waitExternalName: '',
+  };
 }
 
 interface Props {
@@ -94,7 +125,12 @@ interface Props {
   onSelectionChange: (sel: Selection) => void;
 }
 
-export function DesignerCanvas({ workflow, selection, onWorkflowChange, onSelectionChange }: Props) {
+export function DesignerCanvas({
+  workflow,
+  selection,
+  onWorkflowChange,
+  onSelectionChange,
+}: Props) {
   const savedPositions = useRef(loadSavedPositions());
   const prevKeyRef = useRef('');
 
@@ -107,8 +143,8 @@ export function DesignerCanvas({ workflow, selection, onWorkflowChange, onSelect
     if (key === prevKeyRef.current) return;
     prevKeyRef.current = key;
 
-    setRfNodes(prev => {
-      const existingPos = new Map(prev.map(n => [n.id, n.position]));
+    setRfNodes((prev) => {
+      const existingPos = new Map(prev.map((n) => [n.id, n.position]));
       return wfToRfNodes(workflow, existingPos, savedPositions.current);
     });
     setRfEdges(wfToRfEdges(workflow));
@@ -116,106 +152,137 @@ export function DesignerCanvas({ workflow, selection, onWorkflowChange, onSelect
 
   // Reflect selection state via node/edge `selected` flag
   useEffect(() => {
-    setRfNodes(prev => prev.map(n => ({
-      ...n,
-      selected: selection.type === 'node' && selection.id === n.id,
-    })));
-    setRfEdges(prev => prev.map(e => ({
-      ...e,
-      selected: selection.type === 'edge' && selection.id === e.id,
-    })));
+    setRfNodes((prev) =>
+      prev.map((n) => ({
+        ...n,
+        selected: selection.type === 'node' && selection.id === n.id,
+      })),
+    );
+    setRfEdges((prev) =>
+      prev.map((e) => ({
+        ...e,
+        selected: selection.type === 'edge' && selection.id === e.id,
+      })),
+    );
   }, [selection, setRfNodes, setRfEdges]);
 
-  const handleNodesChange = useCallback((changes: NodeChange[]) => {
-    onRfNodesChange(changes);
+  const handleNodesChange = useCallback(
+    (changes: NodeChange[]) => {
+      onRfNodesChange(changes);
 
-    for (const change of changes) {
-      // Save positions when drag ends
-      if (change.type === 'position' && change.dragging === false) {
-        setRfNodes(current => {
-          savePositions(current);
-          savedPositions.current = new Map(current.map(n => [n.id, n.position]));
-          return current;
-        });
-        break;
+      for (const change of changes) {
+        // Save positions when drag ends
+        if (change.type === 'position' && change.dragging === false) {
+          setRfNodes((current) => {
+            savePositions(current);
+            savedPositions.current = new Map(current.map((n) => [n.id, n.position]));
+            return current;
+          });
+          break;
+        }
+        // Handle deletion (Backspace key)
+        if (change.type === 'remove') {
+          const id = change.id;
+          onWorkflowChange({
+            ...workflow,
+            nodes: workflow.nodes.filter((n) => n.id !== id),
+            edges: workflow.edges.filter((e) => e.fromNodeId !== id && e.toNodeId !== id),
+          });
+          onSelectionChange({ type: 'none' });
+          return;
+        }
       }
-      // Handle deletion (Backspace key)
-      if (change.type === 'remove') {
-        const id = change.id;
-        onWorkflowChange({
-          ...workflow,
-          nodes: workflow.nodes.filter(n => n.id !== id),
-          edges: workflow.edges.filter(e => e.fromNodeId !== id && e.toNodeId !== id),
-        });
-        onSelectionChange({ type: 'none' });
-        return;
+    },
+    [workflow, onRfNodesChange, onWorkflowChange, onSelectionChange, setRfNodes],
+  );
+
+  const handleEdgesChange = useCallback(
+    (changes: EdgeChange[]) => {
+      onRfEdgesChange(changes);
+      for (const change of changes) {
+        if (change.type === 'remove') {
+          onWorkflowChange({
+            ...workflow,
+            edges: workflow.edges.filter((e) => e.id !== change.id),
+          });
+          onSelectionChange({ type: 'none' });
+          return;
+        }
       }
-    }
-  }, [workflow, onRfNodesChange, onWorkflowChange, onSelectionChange, setRfNodes]);
+    },
+    [workflow, onRfEdgesChange, onWorkflowChange, onSelectionChange],
+  );
 
-  const handleEdgesChange = useCallback((changes: EdgeChange[]) => {
-    onRfEdgesChange(changes);
-    for (const change of changes) {
-      if (change.type === 'remove') {
-        onWorkflowChange({ ...workflow, edges: workflow.edges.filter(e => e.id !== change.id) });
-        onSelectionChange({ type: 'none' });
-        return;
+  const handleConnect: OnConnect = useCallback(
+    (connection: Connection) => {
+      const from = connection.source;
+      const to = connection.target;
+      if (!from || !to) return;
+      const sourceNode = workflow.nodes.find((n) => n.id === from);
+      const targetNode = workflow.nodes.find((n) => n.id === to);
+
+      let kind: DesignerEdge['kind'];
+      if (targetNode?.kind === 'join') {
+        kind = 'join-requires';
+      } else if (sourceNode?.kind === 'fork') {
+        kind = 'fork-target';
+      } else {
+        kind = 'transition';
       }
-    }
-  }, [workflow, onRfEdgesChange, onWorkflowChange, onSelectionChange]);
 
-  const handleConnect: OnConnect = useCallback((connection: Connection) => {
-    const from = connection.source;
-    const to = connection.target;
-    if (!from || !to) return;
-    const sourceNode = workflow.nodes.find(n => n.id === from);
-    const targetNode = workflow.nodes.find(n => n.id === to);
+      const newEdge: DesignerEdge = {
+        id: `e-${from}-${to}-${Date.now()}`,
+        fromNodeId: from,
+        toNodeId: to,
+        kind,
+        actionName: kind === 'transition' ? 'ACTION' : '',
+        guardBody: '',
+      };
+      onWorkflowChange({ ...workflow, edges: [...workflow.edges, newEdge] });
+      onSelectionChange({ type: 'edge', id: newEdge.id });
 
-    let kind: DesignerEdge['kind'];
-    if (targetNode?.kind === 'join') {
-      kind = 'join-requires';
-    } else if (sourceNode?.kind === 'fork') {
-      kind = 'fork-target';
-    } else {
-      kind = 'transition';
-    }
+      const edgeStyle =
+        kind === 'fork-target'
+          ? { strokeDasharray: '5 3', stroke: '#7c3aed', strokeWidth: 1.5 }
+          : kind === 'join-requires'
+            ? { strokeDasharray: '5 3', stroke: '#0ea5e9', strokeWidth: 1.5 }
+            : { stroke: '#64748b', strokeWidth: 1.5 };
+      const edgeLabel =
+        kind === 'fork-target' ? '⑂ auto' : kind === 'join-requires' ? '⑁ requires' : 'ACTION';
 
-    const newEdge: DesignerEdge = {
-      id: `e-${from}-${to}-${Date.now()}`,
-      fromNodeId: from, toNodeId: to, kind,
-      actionName: kind === 'transition' ? 'ACTION' : '',
-      guardBody: '',
-    };
-    onWorkflowChange({ ...workflow, edges: [...workflow.edges, newEdge] });
-    onSelectionChange({ type: 'edge', id: newEdge.id });
+      setRfEdges((es) => [
+        ...es,
+        {
+          id: newEdge.id,
+          source: from,
+          target: to,
+          label: edgeLabel,
+          style: edgeStyle,
+          labelStyle: { fontSize: 11, fontFamily: 'monospace' },
+          labelBgStyle: { fill: '#0f172a', fillOpacity: 0.85 },
+          data: {} as Record<string, unknown>,
+        },
+      ]);
+    },
+    [workflow, onWorkflowChange, onSelectionChange, setRfEdges],
+  );
 
-    const edgeStyle = kind === 'fork-target'
-      ? { strokeDasharray: '5 3', stroke: '#7c3aed', strokeWidth: 1.5 }
-      : kind === 'join-requires'
-        ? { strokeDasharray: '5 3', stroke: '#0ea5e9', strokeWidth: 1.5 }
-        : { stroke: '#64748b', strokeWidth: 1.5 };
-    const edgeLabel = kind === 'fork-target' ? '⑂ auto' : kind === 'join-requires' ? '⑁ requires' : 'ACTION';
-
-    setRfEdges(es => [...es, {
-      id: newEdge.id, source: from, target: to,
-      label: edgeLabel,
-      style: edgeStyle,
-      labelStyle: { fontSize: 11, fontFamily: 'monospace' },
-      labelBgStyle: { fill: '#0f172a', fillOpacity: 0.85 },
-      data: {} as Record<string, unknown>,
-    }]);
-  }, [workflow, onWorkflowChange, onSelectionChange, setRfEdges]);
-
-  const handleAddNode = useCallback((kind: NodeKind) => {
-    const ids = new Set(workflow.nodes.map(n => n.id));
-    const node = makeNewNode(kind, ids);
-    const pos = { x: 120 + (workflow.nodes.length % 4) * 220, y: 120 + Math.floor(workflow.nodes.length / 4) * 140 };
-    onWorkflowChange({ ...workflow, nodes: [...workflow.nodes, node] });
-    savedPositions.current.set(node.id, pos);
-  }, [workflow, onWorkflowChange]);
+  const handleAddNode = useCallback(
+    (kind: NodeKind) => {
+      const ids = new Set(workflow.nodes.map((n) => n.id));
+      const node = makeNewNode(kind, ids);
+      const pos = {
+        x: 120 + (workflow.nodes.length % 4) * 220,
+        y: 120 + Math.floor(workflow.nodes.length / 4) * 140,
+      };
+      onWorkflowChange({ ...workflow, nodes: [...workflow.nodes, node] });
+      savedPositions.current.set(node.id, pos);
+    },
+    [workflow, onWorkflowChange],
+  );
 
   return (
-    <div className="w-full h-full relative bg-[#0f172a]">
+    <div className="relative h-full w-full bg-[#0f172a]">
       <DesignerToolbar onAddNode={handleAddNode} />
       <ReactFlow
         nodes={rfNodes}
@@ -233,13 +300,13 @@ export function DesignerCanvas({ workflow, selection, onWorkflowChange, onSelect
         proOptions={{ hideAttribution: true }}
       >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#334155" />
-        <Controls className="!bg-slate-800 !border-slate-600 [&_button]:!bg-slate-800 [&_button]:!text-slate-300 [&_button:hover]:!bg-slate-700 [&_button]:!border-slate-600" />
+        <Controls className="!border-slate-600 !bg-slate-800 [&_button]:!border-slate-600 [&_button]:!bg-slate-800 [&_button]:!text-slate-300 [&_button:hover]:!bg-slate-700" />
       </ReactFlow>
 
       {workflow.nodes.length === 0 && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none gap-2">
-          <p className="text-slate-500 text-sm font-medium">Start building</p>
-          <p className="text-slate-600 text-xs">Use the toolbar above to add states</p>
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2">
+          <p className="text-sm font-medium text-slate-500">Start building</p>
+          <p className="text-xs text-slate-600">Use the toolbar above to add states</p>
         </div>
       )}
     </div>

@@ -24,35 +24,41 @@ export default function DesignerPage() {
   const { runState, setRunState, handleRun } = useRunState();
   const { theme, toggleTheme } = useTheme();
 
-  const handleWorkflowChange = useCallback((wf: DesignerWorkflow) => {
-    setWorkflow(wf);
-  }, [setWorkflow]);
+  const handleWorkflowChange = useCallback(
+    (wf: DesignerWorkflow) => {
+      setWorkflow(wf);
+    },
+    [setWorkflow],
+  );
 
   // ── Selection-driven panel edits ─────────────────────────────────────────
 
-  const selectedNode = selection.type === 'node'
-    ? workflow.nodes.find(n => n.id === selection.id) ?? null
-    : null;
-  const selectedEdge = selection.type === 'edge'
-    ? workflow.edges.find(e => e.id === selection.id) ?? null
-    : null;
+  const selectedNode =
+    selection.type === 'node' ? (workflow.nodes.find((n) => n.id === selection.id) ?? null) : null;
+  const selectedEdge =
+    selection.type === 'edge' ? (workflow.edges.find((e) => e.id === selection.id) ?? null) : null;
 
   function handleNodeChange(updated: DesignerNode) {
     const oldId = selection.type === 'node' ? selection.id : updated.id;
-    const nodes = workflow.nodes.map(n => n.id === oldId ? updated : n);
-    const edges = updated.id !== oldId
-      ? workflow.edges.map(e => ({
-          ...e,
-          fromNodeId: e.fromNodeId === oldId ? updated.id : e.fromNodeId,
-          toNodeId:   e.toNodeId   === oldId ? updated.id : e.toNodeId,
-        }))
-      : workflow.edges;
-    if (updated.id !== oldId && selection.type === 'node') setSelection({ type: 'node', id: updated.id });
+    const nodes = workflow.nodes.map((n) => (n.id === oldId ? updated : n));
+    const edges =
+      updated.id !== oldId
+        ? workflow.edges.map((e) => ({
+            ...e,
+            fromNodeId: e.fromNodeId === oldId ? updated.id : e.fromNodeId,
+            toNodeId: e.toNodeId === oldId ? updated.id : e.toNodeId,
+          }))
+        : workflow.edges;
+    if (updated.id !== oldId && selection.type === 'node')
+      setSelection({ type: 'node', id: updated.id });
     handleWorkflowChange({ ...workflow, nodes, edges });
   }
 
   function handleEdgeChange(updated: DesignerEdge) {
-    handleWorkflowChange({ ...workflow, edges: workflow.edges.map(e => e.id === updated.id ? updated : e) });
+    handleWorkflowChange({
+      ...workflow,
+      edges: workflow.edges.map((e) => (e.id === updated.id ? updated : e)),
+    });
   }
 
   function handleDeleteNode() {
@@ -60,15 +66,18 @@ export default function DesignerPage() {
     const id = selection.id;
     handleWorkflowChange({
       ...workflow,
-      nodes: workflow.nodes.filter(n => n.id !== id),
-      edges: workflow.edges.filter(e => e.fromNodeId !== id && e.toNodeId !== id),
+      nodes: workflow.nodes.filter((n) => n.id !== id),
+      edges: workflow.edges.filter((e) => e.fromNodeId !== id && e.toNodeId !== id),
     });
     setSelection({ type: 'none' });
   }
 
   function handleDeleteEdge() {
     if (selection.type !== 'edge') return;
-    handleWorkflowChange({ ...workflow, edges: workflow.edges.filter(e => e.id !== selection.id) });
+    handleWorkflowChange({
+      ...workflow,
+      edges: workflow.edges.filter((e) => e.id !== selection.id),
+    });
     setSelection({ type: 'none' });
   }
 
@@ -83,22 +92,28 @@ export default function DesignerPage() {
     handleWorkflowChange({ ...workflow, contextSchemaBody: body });
   }
 
+  function handleClickRun() {
+    handleRun(workflow);
+  }
+
   const hasPanel = selectedNode !== null || selectedEdge !== null || selection.type === 'settings';
   const isRunning = runState.mode === 'running';
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden font-sans bg-white dark:bg-[#0f172a]">
-
+    <div className="flex h-screen flex-col overflow-hidden bg-white font-sans dark:bg-[#0f172a]">
       {/* ── Top bar ──────────────────────────────────────────────────────── */}
-      <header className="shrink-0 h-11 bg-white dark:bg-slate-900 flex items-center px-4 gap-3 border-b border-slate-200 dark:border-slate-700/60 z-10">
-        <Link to="/" className="text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 text-sm transition-colors font-semibold">
+      <header className="z-10 flex h-11 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 dark:border-slate-700/60 dark:bg-slate-900">
+        <Link
+          to="/"
+          className="text-sm font-semibold text-slate-500 transition-colors hover:text-slate-800 dark:hover:text-slate-200"
+        >
           flowyd
         </Link>
         <span className="text-slate-300 dark:text-slate-700">/</span>
         <input
-          className="bg-transparent border-none outline-none text-slate-900 dark:text-white text-sm font-medium w-44 placeholder-slate-400"
+          className="w-44 border-none bg-transparent text-sm font-medium text-slate-900 placeholder-slate-400 outline-none dark:text-white"
           value={workflow.name}
-          onChange={e => handleWorkflowChange({ ...workflow, name: e.target.value })}
+          onChange={(e) => handleWorkflowChange({ ...workflow, name: e.target.value })}
           placeholder="workflow-name"
         />
 
@@ -117,13 +132,16 @@ export default function DesignerPage() {
             variant="ghost"
             size="sm"
             title="Reset canvas to default (clears localStorage)"
-            onClick={() => { resetToDefault(); setSelection({ type: 'none' }); }}
+            onClick={() => {
+              resetToDefault();
+              setSelection({ type: 'none' });
+            }}
           >
             Reset
           </Button>
           <Link
             to="/examples/purchase-order"
-            className="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
+            className="text-xs text-slate-500 transition-colors hover:text-slate-700 dark:hover:text-slate-300"
           >
             Examples
           </Link>
@@ -131,30 +149,24 @@ export default function DesignerPage() {
             variant={selection.type === 'settings' ? 'secondary' : 'outline'}
             size="sm"
             title="Workflow context & settings"
-            onClick={() => setSelection(s => s.type === 'settings' ? { type: 'none' } : { type: 'settings' })}
+            onClick={() =>
+              setSelection((s) => (s.type === 'settings' ? { type: 'none' } : { type: 'settings' }))
+            }
           >
             Context
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowCode(true)}
-          >
+          <Button variant="outline" size="sm" onClick={() => setShowCode(true)}>
             {'</>'} Show Code
           </Button>
           {isRunning && (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setRunState({ mode: 'idle' })}
-            >
+            <Button variant="secondary" size="sm" onClick={() => setRunState({ mode: 'idle' })}>
               Close
             </Button>
           )}
           <Button
             size="sm"
-            className="bg-blue-600 hover:bg-blue-500 text-white font-medium"
-            onClick={() => { void handleRun(workflow); }}
+            className="bg-blue-600 font-medium text-white hover:bg-blue-500"
+            onClick={handleClickRun}
           >
             ▶ Run
           </Button>
@@ -162,7 +174,7 @@ export default function DesignerPage() {
       </header>
 
       {/* ── Main canvas area ──────────────────────────────────────────────── */}
-      <div className="flex-1 min-h-0 relative">
+      <div className="relative min-h-0 flex-1">
         <ReactFlowProvider>
           <DesignerCanvas
             workflow={workflow}
@@ -174,9 +186,9 @@ export default function DesignerPage() {
 
         {/* Floating config panel — overlays canvas on the right */}
         {hasPanel && (
-          <div className="absolute top-0 right-0 h-full w-72 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-700/60 shadow-xl overflow-y-auto z-10">
-            <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900">
-              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+          <div className="absolute top-0 right-0 z-10 h-full w-72 overflow-y-auto border-l border-slate-200 bg-white shadow-xl dark:border-slate-700/60 dark:bg-slate-900">
+            <div className="sticky top-0 flex items-center justify-between border-b border-slate-100 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-900">
+              <span className="text-[11px] font-semibold tracking-wider text-slate-500 uppercase dark:text-slate-400">
                 {selection.type === 'settings' ? 'Workflow' : selectedNode ? 'State' : 'Transition'}
               </span>
               <Button
@@ -192,12 +204,15 @@ export default function DesignerPage() {
 
             {/* Workflow settings panel */}
             {selection.type === 'settings' && (
-              <div className="p-3 space-y-3">
+              <div className="space-y-3 p-3">
                 <div className="space-y-1.5">
                   <Label>Context schema</Label>
-                  <p className="text-[10px] text-muted-foreground">
-                    Zod object fields for <code className="font-mono">ctx.context</code>.
-                    Generates <code className="font-mono">.setContext(z.object({'{'}...{'}'}))</code>.
+                  <p className="text-muted-foreground text-[10px]">
+                    Zod object fields for <code className="font-mono">ctx.context</code>. Generates{' '}
+                    <code className="font-mono">
+                      .setContext(z.object({'{'}...{'}'}))
+                    </code>
+                    .
                   </p>
                   <SchemaEditor
                     id="context"
@@ -209,7 +224,11 @@ export default function DesignerPage() {
             )}
 
             {selectedNode && (
-              <NodePanel node={selectedNode} onChange={handleNodeChange} onDelete={handleDeleteNode} />
+              <NodePanel
+                node={selectedNode}
+                onChange={handleNodeChange}
+                onDelete={handleDeleteNode}
+              />
             )}
             {selectedEdge && (
               <EdgePanel
@@ -226,19 +245,25 @@ export default function DesignerPage() {
 
       {/* ── Run panel ────────────────────────────────────────────────────── */}
       {isRunning && (
-        <div className="shrink-0 h-72 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 flex overflow-hidden">
+        <div className="flex h-72 shrink-0 overflow-hidden border-t border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
           <SingleRunner
             title={`▶ ${runState.definition.name}`}
             subtitle="Live execution of your designed workflow"
             definition={runState.definition}
-            makeInstance={() => (runState as Extract<typeof runState, { mode: 'running' }>).workflow.createInstance(`run-${Date.now()}`)}
+            makeInstance={() =>
+              (runState as Extract<typeof runState, { mode: 'running' }>).workflow.createInstance(
+                `run-${Date.now()}`,
+              )
+            }
           />
         </div>
       )}
 
       {runState.mode === 'error' && (
-        <div className="shrink-0 px-4 py-2.5 bg-red-50 dark:bg-red-950 border-t border-red-200 dark:border-red-800 flex items-center gap-3">
-          <span className="text-xs text-red-700 dark:text-red-300 flex-1">⚠ {runState.message}</span>
+        <div className="flex shrink-0 items-center gap-3 border-t border-red-200 bg-red-50 px-4 py-2.5 dark:border-red-800 dark:bg-red-950">
+          <span className="flex-1 text-xs text-red-700 dark:text-red-300">
+            ⚠ {runState.message}
+          </span>
           <Button
             variant="ghost"
             size="icon"
@@ -251,9 +276,7 @@ export default function DesignerPage() {
       )}
 
       {/* ── Show Code modal ──────────────────────────────────────────────── */}
-      {showCode && (
-        <ShowCodeModal workflow={workflow} onClose={() => setShowCode(false)} />
-      )}
+      {showCode && <ShowCodeModal workflow={workflow} onClose={() => setShowCode(false)} />}
     </div>
   );
 }

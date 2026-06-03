@@ -6,6 +6,25 @@ import { DynamicForm } from '../components/DynamicForm';
 import { HistoryPanel } from '../components/HistoryPanel';
 import { RunnerToolbar } from './RunnerToolbar';
 
+type ZodIssue = { path: (string | number)[]; message: string };
+
+function isZodError(err: unknown): err is Error & { issues: ZodIssue[] } {
+  return (
+    err instanceof Error &&
+    'issues' in err &&
+    Array.isArray((err as Record<string, unknown>).issues)
+  );
+}
+
+function formatDispatchError(err: unknown): string {
+  if (isZodError(err)) {
+    return err.issues
+      .map((issue) => (issue.path.length ? `${issue.path.join('.')}: ` : '') + issue.message)
+      .join('; ');
+  }
+  return err instanceof Error ? err.message : String(err);
+}
+
 type AnyInstance = {
   dispatch(action: string, payload: unknown): Promise<DispatchResult>;
   getSnapshot(): InstanceSnapshot;
@@ -13,15 +32,27 @@ type AnyInstance = {
 };
 
 interface Props {
-  title:       string;
-  subtitle:    string;
-  definition:  WorkflowDefinition;
+  title: string;
+  subtitle: string;
+  definition: WorkflowDefinition;
   makeInstance: () => AnyInstance;
 }
 
+/**
+ * Self-contained workflow runner that owns one `WorkflowInstance`.
+ *
+ * The instance is held in a `ref` (not state) so that dispatching actions
+ * does not trigger an extra render cycle — only the resulting snapshot update
+ * causes a re-render. `makeInstance` is a factory prop so callers can inject
+ * guards or custom instance IDs without this component knowing about them.
+ *
+ * `availableActions` derives from `definition.transitions` filtered to those
+ * whose `from` state is currently `active`, de-duplicated so each action name
+ * appears once regardless of how many transitions carry it.
+ */
 export function SingleRunner({ title, subtitle, definition, makeInstance }: Props) {
   const instRef = useRef<AnyInstance>(makeInstance());
-  const [snapshot,  setSnapshot]  = useState<InstanceSnapshot>(() => instRef.current.getSnapshot());
+  const [snapshot, setSnapshot] = useState<InstanceSnapshot>(() => instRef.current.getSnapshot());
   const [lastError, setLastError] = useState<string | null>(null);
 
   const availableActions = definition.transitions
@@ -30,12 +61,16 @@ export function SingleRunner({ title, subtitle, definition, makeInstance }: Prop
     .filter((v, i, a) => a.indexOf(v) === i);
 
   const dispatch = useCallback(async (action: string, payload: unknown) => {
-    const result = await instRef.current.dispatch(action, payload);
-    if (result.success) {
-      setSnapshot(instRef.current.getSnapshot());
-      setLastError(null);
-    } else {
-      setLastError(result.reason);
+    try {
+      const result = await instRef.current.dispatch(action, payload);
+      if (result.success) {
+        setSnapshot(instRef.current.getSnapshot());
+        setLastError(null);
+      } else {
+        setLastError(result.reason);
+      }
+    } catch (err) {
+      setLastError(formatDispatchError(err));
     }
   }, []);
 
@@ -45,24 +80,19 @@ export function SingleRunner({ title, subtitle, definition, makeInstance }: Prop
     setLastError(null);
   }, [makeInstance]);
 
-  // RunnerContext is shared with EwcrRunner (multi-instance); single runner has no selectable sections.
-  const noopSelect = useCallback((_id: string) => {}, []);
-  const emptyMap   = new Map<string, InstanceSnapshot>();
-
   return (
-    <RunnerContext.Provider value={{
-      definition,
-      snapshot,
-      allSnapshots:     emptyMap,
-      availableActions,
-      selectedId:       snapshot.instanceId,
-      dispatch,
-      selectSection:    noopSelect,
-      lastError,
-      reset,
-    }}>
+    <RunnerContext.Provider
+      value={{
+        definition,
+        snapshot,
+        availableActions,
+        dispatch,
+        lastError,
+        reset,
+      }}
+    >
       <div className="flex h-full overflow-hidden">
-        <div className="flex-1 min-w-0 flex flex-col">
+        <div className="flex min-w-0 flex-1 flex-col">
           <RunnerToolbar
             title={title}
             subtitle={subtitle}
@@ -73,7 +103,7 @@ export function SingleRunner({ title, subtitle, definition, makeInstance }: Prop
           <WorkflowGraph />
         </div>
 
-        <div className="w-72 shrink-0 flex flex-col border-l border-slate-200 bg-white overflow-hidden">
+        <div className="flex w-72 shrink-0 flex-col overflow-hidden border-l border-slate-200 bg-white">
           <DynamicForm />
           <HistoryPanel />
         </div>

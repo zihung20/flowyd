@@ -17,6 +17,18 @@ const NODE_H = 64;
 // Object reference must be stable — defined outside the component.
 const nodeTypes = { stateNode: StateNode };
 
+/**
+ * Compute left-to-right node positions using dagre's Sugiyama layout.
+ *
+ * The `any` cast on the dagre import isolates the graphlib peer-dependency
+ * mismatch: @dagrejs/dagre v3 expects @dagrejs/graphlib as a separate peer
+ * which is not installed — the runtime bundle is self-contained, only the
+ * TypeScript declarations require the peer.
+ *
+ * @param nodes - JsonGraph nodes (only `id` is used for graph construction).
+ * @param edges - JsonGraph edges (only `from`/`to` are used; labels are ignored for layout).
+ * @returns Map from node ID to top-left `{x, y}` position in pixels.
+ */
 function dagreLayout(
   nodes: JsonGraphNode[],
   edges: JsonGraphEdge[],
@@ -43,7 +55,8 @@ function dagreLayout(
   for (const node of nodes) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const n = g.node(node.id) as any;
-    if (n) positions.set(node.id, { x: (n.x as number) - NODE_W / 2, y: (n.y as number) - NODE_H / 2 });
+    if (n)
+      positions.set(node.id, { x: (n.x as number) - NODE_W / 2, y: (n.y as number) - NODE_H / 2 });
   }
   return positions;
 }
@@ -53,43 +66,59 @@ function toFlowNodes(
   positions: Map<string, { x: number; y: number }>,
 ): StateNodeType[] {
   return graph.nodes.map((n) => ({
-    id:       n.id,
-    type:     'stateNode' as const,
+    id: n.id,
+    type: 'stateNode' as const,
     position: positions.get(n.id) ?? { x: 0, y: 0 },
     data: {
-      label:      n.label,
-      kind:       n.kind,
-      status:     n.status,
-      isInitial:  n.isInitial,
+      label: n.label,
+      kind: n.kind,
+      status: n.status,
+      isInitial: n.isInitial,
       isTerminal: n.isTerminal,
     },
   }));
 }
 
+/**
+ * Convert JsonGraph edges to ReactFlow edges with visual encoding:
+ * - `fork-target` edges: purple dashed, non-animated (structural, not traversable).
+ * - `join-requires` edges: cyan dashed, non-animated (structural).
+ * - Transition edges: animated when the source state is currently `active`;
+ *   dashed stroke when the transition has a guard.
+ *
+ * @param graph - Full JsonGraph including node statuses needed for the animation flag.
+ * @returns ReactFlow `Edge[]` ready for `<ReactFlow edges={…} />`.
+ */
 function toFlowEdges(graph: JsonGraph): Edge[] {
   return graph.edges.map((e) => {
     if (e.kind === 'fork-target') {
       return {
-        id: e.id, source: e.from, target: e.to,
-        label: '⑂ auto', animated: false,
+        id: e.id,
+        source: e.from,
+        target: e.to,
+        label: '⑂ auto',
+        animated: false,
         style: { strokeDasharray: '5 3', stroke: '#7c3aed', strokeWidth: 1.5 },
         labelStyle: { fontSize: 11, fontFamily: 'monospace' },
       };
     }
     if (e.kind === 'join-requires') {
       return {
-        id: e.id, source: e.from, target: e.to,
-        label: '⑁ requires', animated: false,
+        id: e.id,
+        source: e.from,
+        target: e.to,
+        label: '⑁ requires',
+        animated: false,
         style: { strokeDasharray: '5 3', stroke: '#0ea5e9', strokeWidth: 1.5 },
         labelStyle: { fontSize: 11, fontFamily: 'monospace' },
       };
     }
     const sourceStatus = graph.nodes.find((n) => n.id === e.from)?.status;
     return {
-      id:       e.id,
-      source:   e.from,
-      target:   e.to,
-      label:    e.action,
+      id: e.id,
+      source: e.from,
+      target: e.to,
+      label: e.action,
       animated: sourceStatus === 'active',
       ...(e.hasGuard ? { style: { strokeDasharray: '5 3' } } : {}),
     };
@@ -110,7 +139,7 @@ export function WorkflowGraph() {
   const edges: Edge[] = useMemo(() => toFlowEdges(graph), [graph]);
 
   return (
-    <div className="flex-1 min-h-0">
+    <div className="min-h-0 flex-1">
       <ReactFlow
         nodes={nodes}
         edges={edges}

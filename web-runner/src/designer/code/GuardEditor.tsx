@@ -12,7 +12,14 @@ interface Props {
   onChange(body: string): void;
 }
 
-export function GuardEditor({ edgeId, nodeIds, payloadZodBody = '', contextZodBody = '', value, onChange }: Props) {
+export function GuardEditor({
+  edgeId,
+  nodeIds,
+  payloadZodBody = '',
+  contextZodBody = '',
+  value,
+  onChange,
+}: Props) {
   const monacoInstance = useMonaco();
   const argsRef = useRef({ nodeIds, payloadZodBody, contextZodBody });
   argsRef.current = { nodeIds, payloadZodBody, contextZodBody };
@@ -36,8 +43,14 @@ export function GuardEditor({ edgeId, nodeIds, payloadZodBody = '', contextZodBo
   };
 
   return (
-    <div className="rounded border border-border overflow-hidden" onKeyDown={e => e.stopPropagation()}>
-      <div style={codeFontStyle} className="px-3 py-1 bg-[#1e1e1e] text-zinc-500 border-b border-border select-none">
+    <div
+      className="border-border overflow-hidden rounded border"
+      onKeyDown={(e) => e.stopPropagation()}
+    >
+      <div
+        style={codeFontStyle}
+        className="border-border border-b bg-[#1e1e1e] px-3 py-1 text-zinc-500 select-none"
+      >
         {'async (ctx) => {'}
       </div>
       <Editor
@@ -46,7 +59,7 @@ export function GuardEditor({ edgeId, nodeIds, payloadZodBody = '', contextZodBo
         language="typescript"
         value={value}
         theme="vs-dark"
-        onChange={v => onChange(v ?? '')}
+        onChange={(v) => onChange(v ?? '')}
         beforeMount={handleBeforeMount}
         options={{
           fontSize: 12,
@@ -69,7 +82,10 @@ export function GuardEditor({ edgeId, nodeIds, payloadZodBody = '', contextZodBo
           fixedOverflowWidgets: true,
         }}
       />
-      <div style={codeFontStyle} className="px-3 py-1 bg-[#1e1e1e] text-zinc-500 border-t border-border select-none">
+      <div
+        style={codeFontStyle}
+        className="border-border border-t bg-[#1e1e1e] px-3 py-1 text-zinc-500 select-none"
+      >
         {'}'}
       </div>
     </div>

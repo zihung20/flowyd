@@ -1,7 +1,7 @@
-import type { Monaco } from "@monaco-editor/react";
-import type { IDisposable } from "monaco-editor";
-import zodTypes from "../../types/zod.bundle.d.ts?raw";
-import flowydTypes from "../../types/flowyd.bundle.d.ts?raw";
+import type { Monaco } from '@monaco-editor/react';
+import type { IDisposable } from 'monaco-editor';
+import zodTypes from '../../../type-bundles/zod.bundle.d.ts?raw';
+import flowydTypes from '../../../type-bundles/flowyd.bundle.d.ts?raw';
 
 let monacoTypesRegistered = false;
 let guardContextDisposable: IDisposable | null = null;
@@ -13,7 +13,7 @@ let guardContextDisposable: IDisposable | null = null;
  */
 function zodExprToTsType(expr: string): string {
   const trimmed = expr.trim();
-  if (!trimmed || trimmed === "z.object({})") return "Record<string, unknown>";
+  if (!trimmed || trimmed === 'z.object({})') return 'Record<string, unknown>';
   try {
     const innerMatch = /z\.object\(\s*\{([^}]*)\}\s*\)/.exec(trimmed);
     const body = innerMatch ? (innerMatch[1] ?? trimmed) : trimmed;
@@ -25,18 +25,16 @@ function zodExprToTsType(expr: string): string {
       const key = m[1];
       const zodToken = m[2];
       if (!key || !zodToken) continue;
-      let tsType = "unknown";
-      if (/^z\.string\(/.test(zodToken)) tsType = "string";
-      else if (/^z\.number\(/.test(zodToken)) tsType = "number";
-      else if (/^z\.boolean\(/.test(zodToken)) tsType = "boolean";
-      else if (/^z\.date\(/.test(zodToken)) tsType = "Date";
+      let tsType = 'unknown';
+      if (/^z\.string\(/.test(zodToken)) tsType = 'string';
+      else if (/^z\.number\(/.test(zodToken)) tsType = 'number';
+      else if (/^z\.boolean\(/.test(zodToken)) tsType = 'boolean';
+      else if (/^z\.date\(/.test(zodToken)) tsType = 'Date';
       fields.push(`${key}: ${tsType}`);
     }
-    return fields.length > 0
-      ? `{ ${fields.join("; ")} }`
-      : "Record<string, unknown>";
+    return fields.length > 0 ? `{ ${fields.join('; ')} }` : 'Record<string, unknown>';
   } catch {
-    return "Record<string, unknown>";
+    return 'Record<string, unknown>';
   }
 }
 
@@ -51,24 +49,19 @@ function zodExprToTsType(expr: string): string {
 export function updateGuardContextTypes(
   monacoInstance: Monaco,
   nodeIds: string[],
-  payloadZodBody = "",
-  contextZodBody = "",
+  payloadZodBody = '',
+  contextZodBody = '',
 ): void {
   const stateIdUnion =
-    nodeIds.length > 0
-      ? nodeIds.map((id) => JSON.stringify(id)).join(" | ")
-      : "string";
+    nodeIds.length > 0 ? nodeIds.map((id) => JSON.stringify(id)).join(' | ') : 'string';
   const payloadType = zodExprToTsType(payloadZodBody);
-  const contextType = contextZodBody.trim()
-    ? zodExprToTsType(contextZodBody)
-    : "unknown";
+  const contextType = contextZodBody.trim() ? zodExprToTsType(contextZodBody) : 'unknown';
 
   guardContextDisposable?.dispose();
-  guardContextDisposable =
-    monacoInstance.languages.typescript.typescriptDefaults.addExtraLib(
-      `declare const ctx: import('flowyd').GuardContext<${payloadType}, ${contextType}, ${stateIdUnion}>;`,
-      "file:///guard-context.d.ts",
-    );
+  guardContextDisposable = monacoInstance.languages.typescript.typescriptDefaults.addExtraLib(
+    `declare const ctx: import('flowyd').GuardContext<${payloadType}, ${contextType}, ${stateIdUnion}>;`,
+    'file:///guard-context.d.ts',
+  );
 }
 
 /**
@@ -90,7 +83,7 @@ export function setupMonacoTypes(monacoInstance: Monaco): void {
     strict: true,
     esModuleInterop: true,
     allowSyntheticDefaultImports: true,
-    lib: ["es2020", "dom", "dom.iterable"],
+    lib: ['es2020', 'dom', 'dom.iterable'],
   });
 
   ts.typescriptDefaults.setDiagnosticsOptions({
@@ -102,8 +95,8 @@ export function setupMonacoTypes(monacoInstance: Monaco): void {
 
   // Single-file bundles: each is a `declare module 'pkg' { ... }` block with
   // all declarations inlined. No inter-file imports to resolve.
-  ts.typescriptDefaults.addExtraLib(flowydTypes, "file:///flowyd.d.ts");
-  ts.typescriptDefaults.addExtraLib(zodTypes, "file:///zod.d.ts");
+  ts.typescriptDefaults.addExtraLib(flowydTypes, 'file:///flowyd.d.ts');
+  ts.typescriptDefaults.addExtraLib(zodTypes, 'file:///zod.d.ts');
 
   // Re-add the `z` named export that our bundle stripped (the real zod index.d.ts does
   // `import * as z from './v3/external'; export { z }`). This file is a module (has an
@@ -111,12 +104,12 @@ export function setupMonacoTypes(monacoInstance: Monaco): void {
   ts.typescriptDefaults.addExtraLib(
     `import type * as _zod from 'zod';
 declare module 'zod' { export const z: typeof _zod; }`,
-    "file:///zod-z-export.d.ts",
+    'file:///zod-z-export.d.ts',
   );
 
   // Expose `z` as a global so schema/guard editors can write `z.object({...})` without an import.
   ts.typescriptDefaults.addExtraLib(
     `declare const z: typeof import('zod');`,
-    "file:///zod-global.d.ts",
+    'file:///zod-global.d.ts',
   );
 }

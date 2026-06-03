@@ -5,6 +5,7 @@ Strongly-typed SOP state machines for TypeScript.
 Build Standard Operating Procedures as typed workflow state machines. The compiler catches every typo in a state ID, every wrong action name, and every mismatched payload shape — before your code runs.
 
 **[Full documentation →](https://zihung20.github.io/flowyd/guide/)**
+**[Playground →](https://zihung20.github.io/flowyd/playground/)**
 
 ---
 

@@ -3,7 +3,11 @@ import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Checkbox } from '../../components/ui/checkbox';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '../../components/ui/select';
 import type { DesignerNode, NodeKind } from '../types';
 
@@ -14,10 +18,10 @@ interface Props {
 }
 
 const KIND_OPTIONS: { value: NodeKind; label: string; description: string }[] = [
-  { value: 'step', label: 'Step',   description: 'Waits for an action to be dispatched' },
-  { value: 'fork', label: 'Fork',   description: 'Activates parallel branches simultaneously' },
-  { value: 'join', label: 'Join',   description: 'Synchronises parallel branches' },
-  { value: 'wait', label: 'Wait',   description: 'Pauses until an external signal resolves it' },
+  { value: 'step', label: 'Step', description: 'Waits for an action to be dispatched' },
+  { value: 'fork', label: 'Fork', description: 'Activates parallel branches simultaneously' },
+  { value: 'join', label: 'Join', description: 'Synchronises parallel branches' },
+  { value: 'wait', label: 'Wait', description: 'Pauses until an external signal resolves it' },
 ];
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -35,34 +39,29 @@ export function NodePanel({ node, onChange, onDelete }: Props) {
   }
 
   return (
-    <div className="p-3 space-y-3">
-
+    <div className="space-y-3 p-3">
       <Field label="State ID">
-        <Input
-          value={node.id}
-          onChange={e => set('id', e.target.value)}
-          placeholder="state-id"
-        />
+        <Input value={node.id} onChange={(e) => set('id', e.target.value)} placeholder="state-id" />
       </Field>
 
       <Field label="Label">
         <Input
           value={node.label}
-          onChange={e => set('label', e.target.value)}
+          onChange={(e) => set('label', e.target.value)}
           placeholder="Display label"
         />
       </Field>
 
       <Field label="Kind">
-        <Select value={node.kind} onValueChange={v => set('kind', v as NodeKind)}>
+        <Select value={node.kind} onValueChange={(v) => set('kind', v as NodeKind)}>
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {KIND_OPTIONS.map(o => (
+            {KIND_OPTIONS.map((o) => (
               <SelectItem key={o.value} value={o.value}>
                 <span className="font-medium">{o.label}</span>
-                <span className="ml-1.5 text-muted-foreground">{o.description}</span>
+                <span className="text-muted-foreground ml-1.5">{o.description}</span>
               </SelectItem>
             ))}
           </SelectContent>
@@ -71,12 +70,17 @@ export function NodePanel({ node, onChange, onDelete }: Props) {
 
       <Field label="Flags">
         <div className="flex flex-wrap gap-4 pt-0.5">
-          {([['isInitial', '▶ Initial'], ['isTerminal', '■ Terminal']] as const).map(([key, lbl]) => (
-            <label key={key} className="flex items-center gap-2 cursor-pointer select-none text-xs text-foreground">
-              <Checkbox
-                checked={node[key] as boolean}
-                onCheckedChange={v => set(key, !!v)}
-              />
+          {(
+            [
+              ['isInitial', '▶ Initial'],
+              ['isTerminal', '■ Terminal'],
+            ] as const
+          ).map(([key, lbl]) => (
+            <label
+              key={key}
+              className="text-foreground flex cursor-pointer items-center gap-2 text-xs select-none"
+            >
+              <Checkbox checked={node[key] as boolean} onCheckedChange={(v) => set(key, !!v)} />
               {lbl}
             </label>
           ))}
@@ -88,9 +92,11 @@ export function NodePanel({ node, onChange, onDelete }: Props) {
           <Field label="Synchronisation mode">
             <Select
               value={typeof node.joinMode === 'number' ? 'quorum' : node.joinMode}
-              onValueChange={v => set('joinMode', v === 'quorum' ? 2 : (v as 'all' | 'any'))}
+              onValueChange={(v) => set('joinMode', v === 'quorum' ? 2 : (v as 'all' | 'any'))}
             >
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">all — every required state must complete</SelectItem>
                 <SelectItem value="any">any — at least one must complete</SelectItem>
@@ -105,7 +111,7 @@ export function NodePanel({ node, onChange, onDelete }: Props) {
                 type="number"
                 min={1}
                 value={node.joinMode}
-                onChange={e => set('joinMode', Math.max(1, parseInt(e.target.value) || 1))}
+                onChange={(e) => set('joinMode', Math.max(1, parseInt(e.target.value) || 1))}
               />
             </Field>
           )}
@@ -116,13 +122,13 @@ export function NodePanel({ node, onChange, onDelete }: Props) {
         <Field label="External name">
           <Input
             value={node.waitExternalName}
-            onChange={e => set('waitExternalName', e.target.value)}
+            onChange={(e) => set('waitExternalName', e.target.value)}
             placeholder="external-service-name"
           />
         </Field>
       )}
 
-      <Button variant="destructive" size="sm" className="w-full mt-1" onClick={onDelete}>
+      <Button variant="destructive" size="sm" className="mt-1 w-full" onClick={onDelete}>
         Delete state
       </Button>
     </div>

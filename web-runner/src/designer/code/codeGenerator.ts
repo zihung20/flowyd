@@ -1,5 +1,18 @@
 import type { DesignerWorkflow, DesignerNode, DesignerEdge } from '../types';
 
+/**
+ * Sort nodes so the fluent builder chain satisfies flowyd's ordering rule:
+ * branch/prerequisite states must be registered *before* the fork or join
+ * that references them.
+ *
+ * Dependency direction (counter-intuitive):
+ * - `fork-target` edge A→B: fork A depends on target B (B must come first).
+ * - `join-requires` edge A→B: join B depends on prerequisite A (A must come first).
+ *
+ * @param nodes - All designer nodes.
+ * @param edges - All designer edges (only fork-target and join-requires are consumed).
+ * @returns Nodes in an order where every dependency precedes the node that needs it.
+ */
 function topoSort(nodes: DesignerNode[], edges: DesignerEdge[]): DesignerNode[] {
   const deps = new Map<string, Set<string>>();
   for (const node of nodes) deps.set(node.id, new Set());
@@ -16,7 +29,7 @@ function topoSort(nodes: DesignerNode[], edges: DesignerEdge[]): DesignerNode[] 
     if (visited.has(id)) return;
     visited.add(id);
     for (const dep of deps.get(id) ?? []) visit(dep);
-    const node = nodes.find(n => n.id === id);
+    const node = nodes.find((n) => n.id === id);
     if (node) sorted.unshift(node);
   }
 
@@ -28,28 +41,43 @@ function indent(line: string): string {
   return `  ${line}`;
 }
 
+/**
+ * Generate a TypeScript source file that calls the flowyd fluent builder API.
+ *
+ * Multi-pass process:
+ * 1. Topo-sort nodes (branch states must precede the fork/join that references them).
+ * 2. Collect unique action names and build fork-target / join-requires lookup maps.
+ * 3. Emit import lines, context schema constant, and per-action schema constants.
+ * 4. Emit the `createWorkflow(…)` fluent chain: context, actions, states, initial,
+ *    terminals, transitions (with optional inline guard), `.build()`.
+ *
+ * The result is valid TypeScript; pass it to `evaluateWorkflowCode` to run it.
+ *
+ * @param wf - Designer workflow model from the canvas and panel editors.
+ * @returns TypeScript source as a single string with `\n` line endings.
+ */
 export function generateCode(wf: DesignerWorkflow): string {
   const { name, nodes, edges, actionSchemas, contextSchemaBody } = wf;
   const sortedNodes = topoSort(nodes, edges);
 
-  const transitionEdges = edges.filter(e => e.kind === 'transition');
+  const transitionEdges = edges.filter((e) => e.kind === 'transition');
 
   const actionNames = [
-    ...new Set(transitionEdges.map(e => e.actionName).filter(a => a.trim() !== '')),
+    ...new Set(transitionEdges.map((e) => e.actionName).filter((a) => a.trim() !== '')),
   ];
 
-  const initialNode = nodes.find(n => n.isInitial);
-  const terminalNodes = nodes.filter(n => n.isTerminal);
+  const initialNode = nodes.find((n) => n.isInitial);
+  const terminalNodes = nodes.filter((n) => n.isTerminal);
 
   const forkTargetMap = new Map<string, string[]>();
-  for (const edge of edges.filter(e => e.kind === 'fork-target')) {
+  for (const edge of edges.filter((e) => e.kind === 'fork-target')) {
     const arr = forkTargetMap.get(edge.fromNodeId) ?? [];
     arr.push(edge.toNodeId);
     forkTargetMap.set(edge.fromNodeId, arr);
   }
 
   const joinRequiresMap = new Map<string, string[]>();
-  for (const edge of edges.filter(e => e.kind === 'join-requires')) {
+  for (const edge of edges.filter((e) => e.kind === 'join-requires')) {
     const arr = joinRequiresMap.get(edge.toNodeId) ?? [];
     arr.push(edge.fromNodeId);
     joinRequiresMap.set(edge.toNodeId, arr);
@@ -89,18 +117,29 @@ export function generateCode(wf: DesignerWorkflow): string {
       lines.push(indent(`.addStep('${node.id}', { label: ${JSON.stringify(node.label)} })`));
     } else if (node.kind === 'fork') {
       const targets = forkTargetMap.get(node.id) ?? node.forkTargets;
-      const targetsStr = targets.map(t => `'${t}'`).join(', ');
-      lines.push(indent(`.addFork('${node.id}', { label: ${JSON.stringify(node.label)}, targets: [${targetsStr}] })`));
+      const targetsStr = targets.map((t) => `'${t}'`).join(', ');
+      lines.push(
+        indent(
+          `.addFork('${node.id}', { label: ${JSON.stringify(node.label)}, targets: [${targetsStr}] })`,
+        ),
+      );
     } else if (node.kind === 'join') {
       const requires = joinRequiresMap.get(node.id) ?? [];
-      const requiresStr = requires.map(r => `'${r}'`).join(', ');
-      const modeStr = typeof node.joinMode === 'number'
-        ? String(node.joinMode)
-        : `'${node.joinMode}'`;
-      lines.push(indent(`.addJoin('${node.id}', { label: ${JSON.stringify(node.label)}, requires: [${requiresStr}], mode: ${modeStr} })`));
+      const requiresStr = requires.map((r) => `'${r}'`).join(', ');
+      const modeStr =
+        typeof node.joinMode === 'number' ? String(node.joinMode) : `'${node.joinMode}'`;
+      lines.push(
+        indent(
+          `.addJoin('${node.id}', { label: ${JSON.stringify(node.label)}, requires: [${requiresStr}], mode: ${modeStr} })`,
+        ),
+      );
     } else if (node.kind === 'wait') {
       const ext = node.waitExternalName || node.id;
-      lines.push(indent(`.addWait('${node.id}', { label: ${JSON.stringify(node.label)}, externalName: ${JSON.stringify(ext)} })`));
+      lines.push(
+        indent(
+          `.addWait('${node.id}', { label: ${JSON.stringify(node.label)}, externalName: ${JSON.stringify(ext)} })`,
+        ),
+      );
     }
   }
 
@@ -109,7 +148,7 @@ export function generateCode(wf: DesignerWorkflow): string {
   }
 
   if (terminalNodes.length > 0) {
-    const ids = terminalNodes.map(t => `'${t.id}'`).join(', ');
+    const ids = terminalNodes.map((t) => `'${t.id}'`).join(', ');
     lines.push(indent(`.setTerminal([${ids}])`));
   }
 
@@ -117,10 +156,18 @@ export function generateCode(wf: DesignerWorkflow): string {
     if (!edge.actionName.trim()) continue;
     const hasGuard = edge.guardBody.trim() !== '';
     if (hasGuard) {
-      lines.push(indent(`.addTransition({ from: '${edge.fromNodeId}', to: '${edge.toNodeId}', on: '${edge.actionName}',`));
+      lines.push(
+        indent(
+          `.addTransition({ from: '${edge.fromNodeId}', to: '${edge.toNodeId}', on: '${edge.actionName}',`,
+        ),
+      );
       lines.push(indent(`  guard: (ctx) => { ${edge.guardBody} } })`));
     } else {
-      lines.push(indent(`.addTransition({ from: '${edge.fromNodeId}', to: '${edge.toNodeId}', on: '${edge.actionName}' })`));
+      lines.push(
+        indent(
+          `.addTransition({ from: '${edge.fromNodeId}', to: '${edge.toNodeId}', on: '${edge.actionName}' })`,
+        ),
+      );
     }
   }
 
@@ -133,18 +180,35 @@ export const DEFAULT_WORKFLOW: DesignerWorkflow = {
   name: 'my-workflow',
   nodes: [
     {
-      id: 'start', kind: 'step', label: 'Start',
-      isInitial: true, isTerminal: false,
-      forkTargets: [], joinMode: 'all', waitExternalName: '',
+      id: 'start',
+      kind: 'step',
+      label: 'Start',
+      isInitial: true,
+      isTerminal: false,
+      forkTargets: [],
+      joinMode: 'all',
+      waitExternalName: '',
     },
     {
-      id: 'end', kind: 'step', label: 'End',
-      isInitial: false, isTerminal: true,
-      forkTargets: [], joinMode: 'all', waitExternalName: '',
+      id: 'end',
+      kind: 'step',
+      label: 'End',
+      isInitial: false,
+      isTerminal: true,
+      forkTargets: [],
+      joinMode: 'all',
+      waitExternalName: '',
     },
   ],
   edges: [
-    { id: 'e-start-end', fromNodeId: 'start', toNodeId: 'end', kind: 'transition', actionName: 'COMPLETE', guardBody: '' },
+    {
+      id: 'e-start-end',
+      fromNodeId: 'start',
+      toNodeId: 'end',
+      kind: 'transition',
+      actionName: 'COMPLETE',
+      guardBody: '',
+    },
   ],
   actionSchemas: {},
   contextSchemaBody: '',
