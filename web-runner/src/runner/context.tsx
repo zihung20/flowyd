@@ -24,6 +24,6 @@ export const RunnerContext = createContext<RunnerContextValue | null>(null);
  */
 export function useRunner(): RunnerContextValue {
   const ctx = useContext(RunnerContext);
-  if (!ctx) throw new Error('useRunner must be used inside a runner provider');
+  if (!ctx) {throw new Error('useRunner must be used inside a runner provider');}
   return ctx;
 }

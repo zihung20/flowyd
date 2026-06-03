@@ -1,47 +1,47 @@
 import { useEffect, useState } from 'react';
-import { describeSchema } from '../lib/zod-introspect';
-import type { FieldDescriptor } from '../lib/zod-introspect';
+import { describeSchema } from '../../lib/zod-introspect';
+import type { FieldDescriptor } from '../../lib/zod-introspect';
 import { useRunner } from '../context';
 
 // ─── Default value generator ──────────────────────────────────────────────────
 
 function autoDefault(field: FieldDescriptor): string | number | boolean {
-  if (field.kind === 'boolean') return true;
-  if (field.kind === 'enum') return field.options[0] ?? '';
+  if (field.kind === 'boolean') {return true;}
+  if (field.kind === 'enum') {return field.options[0] ?? '';}
 
   if (field.kind === 'number') {
     // Use the schema minimum when present so Zod validation always passes.
-    if (field.min !== undefined) return field.min;
+    if (field.min !== undefined) {return field.min;}
     const n = field.name.toLowerCase();
-    if (n.includes('count') || n.includes('size') || n.includes('head')) return 3;
-    if (n.includes('platform')) return 1;
+    if (n.includes('count') || n.includes('size') || n.includes('head')) {return 3;}
+    if (n.includes('platform')) {return 1;}
     return 1;
   }
 
   // string / unknown — pick a contextual default first, then pad to meet min length.
   const n = field.name.toLowerCase();
   let base = 'value';
-  if (/(by|lead|manager|officer|author|engineer)/.test(n)) base = 'ENG-001';
+  if (/(by|lead|manager|officer|author|engineer)/.test(n)) {base = 'ENG-001';}
   else if (
     n.includes('reason') ||
     n.includes('description') ||
     n.includes('summary') ||
     n.includes('actions')
   )
-    base = 'Completed as scheduled';
-  else if (n.includes('url')) base = 'https://example.com/doc';
-  else if (n.includes('sha')) base = 'a'.repeat(40);
-  else if (n.includes('switch') && n.includes('ref')) base = 'SW-A01';
-  else if (n.includes('clearance') && n.includes('ref')) base = 'CLR-001';
-  else if (n.endsWith('ref') || n.includes('ref')) base = 'REF-001';
-  else if (n.endsWith('id') || n.includes('trainid') || n.includes('ticket')) base = 'ID-001';
+    {base = 'Completed as scheduled';}
+  else if (n.includes('url')) {base = 'https://example.com/doc';}
+  else if (n.includes('sha')) {base = 'a'.repeat(40);}
+  else if (n.includes('switch') && n.includes('ref')) {base = 'SW-A01';}
+  else if (n.includes('clearance') && n.includes('ref')) {base = 'CLR-001';}
+  else if (n.endsWith('ref') || n.includes('ref')) {base = 'REF-001';}
+  else if (n.endsWith('id') || n.includes('trainid') || n.includes('ticket')) {base = 'ID-001';}
   else if (n.includes('at') || n.includes('expires'))
-    base = new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 16);
+    {base = new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 16);}
   else if (n.includes('note') || n.includes('finding') || n.includes('cause') || n.includes('fix'))
-    base = 'No issues noted';
-  else if (n.includes('channel')) base = '#incident-response';
-  else if (n.includes('version')) base = '1.0.0';
-  else if (n.includes('team')) base = 'platform-eng';
+    {base = 'No issues noted';}
+  else if (n.includes('channel')) {base = '#incident-response';}
+  else if (n.includes('version')) {base = '1.0.0';}
+  else if (n.includes('team')) {base = 'platform-eng';}
 
   // Pad to satisfy z.string().min(n) constraints.
   const min = field.kind === 'string' ? (field.min ?? 0) : 0;
@@ -109,6 +109,7 @@ export function DynamicForm() {
   // pick the first available action and pre-populate all fields.
   useEffect(() => {
     const next = availableActions[0] ?? '';
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: sync selected action to available actions on change
     setSelectedAction(next);
     if (next) {
       const schema = definition.actionSchemas.get(next);
@@ -141,7 +142,7 @@ export function DynamicForm() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!selectedAction) return;
+    if (!selectedAction) {return;}
     setSubmitting(true);
     try {
       const payload = coercePayload(fields, textValues, boolValues, numValues);
@@ -218,7 +219,7 @@ export function DynamicForm() {
               onChange={(e) => setTextValues((p) => ({ ...p, [field.name]: e.target.value }))}
               className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1.5 text-sm focus:ring-2 focus:ring-blue-300 focus:outline-none"
             >
-              {field.options.map((o) => (
+              {field.options.map((o: string) => (
                 <option key={o} value={o}>
                   {o}
                 </option>

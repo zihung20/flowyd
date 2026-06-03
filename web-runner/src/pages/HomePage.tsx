@@ -76,6 +76,12 @@ export default function HomePage() {
             Examples
           </Link>
           <Link
+            to="/playground"
+            className="text-sm text-slate-500 transition-colors hover:text-slate-800"
+          >
+            Playground
+          </Link>
+          <Link
             to="/designer"
             className="rounded-md bg-slate-900 px-3 py-1.5 text-sm text-white transition-colors hover:bg-slate-700"
           >

@@ -30,7 +30,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   // Track system preference when user hasn't stored a preference
   useEffect(() => {
-    if (storedTheme() !== null) return;
+    if (storedTheme() !== null) {return;}
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
     const handler = (e: MediaQueryListEvent) => setTheme(e.matches ? 'dark' : 'light');
     mq.addEventListener('change', handler);

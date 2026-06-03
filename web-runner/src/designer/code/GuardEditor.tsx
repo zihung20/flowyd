@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import Editor, { useMonaco } from '@monaco-editor/react';
 import type { Monaco } from '@monaco-editor/react';
 import { setupMonacoTypes, updateGuardContextTypes } from './monacoSetup';
@@ -21,8 +21,6 @@ export function GuardEditor({
   onChange,
 }: Props) {
   const monacoInstance = useMonaco();
-  const argsRef = useRef({ nodeIds, payloadZodBody, contextZodBody });
-  argsRef.current = { nodeIds, payloadZodBody, contextZodBody };
 
   // Keep ctx type in sync whenever IDs or schema bodies change.
   useEffect(() => {
@@ -33,8 +31,7 @@ export function GuardEditor({
 
   function handleBeforeMount(monaco: Monaco) {
     setupMonacoTypes(monaco);
-    const { nodeIds: ids, payloadZodBody: p, contextZodBody: c } = argsRef.current;
-    updateGuardContextTypes(monaco, ids, p, c);
+    updateGuardContextTypes(monaco, nodeIds, payloadZodBody, contextZodBody);
   }
 
   const codeFontStyle: React.CSSProperties = {

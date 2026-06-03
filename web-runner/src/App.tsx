@@ -5,6 +5,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import HomePage from './pages/HomePage';
 import ExamplesPage from './pages/ExamplesPage';
 import DesignerPage from './pages/DesignerPage';
+import PlaygroundPage from './pages/PlaygroundPage';
 
 function Spinner() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
             <Route path="/examples" element={<Navigate to="/examples/purchase-order" replace />} />
             <Route path="/examples/:id" element={<ExamplesPage />} />
             <Route path="/designer" element={<DesignerPage />} />
+            <Route path="/playground" element={<PlaygroundPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>

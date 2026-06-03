@@ -46,14 +46,14 @@ function walk(schema: ZodTypeAny, key: string, optional: boolean): FieldDescript
       return walk((schema._def as { innerType: ZodTypeAny }).innerType, key, optional);
 
     case ZodFirstPartyTypeKind.ZodString: {
-      if (!key) return [];
+      if (!key) {return [];}
       const checks = (schema._def as { checks: { kind: string; value?: number }[] }).checks;
       const min = checks.find((c) => c.kind === 'min')?.value;
       return [{ kind: 'string', name: key, label, optional, ...(min !== undefined && { min }) }];
     }
 
     case ZodFirstPartyTypeKind.ZodNumber: {
-      if (!key) return [];
+      if (!key) {return [];}
       const checks = (schema._def as { checks: { kind: string; value?: number }[] }).checks;
       const min = checks.find((c) => c.kind === 'min')?.value;
       const max = checks.find((c) => c.kind === 'max')?.value;

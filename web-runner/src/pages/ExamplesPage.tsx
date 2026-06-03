@@ -1,5 +1,5 @@
 import { Link, useParams, Navigate } from 'react-router-dom';
-import { SingleRunner } from '../runners/SingleRunner';
+import { SingleRunner } from '../runner/SingleRunner';
 import { purchaseOrderWorkflow } from '../workflows/purchase-order';
 import { predepartureWorkflow } from '../workflows/predeparture';
 import { incidentWorkflow } from '../workflows/incident';

@@ -13,7 +13,7 @@ let guardContextDisposable: IDisposable | null = null;
  */
 function zodExprToTsType(expr: string): string {
   const trimmed = expr.trim();
-  if (!trimmed || trimmed === 'z.object({})') return 'Record<string, unknown>';
+  if (!trimmed || trimmed === 'z.object({})') {return 'Record<string, unknown>';}
   try {
     const innerMatch = /z\.object\(\s*\{([^}]*)\}\s*\)/.exec(trimmed);
     const body = innerMatch ? (innerMatch[1] ?? trimmed) : trimmed;
@@ -24,12 +24,12 @@ function zodExprToTsType(expr: string): string {
     while ((m = re.exec(body)) !== null) {
       const key = m[1];
       const zodToken = m[2];
-      if (!key || !zodToken) continue;
+      if (!key || !zodToken) {continue;}
       let tsType = 'unknown';
-      if (/^z\.string\(/.test(zodToken)) tsType = 'string';
-      else if (/^z\.number\(/.test(zodToken)) tsType = 'number';
-      else if (/^z\.boolean\(/.test(zodToken)) tsType = 'boolean';
-      else if (/^z\.date\(/.test(zodToken)) tsType = 'Date';
+      if (/^z\.string\(/.test(zodToken)) {tsType = 'string';}
+      else if (/^z\.number\(/.test(zodToken)) {tsType = 'number';}
+      else if (/^z\.boolean\(/.test(zodToken)) {tsType = 'boolean';}
+      else if (/^z\.date\(/.test(zodToken)) {tsType = 'Date';}
       fields.push(`${key}: ${tsType}`);
     }
     return fields.length > 0 ? `{ ${fields.join('; ')} }` : 'Record<string, unknown>';
@@ -71,7 +71,7 @@ export function updateGuardContextTypes(
  * @param monacoInstance - The Monaco instance returned by `useMonaco()`.
  */
 export function setupMonacoTypes(monacoInstance: Monaco): void {
-  if (monacoTypesRegistered) return;
+  if (monacoTypesRegistered) {return;}
   monacoTypesRegistered = true;
 
   const ts = monacoInstance.languages.typescript;

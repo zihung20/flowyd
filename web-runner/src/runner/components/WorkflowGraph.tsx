@@ -1,12 +1,8 @@
 import { useMemo } from 'react';
-import { ReactFlow, Controls, Background, BackgroundVariant } from '@xyflow/react';
+import { ReactFlow, Background, BackgroundVariant } from '@xyflow/react';
 import type { Node, Edge } from '@xyflow/react';
 import { JsonGraphExporter } from 'flowyd/visualization';
 import type { JsonGraph, JsonGraphNode, JsonGraphEdge } from 'flowyd/visualization';
-// @dagrejs/dagre v3 bundles graphlib; the `any` casts below isolate the interop
-// surface so the rest of the file remains fully typed.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-import dagre from '@dagrejs/dagre';
 import { StateNode } from './StateNode';
 import type { StateNodeType } from './StateNode';
 import { useRunner } from '../context';
@@ -17,57 +13,99 @@ const NODE_H = 64;
 // Object reference must be stable — defined outside the component.
 const nodeTypes = { stateNode: StateNode };
 
+const H_GAP = 60;
+const V_GAP = 28;
+
 /**
- * Compute left-to-right node positions using dagre's Sugiyama layout.
+ * Compute left-to-right node positions using a longest-path layering algorithm.
  *
- * The `any` cast on the dagre import isolates the graphlib peer-dependency
- * mismatch: @dagrejs/dagre v3 expects @dagrejs/graphlib as a separate peer
- * which is not installed — the runtime bundle is self-contained, only the
- * TypeScript declarations require the peer.
+ * Assigns each node to the deepest layer reachable from any source, then
+ * distributes nodes within each layer evenly along the y-axis.
  *
- * @param nodes - JsonGraph nodes (only `id` is used for graph construction).
- * @param edges - JsonGraph edges (only `from`/`to` are used; labels are ignored for layout).
+ * @param nodes - JsonGraph nodes to lay out.
+ * @param edges - JsonGraph edges defining the DAG structure.
  * @returns Map from node ID to top-left `{x, y}` position in pixels.
  */
-function dagreLayout(
+function computeLayout(
   nodes: JsonGraphNode[],
   edges: JsonGraphEdge[],
 ): Map<string, { x: number; y: number }> {
-  // dagre.graphlib.Graph and dagre.layout are the public runtime API.
-  // The cast is necessary because @dagrejs/dagre v3 publishes types that
-  // reference @dagrejs/graphlib as a separate peer, which is not installed.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const d = dagre as any;
-  const g = new d.graphlib.Graph();
-  g.setDefaultEdgeLabel(() => ({}));
-  g.setGraph({ rankdir: 'LR', ranksep: 60, nodesep: 28, marginx: 20, marginy: 20 });
+  const ids = nodes.map((n) => n.id);
 
-  for (const node of nodes) {
-    g.setNode(node.id, { width: NODE_W, height: NODE_H });
-  }
+  const outEdges = new Map<string, string[]>(ids.map((id) => [id, []]));
+  const inDegree = new Map<string, number>(ids.map((id) => [id, 0]));
+
   for (const edge of edges) {
-    g.setEdge(edge.from, edge.to);
+    outEdges.get(edge.from)?.push(edge.to);
+    inDegree.set(edge.to, (inDegree.get(edge.to) ?? 0) + 1);
   }
 
-  d.layout(g);
+  // Kahn's topological sort
+  const remaining = new Map(inDegree);
+  const queue = ids.filter((id) => (remaining.get(id) ?? 0) === 0);
+  const topoOrder: string[] = [];
+  while (queue.length > 0) {
+    const id = queue.shift(); // non-null: loop condition guarantees length > 0
+    if (id === undefined) {break;}
+    topoOrder.push(id);
+    for (const neighbor of outEdges.get(id) ?? []) {
+      const deg = (remaining.get(neighbor) ?? 1) - 1;
+      remaining.set(neighbor, deg);
+      if (deg === 0) {queue.push(neighbor);}
+    }
+  }
 
+  // Longest-path layer assignment: layer[n] = max(layer[pred] + 1)
+  const layer = new Map<string, number>(ids.map((id) => [id, 0]));
+  for (const id of topoOrder) {
+    const currentLayer = layer.get(id) ?? 0;
+    for (const neighbor of outEdges.get(id) ?? []) {
+      layer.set(neighbor, Math.max(layer.get(neighbor) ?? 0, currentLayer + 1));
+    }
+  }
+
+  // Group nodes by layer
+  const layerGroups = new Map<number, string[]>();
+  for (const id of ids) {
+    const l = layer.get(id) ?? 0;
+    const group = layerGroups.get(l);
+    if (group !== undefined) {
+      group.push(id);
+    } else {
+      layerGroups.set(l, [id]);
+    }
+  }
+
+  // Assign pixel positions: x from layer, y centered within layer
   const positions = new Map<string, { x: number; y: number }>();
-  for (const node of nodes) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const n = g.node(node.id) as any;
-    if (n)
-      positions.set(node.id, { x: (n.x as number) - NODE_W / 2, y: (n.y as number) - NODE_H / 2 });
+  for (const [l, groupIds] of layerGroups) {
+    const totalHeight = groupIds.length * NODE_H + (groupIds.length - 1) * V_GAP;
+    const startY = -totalHeight / 2;
+    groupIds.forEach((id, row) => {
+      positions.set(id, {
+        x: l * (NODE_W + H_GAP),
+        y: startY + row * (NODE_H + V_GAP),
+      });
+    });
   }
+
   return positions;
 }
 
+/**
+ * Convert a JsonGraph and its computed positions into ReactFlow nodes.
+ *
+ * @param graph - Full JsonGraph; node metadata (label, kind, status, flags) is read from each entry.
+ * @param positions - Map from node ID to top-left `{x, y}` pixel position, as returned by `computeLayout`.
+ * @returns ReactFlow `Node[]` typed as `StateNodeType[]` for the custom `stateNode` renderer.
+ */
 function toFlowNodes(
   graph: JsonGraph,
   positions: Map<string, { x: number; y: number }>,
 ): StateNodeType[] {
   return graph.nodes.map((n) => ({
     id: n.id,
-    type: 'stateNode' as const,
+    type: 'stateNode',
     position: positions.get(n.id) ?? { x: 0, y: 0 },
     data: {
       label: n.label,
@@ -90,12 +128,13 @@ function toFlowNodes(
  * @returns ReactFlow `Edge[]` ready for `<ReactFlow edges={…} />`.
  */
 function toFlowEdges(graph: JsonGraph): Edge[] {
+  const statusById = new Map(graph.nodes.map((n) => [n.id, n.status]));
+
   return graph.edges.map((e) => {
+    const base = { id: e.id, source: e.from, target: e.to };
     if (e.kind === 'fork-target') {
       return {
-        id: e.id,
-        source: e.from,
-        target: e.to,
+        ...base,
         label: '⑂ auto',
         animated: false,
         style: { strokeDasharray: '5 3', stroke: '#7c3aed', strokeWidth: 1.5 },
@@ -104,22 +143,17 @@ function toFlowEdges(graph: JsonGraph): Edge[] {
     }
     if (e.kind === 'join-requires') {
       return {
-        id: e.id,
-        source: e.from,
-        target: e.to,
+        ...base,
         label: '⑁ requires',
         animated: false,
         style: { strokeDasharray: '5 3', stroke: '#0ea5e9', strokeWidth: 1.5 },
         labelStyle: { fontSize: 11, fontFamily: 'monospace' },
       };
     }
-    const sourceStatus = graph.nodes.find((n) => n.id === e.from)?.status;
     return {
-      id: e.id,
-      source: e.from,
-      target: e.to,
+      ...base,
       label: e.action,
-      animated: sourceStatus === 'active',
+      animated: statusById.get(e.from) === 'active',
       ...(e.hasGuard ? { style: { strokeDasharray: '5 3' } } : {}),
     };
   });
@@ -133,7 +167,7 @@ export function WorkflowGraph() {
     [definition, snapshot],
   );
 
-  const positions = useMemo(() => dagreLayout(graph.nodes, graph.edges), [graph]);
+  const positions = useMemo(() => computeLayout(graph.nodes, graph.edges), [graph]);
 
   const nodes: Node[] = useMemo(() => toFlowNodes(graph, positions), [graph, positions]);
   const edges: Edge[] = useMemo(() => toFlowEdges(graph), [graph]);
@@ -151,7 +185,6 @@ export function WorkflowGraph() {
         fitViewOptions={{ padding: 0.25 }}
       >
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
-        <Controls showInteractive={false} />
       </ReactFlow>
     </div>
   );

@@ -12,9 +12,10 @@ export interface CodeEditorHandle {
 interface Props {
   defaultValue: string;
   onChange?: (value: string) => void;
+  readOnly?: boolean;
 }
 
-export const CodeEditor = forwardRef<CodeEditorHandle, Props>(({ defaultValue, onChange }, ref) => {
+export const CodeEditor = forwardRef<CodeEditorHandle, Props>(({ defaultValue, onChange, readOnly = false }, ref) => {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoInstance = useMonaco();
 
@@ -22,15 +23,15 @@ export const CodeEditor = forwardRef<CodeEditorHandle, Props>(({ defaultValue, o
   // beforeMount already does this, but useMonaco fires even if the Editor
   // component hasn't mounted yet (Monaco CDN loaded by a sibling).
   useEffect(() => {
-    if (monacoInstance) setupMonacoTypes(monacoInstance);
+    if (monacoInstance) {setupMonacoTypes(monacoInstance);}
   }, [monacoInstance]);
 
   useImperativeHandle(ref, () => ({
     setValue(code) {
       const e = editorRef.current;
-      if (!e) return;
+      if (!e) {return;}
       const model = e.getModel();
-      if (!model) return;
+      if (!model) {return;}
       // pushEditOperations preserves undo history and fires onDidChangeContent
       model.pushEditOperations([], [{ range: model.getFullModelRange(), text: code }], () => null);
     },
@@ -70,7 +71,7 @@ export const CodeEditor = forwardRef<CodeEditorHandle, Props>(({ defaultValue, o
         wordWrap: 'on',
         tabSize: 2,
         padding: { top: 16, bottom: 16 },
-        readOnly: true,
+        readOnly,
         suggestOnTriggerCharacters: true,
         quickSuggestions: { other: true, comments: false, strings: false },
         parameterHints: { enabled: true },

@@ -1,16 +1,15 @@
 import { useCallback, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactFlowProvider } from '@xyflow/react';
 
 import { DesignerCanvas } from '../designer/canvas/DesignerCanvas';
 import { NodePanel } from '../designer/panels/NodePanel';
 import { EdgePanel } from '../designer/panels/EdgePanel';
-import { SingleRunner } from '../runners/SingleRunner';
 import { ShowCodeModal } from '../designer/code/ShowCodeModal';
 
 import { useDesignerWorkflow } from '../designer/hooks/useDesignerWorkflow';
-import { useRunState } from '../designer/hooks/useRunState';
 import { useTheme } from '../context/ThemeContext';
+import { generateCode } from '../designer/code/codeGenerator';
 
 import type { DesignerWorkflow, DesignerNode, DesignerEdge, Selection } from '../designer/types';
 import { Button } from '../components/ui/button';
@@ -21,8 +20,8 @@ export default function DesignerPage() {
   const { workflow, setWorkflow, resetToDefault } = useDesignerWorkflow();
   const [selection, setSelection] = useState<Selection>({ type: 'none' });
   const [showCode, setShowCode] = useState(false);
-  const { runState, setRunState, handleRun } = useRunState();
   const { theme, toggleTheme } = useTheme();
+  const navigate = useNavigate();
 
   const handleWorkflowChange = useCallback(
     (wf: DesignerWorkflow) => {
@@ -50,7 +49,7 @@ export default function DesignerPage() {
           }))
         : workflow.edges;
     if (updated.id !== oldId && selection.type === 'node')
-      setSelection({ type: 'node', id: updated.id });
+      {setSelection({ type: 'node', id: updated.id });}
     handleWorkflowChange({ ...workflow, nodes, edges });
   }
 
@@ -62,7 +61,7 @@ export default function DesignerPage() {
   }
 
   function handleDeleteNode() {
-    if (selection.type !== 'node') return;
+    if (selection.type !== 'node') {return;}
     const id = selection.id;
     handleWorkflowChange({
       ...workflow,
@@ -73,7 +72,7 @@ export default function DesignerPage() {
   }
 
   function handleDeleteEdge() {
-    if (selection.type !== 'edge') return;
+    if (selection.type !== 'edge') {return;}
     handleWorkflowChange({
       ...workflow,
       edges: workflow.edges.filter((e) => e.id !== selection.id),
@@ -93,11 +92,10 @@ export default function DesignerPage() {
   }
 
   function handleClickRun() {
-    handleRun(workflow);
+    navigate('/playground', { state: { code: generateCode(workflow) } });
   }
 
   const hasPanel = selectedNode !== null || selectedEdge !== null || selection.type === 'settings';
-  const isRunning = runState.mode === 'running';
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-white font-sans dark:bg-[#0f172a]">
@@ -158,11 +156,6 @@ export default function DesignerPage() {
           <Button variant="outline" size="sm" onClick={() => setShowCode(true)}>
             {'</>'} Show Code
           </Button>
-          {isRunning && (
-            <Button variant="secondary" size="sm" onClick={() => setRunState({ mode: 'idle' })}>
-              Close
-            </Button>
-          )}
           <Button
             size="sm"
             className="bg-blue-600 font-medium text-white hover:bg-blue-500"
@@ -242,38 +235,6 @@ export default function DesignerPage() {
           </div>
         )}
       </div>
-
-      {/* ── Run panel ────────────────────────────────────────────────────── */}
-      {isRunning && (
-        <div className="flex h-72 shrink-0 overflow-hidden border-t border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-          <SingleRunner
-            title={`▶ ${runState.definition.name}`}
-            subtitle="Live execution of your designed workflow"
-            definition={runState.definition}
-            makeInstance={() =>
-              (runState as Extract<typeof runState, { mode: 'running' }>).workflow.createInstance(
-                `run-${Date.now()}`,
-              )
-            }
-          />
-        </div>
-      )}
-
-      {runState.mode === 'error' && (
-        <div className="flex shrink-0 items-center gap-3 border-t border-red-200 bg-red-50 px-4 py-2.5 dark:border-red-800 dark:bg-red-950">
-          <span className="flex-1 text-xs text-red-700 dark:text-red-300">
-            ⚠ {runState.message}
-          </span>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 text-red-400 hover:text-red-600"
-            onClick={() => setRunState({ mode: 'idle' })}
-          >
-            ✕
-          </Button>
-        </div>
-      )}
 
       {/* ── Show Code modal ──────────────────────────────────────────────── */}
       {showCode && <ShowCodeModal workflow={workflow} onClose={() => setShowCode(false)} />}

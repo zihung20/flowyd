@@ -17,7 +17,7 @@ export function ShowCodeModal({ workflow, onClose }: Props) {
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') {onClose();}
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -27,7 +27,7 @@ export function ShowCodeModal({ workflow, onClose }: Props) {
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget) {onClose();}
       }}
     >
       <div className="mx-4 flex h-[80vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-slate-700 shadow-2xl">
@@ -54,7 +54,7 @@ export function ShowCodeModal({ workflow, onClose }: Props) {
 
         {/* Editor */}
         <div className="min-h-0 flex-1 bg-[#1e1e1e]">
-          <CodeEditor defaultValue={code} />
+          <CodeEditor defaultValue={code} readOnly={true} />
         </div>
       </div>
     </div>

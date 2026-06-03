@@ -1,9 +1,9 @@
 import { useCallback, useRef, useState } from 'react';
 import type { DispatchResult, InstanceSnapshot, WorkflowDefinition } from 'flowyd';
-import { RunnerContext } from '../context';
-import { WorkflowGraph } from '../components/WorkflowGraph';
-import { DynamicForm } from '../components/DynamicForm';
-import { HistoryPanel } from '../components/HistoryPanel';
+import { RunnerContext } from './context';
+import { WorkflowGraph } from './components/WorkflowGraph';
+import { DynamicForm } from './components/DynamicForm';
+import { HistoryPanel } from './components/HistoryPanel';
 import { RunnerToolbar } from './RunnerToolbar';
 
 type ZodIssue = { path: (string | number)[]; message: string };
@@ -52,6 +52,7 @@ interface Props {
  */
 export function SingleRunner({ title, subtitle, definition, makeInstance }: Props) {
   const instRef = useRef<AnyInstance>(makeInstance());
+  // eslint-disable-next-line react-hooks/refs -- instRef is guaranteed initialized by useRef above; lazy initializer runs once
   const [snapshot, setSnapshot] = useState<InstanceSnapshot>(() => instRef.current.getSnapshot());
   const [lastError, setLastError] = useState<string | null>(null);
 

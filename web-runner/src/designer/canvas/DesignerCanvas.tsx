@@ -19,7 +19,7 @@ const POSITIONS_KEY = 'flowyd-positions';
 function loadSavedPositions(): Map<string, { x: number; y: number }> {
   try {
     const raw = localStorage.getItem(POSITIONS_KEY);
-    if (raw) return new Map(JSON.parse(raw) as [string, { x: number; y: number }][]);
+    if (raw) {return new Map(JSON.parse(raw) as [string, { x: number; y: number }][]);}
   } catch {
     /* ignore */
   }
@@ -140,7 +140,7 @@ export function DesignerCanvas({
   // Sync from workflow prop whenever the structure changes
   useEffect(() => {
     const key = wfStructureKey(workflow);
-    if (key === prevKeyRef.current) return;
+    if (key === prevKeyRef.current) {return;}
     prevKeyRef.current = key;
 
     setRfNodes((prev) => {
@@ -217,7 +217,7 @@ export function DesignerCanvas({
     (connection: Connection) => {
       const from = connection.source;
       const to = connection.target;
-      if (!from || !to) return;
+      if (!from || !to) {return;}
       const sourceNode = workflow.nodes.find((n) => n.id === from);
       const targetNode = workflow.nodes.find((n) => n.id === to);
 
