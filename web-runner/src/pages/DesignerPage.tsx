@@ -99,18 +99,18 @@ export default function DesignerPage() {
   const hasPanel = selectedNode !== null || selectedEdge !== null || selection.type === 'settings';
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-white font-sans dark:bg-[#0f172a]">
+    <div className="flex h-screen flex-col overflow-hidden bg-background font-sans">
       {/* ── Top bar ──────────────────────────────────────────────────────── */}
       <SiteNav
         right={
           <>
             <input
-              className="w-40 border-none bg-transparent text-sm font-medium text-slate-900 placeholder-slate-400 outline-none dark:text-white"
+              className="w-40 border-none bg-transparent text-sm font-medium text-foreground placeholder:text-muted-foreground outline-none"
               value={workflow.name}
               onChange={(e) => handleWorkflowChange({ ...workflow, name: e.target.value })}
               placeholder="workflow-name"
             />
-            <span className="w-px self-stretch bg-slate-200 dark:bg-slate-700" />
+            <span className="w-px self-stretch bg-border" />
             <Button
               variant="ghost"
               size="sm"
@@ -169,9 +169,9 @@ export default function DesignerPage() {
 
         {/* Floating config panel — overlays canvas on the right */}
         {hasPanel && (
-          <div className="absolute top-0 right-0 z-10 h-full w-72 overflow-y-auto border-l border-slate-200 bg-white shadow-xl dark:border-slate-700/60 dark:bg-slate-900">
-            <div className="sticky top-0 flex items-center justify-between border-b border-slate-100 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-900">
-              <span className="text-[11px] font-semibold tracking-wider text-slate-500 uppercase dark:text-slate-400">
+          <div className="absolute top-0 right-0 z-10 h-full w-72 overflow-y-auto border-l border-border bg-background shadow-xl">
+            <div className="sticky top-0 flex items-center justify-between border-b border-border bg-background px-3 py-2">
+              <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
                 {selection.type === 'settings' ? 'Workflow' : selectedNode ? 'State' : 'Transition'}
               </span>
               <Button

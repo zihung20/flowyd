@@ -86,7 +86,7 @@ export default function ExamplesPage() {
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-slate-50 font-sans">
+    <div className="flex h-screen flex-col overflow-hidden bg-background font-sans">
       <SiteNav />
 
       {/* Example tab bar */}

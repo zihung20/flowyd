@@ -32,6 +32,12 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+@layer base {
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
 :root {
   --radius: 0.5rem;
   --background: oklch(1 0 0);

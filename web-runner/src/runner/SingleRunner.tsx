@@ -104,7 +104,7 @@ export function SingleRunner({ title, subtitle, definition, makeInstance }: Prop
           <WorkflowGraph />
         </div>
 
-        <div className="flex w-72 shrink-0 flex-col overflow-hidden border-l border-slate-200 bg-white">
+        <div className="flex w-72 shrink-0 flex-col overflow-hidden border-l border-border bg-background">
           <DynamicForm />
           <HistoryPanel />
         </div>

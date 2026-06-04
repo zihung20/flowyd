@@ -34,7 +34,7 @@ function savePositions(nodes: Node[]): void {
   localStorage.setItem(POSITIONS_KEY, JSON.stringify(data));
 }
 
-function wfStructureKey(wf: DesignerWorkflow): string {
+function wfStructureKey(wf: DesignerWorkflow, dark: boolean): string {
   const n = wf.nodes
     .map(
       (n) =>
@@ -44,7 +44,7 @@ function wfStructureKey(wf: DesignerWorkflow): string {
   const e = wf.edges
     .map((e) => `${e.id}:${e.fromNodeId}:${e.toNodeId}:${e.kind}:${e.actionName}`)
     .join('|');
-  return `${wf.name}||${n}||${e}`;
+  return `${wf.name}||${n}||${e}||${dark}`;
 }
 
 function designerNodeToFlowData(n: DesignerNode): FlowNodeData {
@@ -129,7 +129,7 @@ export function DesignerCanvas({
 
   // Sync from workflow prop whenever the structure changes
   useEffect(() => {
-    const key = wfStructureKey(workflow);
+    const key = wfStructureKey(workflow, theme === 'dark');
     if (key === prevKeyRef.current) {return;}
     prevKeyRef.current = key;
 
@@ -263,7 +263,7 @@ export function DesignerCanvas({
   );
 
   return (
-    <div className="relative h-full w-full bg-white dark:bg-[#0f172a]">
+    <div className="relative h-full w-full bg-background">
       <DesignerToolbar onAddNode={handleAddNode} />
       <ReactFlow
         nodes={rfNodes}
@@ -292,8 +292,8 @@ export function DesignerCanvas({
 
       {workflow.nodes.length === 0 && (
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2">
-          <p className="text-sm font-medium text-slate-500">Start building</p>
-          <p className="text-xs text-slate-600">Use the toolbar above to add states</p>
+          <p className="text-sm font-medium text-muted-foreground">Start building</p>
+          <p className="text-xs text-muted-foreground/60">Use the toolbar above to add states</p>
         </div>
       )}
     </div>
