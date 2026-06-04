@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import '@xyflow/react/dist/style.css';
+@plugin 'tailwindcss-animate';
 
 /* Class-based dark mode so ThemeContext can override system preference */
 @custom-variant dark (&:where(.dark, .dark *));

@@ -1,20 +1,15 @@
 import { useState } from 'react';
 import type { InstanceSnapshot, WorkflowDefinition } from 'flowyd';
 import { MermaidExporter, JsonGraphExporter } from 'flowyd/visualization';
-import { Button } from '../components/ui/button';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Badge } from '@/components/ui/badge';
 
 /**
  * Compress bytes with zlib (RFC 1950) using the browser's CompressionStream.
- *
- * Piping through Response.arrayBuffer() lets the browser collect all stream
- * chunks internally — no manual chunk loop needed.
- *
- * 'deflate' = zlib-wrapped DEFLATE, which is what pako.inflate() on
- * mermaid.live expects. Do NOT use 'deflate-raw' here.
  */
 async function zlibCompress(input: Uint8Array): Promise<Uint8Array> {
-  // Uint8Array.from() produces Uint8Array<ArrayBuffer> (not SharedArrayBuffer),
-  // which is required by the Blob constructor under TS6's stricter generics.
   const compressed = await new Response(
     new Blob([Uint8Array.from(input)]).stream().pipeThrough(new CompressionStream('deflate')),
   ).arrayBuffer();
@@ -23,10 +18,6 @@ async function zlibCompress(input: Uint8Array): Promise<Uint8Array> {
 
 /**
  * Open the current diagram in mermaid.live.
- *
- * mermaid.live encodes state in the URL fragment as `#pako:<base64>` where
- * the payload is a zlib-compressed JSON blob: `{ code, mermaid: { theme } }`.
- * We replicate that encoding here so the site loads the diagram directly.
  */
 async function openInMermaidLive(diagram: string): Promise<void> {
   const payload = JSON.stringify({ code: diagram, mermaid: { theme: 'default' } });
@@ -84,51 +75,56 @@ export function RunnerToolbar({ title, subtitle, definition, snapshot, onReset }
   }
 
   return (
-    <div className="flex shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 py-2">
-      <span className="text-sm font-bold text-slate-800">{title}</span>
-      <span className="text-xs text-slate-400">{subtitle}</span>
-      <span className="ml-auto text-xs text-slate-400">
-        v{snapshot.version} · {snapshot.isTerminal ? 'complete' : 'in progress'}
-      </span>
-      <div className="ml-2 flex items-center gap-1">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-slate-400 hover:text-slate-600"
-          onClick={handleCopyMermaid}
-        >
-          {copied ? 'Copied!' : 'Copy Mermaid'}
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-slate-400 hover:text-slate-600"
-          onClick={handleDownloadMmd}
-        >
-          Download .mmd
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-slate-400 hover:text-slate-600"
-          onClick={handleDownloadJson}
-        >
-          Download JSON
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-slate-400 hover:text-slate-600"
-          onClick={handleOpenMermaidLive}
-        >
-          Mermaid Live ↗
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-slate-400 hover:text-slate-600"
-          onClick={onReset}
-        >
+    <div className="flex shrink-0 items-center gap-2 border-b border-border bg-background px-4 py-2">
+      <span className="text-sm font-bold text-foreground">{title}</span>
+      <span className="text-xs text-muted-foreground">{subtitle}</span>
+
+      <div className="ml-auto flex items-center gap-2">
+        <Badge variant={snapshot.isTerminal ? 'green' : 'secondary'} className="text-[10px]">
+          v{snapshot.version} · {snapshot.isTerminal ? 'complete' : 'in progress'}
+        </Badge>
+
+        <Separator orientation="vertical" className="h-4" />
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground" onClick={handleCopyMermaid}>
+              {copied ? 'Copied!' : 'Copy .mmd'}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Copy Mermaid diagram source</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground" onClick={handleDownloadMmd}>
+              .mmd
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Download as .mmd file</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground" onClick={handleDownloadJson}>
+              .json
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Download as JSON graph</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground" onClick={handleOpenMermaidLive}>
+              Live ↗
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Open in mermaid.live</TooltipContent>
+        </Tooltip>
+
+        <Separator orientation="vertical" className="h-4" />
+
+        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={onReset}>
           Reset
         </Button>
       </div>

@@ -5,6 +5,7 @@ import { CodeEditor } from '../designer/code/CodeEditor';
 import { SingleRunner } from '../runner/SingleRunner';
 import { evaluateWorkflowCode } from '../lib/evaluateWorkflowCode';
 import type { EvalResult } from '../lib/evaluateWorkflowCode';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 const STORAGE_KEY = 'flowyd-playground-code';
 
@@ -26,6 +27,14 @@ const workflow = createWorkflow({ name: 'my-workflow' })
   .addTransition({ from: 'review', to: 'rejected', on: 'REJECT' })
   .build();`;
 
+type PanelState = 'split' | 'code-only' | 'runner-only';
+
+const LAYOUT_TABS: { state: PanelState; label: string }[] = [
+  { state: 'code-only', label: 'Code' },
+  { state: 'split', label: 'Split' },
+  { state: 'runner-only', label: 'Preview' },
+];
+
 export default function PlaygroundPage() {
   const initialCode =
     (useLocation().state as { code?: string } | null)?.code ??
@@ -36,15 +45,21 @@ export default function PlaygroundPage() {
   const [runKey, setRunKey] = useState(0);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [panelState, setPanelState] = useState<PanelState>('split');
+  const [splitPct, setSplitPct] = useState(38);
+  const containerRef = useRef<HTMLDivElement>(null);
+
   async function evaluate(code: string) {
     const result = await evaluateWorkflowCode(code);
     setEvalResult(result);
-    if (result.ok) {setRunKey((k) => k + 1);}
+    if (result.ok) {
+      setRunKey((k) => k + 1);
+    }
   }
 
   function handleChange(newCode: string) {
     localStorage.setItem(STORAGE_KEY, newCode);
-    if (debounceRef.current) {clearTimeout(debounceRef.current);}
+    if (debounceRef.current) { clearTimeout(debounceRef.current); }
     debounceRef.current = setTimeout(() => evaluate(newCode), 600);
   }
 
@@ -53,36 +68,103 @@ export default function PlaygroundPage() {
     evaluate(initialCode);
   }, [initialCode]);
 
+  function startDrag(e: React.MouseEvent) {
+    if (panelState !== 'split') { return; }
+    e.preventDefault();
+
+    function onMove(ev: MouseEvent) {
+      const c = containerRef.current;
+      if (!c) { return; }
+      const rect = c.getBoundingClientRect();
+      const raw = ((ev.clientX - rect.left) / rect.width) * 100;
+      setSplitPct(Math.min(85, Math.max(15, raw)));
+    }
+
+    function onUp() {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    }
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }
+
+  const showCode = panelState !== 'runner-only';
+  const showRunner = panelState !== 'code-only';
+
+  const layoutToggle = (
+    <ToggleGroup
+      type="single"
+      value={panelState}
+      onValueChange={(v) => { if (v) { setPanelState(v as PanelState); } }}
+      variant="outline"
+      size="sm"
+    >
+      {LAYOUT_TABS.map(({ state, label }) => (
+        <ToggleGroupItem key={state} value={state}>
+          {label}
+        </ToggleGroupItem>
+      ))}
+    </ToggleGroup>
+  );
+
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-white font-sans">
-      <SiteNav />
+    <div className="flex h-screen flex-col overflow-hidden bg-background font-sans">
+      <SiteNav right={layoutToggle} />
 
-      <div className="flex min-h-0 flex-1">
-        <div className="flex w-1/2 flex-col border-r border-slate-200">
-          <CodeEditor defaultValue={initialCode} onChange={handleChange} />
-        </div>
+      <div ref={containerRef} className="flex min-h-0 flex-1">
+        {/* Code panel */}
+        {showCode && (
+          <div
+            className="flex flex-col overflow-hidden"
+            style={
+              showRunner
+                ? { flexBasis: `${splitPct}%`, flexShrink: 0, flexGrow: 0 }
+                : { flex: '1 1 0%' }
+            }
+          >
+            <CodeEditor defaultValue={initialCode} onChange={handleChange} />
+          </div>
+        )}
 
-        <div className="flex w-1/2 flex-col overflow-hidden">
-          {evalResult === null && (
-            <div className="flex flex-1 items-center justify-center text-sm text-slate-400">
-              Evaluating…
+        {/* Drag handle — only visible in split mode */}
+        {showCode && showRunner && (
+          <div
+            className="group relative z-10 w-1.5 shrink-0 cursor-col-resize bg-border transition-colors hover:bg-blue-400/50"
+            onMouseDown={startDrag}
+          >
+            <div className="pointer-events-none absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col gap-[3px]">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <span key={i} className="block h-[3px] w-[3px] rounded-full bg-muted-foreground/40 group-hover:bg-blue-500/70" />
+              ))}
             </div>
-          )}
-          {evalResult !== null && !evalResult.ok && (
-            <div className="m-4 rounded-md bg-red-50 p-3 font-mono text-xs text-red-600">
-              {evalResult.error}
-            </div>
-          )}
-          {evalResult !== null && evalResult.ok && (
-            <SingleRunner
-              key={runKey}
-              title={evalResult.definition.name}
-              subtitle="Playground run"
-              definition={evalResult.definition}
-              makeInstance={() => evalResult.workflow.createInstance(`run-${Date.now()}`)}
-            />
-          )}
-        </div>
+          </div>
+        )}
+
+        {/* Runner panel */}
+        {showRunner && (
+          <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+            {evalResult === null && (
+              <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+                Evaluating…
+              </div>
+            )}
+            {evalResult !== null && !evalResult.ok && (
+              <div className="m-4 rounded-md bg-destructive/10 border border-destructive/20 p-3 font-mono text-xs text-destructive">
+                {evalResult.error}
+              </div>
+            )}
+            {evalResult !== null && evalResult.ok && (
+              <SingleRunner
+                key={runKey}
+                title={evalResult.definition.name}
+                subtitle="Playground run"
+                definition={evalResult.definition}
+                makeInstance={() => evalResult.workflow.createInstance(`run-${Date.now()}`)}
+              />
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

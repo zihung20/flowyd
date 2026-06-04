@@ -1,7 +1,13 @@
-import { useEffect } from 'react';
 import { CodeEditor } from './CodeEditor';
 import { generateCode } from './codeGenerator';
 import type { DesignerWorkflow } from '../types';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
 interface Props {
   workflow: DesignerWorkflow;
@@ -15,48 +21,45 @@ export function ShowCodeModal({ workflow, onClose }: Props) {
     navigator.clipboard.writeText(code);
   }
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') {onClose();}
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) {onClose();}
-      }}
-    >
-      <div className="mx-4 flex h-[80vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-slate-700 shadow-2xl">
+    <Dialog open onOpenChange={(open) => { if (!open) { onClose(); } }}>
+      <DialogContent
+        className="flex h-[80vh] max-w-3xl flex-col gap-0 overflow-hidden p-0"
+        showCloseButton={false}
+        aria-describedby={undefined}
+      >
         {/* Header */}
-        <div className="flex h-10 shrink-0 items-center border-b border-[#3c3c3c] bg-[#252526] px-4">
-          <span className="font-mono text-[12px] text-slate-400">workflow.ts</span>
-          <span className="ml-auto flex items-center gap-3">
+        <DialogHeader className="flex-row items-center justify-between border-b border-[#3c3c3c] bg-[#252526] px-4 py-2.5">
+          <DialogTitle className="font-mono text-[12px] font-normal text-slate-400">
+            workflow.ts
+          </DialogTitle>
+          <div className="flex items-center gap-3">
             <span className="text-[11px] text-slate-600">TypeScript · flowyd</span>
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={handleCopy}
-              className="text-[11px] text-slate-400 transition-colors hover:text-slate-200"
+              className="h-6 px-2 text-[11px] text-slate-400 hover:text-slate-200 hover:bg-transparent"
             >
               Copy
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={onClose}
-              className="text-sm leading-none text-slate-400 transition-colors hover:text-slate-200"
+              className="h-6 w-6 p-0 text-slate-400 hover:text-slate-200 hover:bg-transparent"
               title="Close (Esc)"
             >
               ✕
-            </button>
-          </span>
-        </div>
+            </Button>
+          </div>
+        </DialogHeader>
 
         {/* Editor */}
         <div className="min-h-0 flex-1 bg-[#1e1e1e]">
           <CodeEditor defaultValue={code} readOnly={true} />
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

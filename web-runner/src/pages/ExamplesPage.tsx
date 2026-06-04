@@ -1,5 +1,6 @@
 import { Link, useParams, Navigate } from 'react-router-dom';
 import { SiteNav } from '../components/SiteNav';
+import { Badge } from '@/components/ui/badge';
 import { SingleRunner } from '../runner/SingleRunner';
 import { purchaseOrderWorkflow } from '../workflows/purchase-order';
 import { predepartureWorkflow } from '../workflows/predeparture';
@@ -102,16 +103,16 @@ export default function ExamplesPage() {
             ].join(' ')}
           >
             <span className="text-sm leading-tight font-semibold">{ex.label}</span>
-            <span className="mt-0.5 flex gap-1">
+            <div className="mt-0.5 flex flex-wrap gap-1">
               {ex.tags.map((t) => (
-                <span
+                <Badge
                   key={t}
-                  className="rounded bg-slate-700 px-1 py-px text-[10px] leading-none text-slate-300"
+                  className="rounded bg-slate-700 px-1.5 py-px text-[10px] border-none text-slate-300 hover:bg-slate-600"
                 >
                   {t}
-                </span>
+                </Badge>
               ))}
-            </span>
+            </div>
           </Link>
         ))}
 

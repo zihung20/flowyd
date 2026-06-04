@@ -23,7 +23,9 @@ The compiler catches every typo in a state ID, every wrong action name, and ever
 
 ## `web-runner/` — the browser UI
 
-A React SPA (Vite + Tailwind + React Flow) that visualises and drives workflows in the browser. Not published to npm — used for local development and demonstration.
+A React SPA (Vite + Tailwind + shadcn/ui + React Flow) that visualises and drives workflows in the browser. Not published to npm — used for local development and demonstration.
+
+UI components are provided by **shadcn/ui** — see `web-runner/components.json` for configuration. Add new components with `pnpm dlx shadcn@latest add <component>` inside `web-runner/`.
 
 ```sh
 # Build the library first

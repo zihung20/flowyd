@@ -1,6 +1,7 @@
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Suspense } from 'react';
 import { ThemeProvider } from './context/ThemeContext';
+import { TooltipProvider } from './components/ui/tooltip';
 
 import HomePage from './pages/HomePage';
 import ExamplesPage from './pages/ExamplesPage';
@@ -18,6 +19,7 @@ function Spinner() {
 export default function App() {
   return (
     <ThemeProvider>
+      <TooltipProvider>
       <HashRouter>
         <Suspense fallback={<Spinner />}>
           <Routes>
@@ -30,6 +32,7 @@ export default function App() {
           </Routes>
         </Suspense>
       </HashRouter>
+      </TooltipProvider>
     </ThemeProvider>
   );
 }

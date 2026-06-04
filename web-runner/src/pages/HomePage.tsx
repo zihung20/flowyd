@@ -2,6 +2,10 @@ import { Link } from 'react-router-dom';
 import Editor from '@monaco-editor/react';
 import type { Monaco } from '@monaco-editor/react';
 import { setupMonacoTypes } from '../designer/code/monacoSetup';
+import { SiteNav } from '../components/SiteNav';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import purchaseOrderSource from '../workflows/purchase-order.ts?raw';
 
 const FEATURES = [
@@ -25,70 +29,38 @@ const FEATURES = [
     title: 'Pure stateless engine',
     desc: 'WorkflowEngine.dispatch() is a static function. No I/O. Snapshots are plain JSON — persist anywhere.',
   },
-];
+] as const;
 
 const EXAMPLES = [
   {
     id: 'purchase-order',
     label: 'Purchase Order',
-    tags: ['linear', 'branching', 'guard'],
+    tags: ['linear', 'branching', 'guard'] as const,
     desc: 'Linear approval chain with guard-protected APPROVE and reject terminal split.',
-    color: 'border-blue-200 bg-blue-50',
-    tagColor: 'bg-blue-100 text-blue-700',
+    badgeVariant: 'blue' as const,
   },
   {
     id: 'predeparture',
     label: 'Pre-Departure Checklist',
-    tags: ['fork', 'join', 'parallel'],
+    tags: ['fork', 'join', 'parallel'] as const,
     desc: '3 parallel inspection branches that must all complete before the engineer may depart.',
-    color: 'border-violet-200 bg-violet-50',
-    tagColor: 'bg-violet-100 text-violet-700',
+    badgeVariant: 'violet' as const,
   },
   {
     id: 'incident',
     label: 'IT Incident Response',
-    tags: ['inline guard', 'inject guard'],
+    tags: ['inline guard', 'inject guard'] as const,
     desc: 'Inline payload guards + a named injected guard for management sign-off.',
-    color: 'border-green-200 bg-green-50',
-    tagColor: 'bg-green-100 text-green-700',
-  },
-  {
-    id: 'ewcr',
-    label: 'EWCR Grid',
-    tags: ['multi-instance', 'cross-guard'],
-    desc: '40 electrical sections — each waits for its neighbours before isolating or restoring.',
-    color: 'border-amber-200 bg-amber-50',
-    tagColor: 'bg-amber-100 text-amber-700',
+    badgeVariant: 'green' as const,
   },
 ] as const;
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-white font-sans">
-      {/* Nav */}
-      <nav className="sticky top-0 z-40 flex h-12 items-center gap-6 border-b border-slate-100 bg-white/90 px-6 backdrop-blur">
-        <span className="text-base font-bold tracking-tight text-slate-900">flowyd</span>
-        <div className="ml-auto flex items-center gap-5">
-          <Link
-            to="/examples/purchase-order"
-            className="text-sm text-slate-500 transition-colors hover:text-slate-800"
-          >
-            Examples
-          </Link>
-          <Link
-            to="/playground"
-            className="text-sm text-slate-500 transition-colors hover:text-slate-800"
-          >
-            Playground
-          </Link>
-          <Link
-            to="/designer"
-            className="rounded-md bg-slate-900 px-3 py-1.5 text-sm text-white transition-colors hover:bg-slate-700"
-          >
-            Open Designer
-          </Link>
-        </div>
-      </nav>
+    <div className="min-h-screen bg-background font-sans">
+      <div className="sticky top-0 z-40">
+        <SiteNav />
+      </div>
 
       {/* Hero */}
       <section className="bg-slate-900 px-6 pt-20 pb-16 text-white">
@@ -104,18 +76,17 @@ export default function HomePage() {
               type safety. Pure functional engine, serialisable snapshots, composable guards.
             </p>
             <div className="flex flex-wrap gap-3">
-              <Link
-                to="/examples/purchase-order"
-                className="rounded-md bg-white px-5 py-2.5 text-sm font-medium text-slate-900 transition-colors hover:bg-slate-100"
+              <Button asChild size="lg" className="bg-white text-slate-900 hover:bg-slate-100">
+                <Link to="/examples/purchase-order">Try Examples →</Link>
+              </Button>
+              <Button
+                asChild
+                size="lg"
+                variant="outline"
+                className="border-slate-600 text-slate-300 hover:border-slate-400 hover:bg-transparent hover:text-white"
               >
-                View Examples
-              </Link>
-              <Link
-                to="/designer"
-                className="rounded-md bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-500"
-              >
-                Open Designer →
-              </Link>
+                <Link to="/designer">Open Designer</Link>
+              </Button>
             </div>
           </div>
 
@@ -160,16 +131,20 @@ export default function HomePage() {
       </section>
 
       {/* Features */}
-      <section className="border-b border-slate-100 bg-slate-50 px-6 py-16">
+      <section className="border-b border-border bg-muted/40 px-6 py-16">
         <div className="mx-auto max-w-5xl">
-          <h2 className="mb-8 text-xl font-bold text-slate-800">Features</h2>
+          <h2 className="mb-8 text-xl font-bold text-foreground">Features</h2>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {FEATURES.map((f) => (
-              <div key={f.title} className="rounded-xl border border-slate-200 bg-white p-5">
-                <span className="mb-3 block text-2xl">{f.icon}</span>
-                <h3 className="mb-1.5 text-sm font-semibold text-slate-800">{f.title}</h3>
-                <p className="text-xs leading-relaxed text-slate-500">{f.desc}</p>
-              </div>
+              <Card key={f.title} className="gap-3 py-5">
+                <CardHeader className="px-5 pb-0">
+                  <span className="block text-2xl">{f.icon}</span>
+                  <CardTitle className="text-sm">{f.title}</CardTitle>
+                </CardHeader>
+                <CardContent className="px-5">
+                  <CardDescription className="text-xs leading-relaxed">{f.desc}</CardDescription>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </div>
@@ -179,30 +154,34 @@ export default function HomePage() {
       <section className="px-6 py-16">
         <div className="mx-auto max-w-5xl">
           <div className="mb-8 flex items-baseline justify-between">
-            <h2 className="text-xl font-bold text-slate-800">Examples</h2>
-            <Link to="/examples/purchase-order" className="text-sm text-blue-600 hover:underline">
+            <h2 className="text-xl font-bold text-foreground">Examples</h2>
+            <Link
+              to="/examples/purchase-order"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
               View all →
             </Link>
           </div>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             {EXAMPLES.map((ex) => (
-              <Link
-                key={ex.id}
-                to={`/examples/${ex.id}`}
-                className={`block rounded-xl border-2 p-5 transition-shadow hover:shadow-md ${ex.color}`}
-              >
-                <h3 className="mb-1 text-base font-semibold text-slate-800">{ex.label}</h3>
-                <p className="mb-3 text-sm leading-relaxed text-slate-600">{ex.desc}</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {ex.tags.map((t) => (
-                    <span
-                      key={t}
-                      className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${ex.tagColor}`}
-                    >
-                      {t}
-                    </span>
-                  ))}
-                </div>
+              <Link key={ex.id} to={`/examples/${ex.id}`} className="group block">
+                <Card className="gap-3 py-5 transition-shadow group-hover:shadow-md">
+                  <CardHeader className="px-5 pb-0">
+                    <CardTitle className="text-base">{ex.label}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-5 space-y-3">
+                    <CardDescription className="text-sm leading-relaxed">
+                      {ex.desc}
+                    </CardDescription>
+                    <div className="flex flex-wrap gap-1.5">
+                      {ex.tags.map((t) => (
+                        <Badge key={t} variant={ex.badgeVariant}>
+                          {t}
+                        </Badge>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
               </Link>
             ))}
           </div>
@@ -219,17 +198,18 @@ export default function HomePage() {
               Full IntelliSense powered by Monaco Editor.
             </p>
           </div>
-          <Link
-            to="/designer"
-            className="shrink-0 rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-500"
+          <Button
+            asChild
+            size="lg"
+            className="shrink-0 bg-blue-600 text-white hover:bg-blue-500"
           >
-            Open Designer →
-          </Link>
+            <Link to="/designer">Open Designer →</Link>
+          </Button>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-slate-100 px-6 py-6 text-center text-xs text-slate-400">
+      <footer className="border-t border-border px-6 py-6 text-center text-xs text-muted-foreground">
         flowyd — MIT licence
       </footer>
     </div>

@@ -2,6 +2,17 @@ import { useEffect, useState } from 'react';
 import { describeSchema } from '../../lib/zod-introspect';
 import type { FieldDescriptor } from '../../lib/zod-introspect';
 import { useRunner } from '../context';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 // ─── Default value generator ──────────────────────────────────────────────────
 
@@ -10,7 +21,6 @@ function autoDefault(field: FieldDescriptor): string | number | boolean {
   if (field.kind === 'enum') {return field.options[0] ?? '';}
 
   if (field.kind === 'number') {
-    // Use the schema minimum when present so Zod validation always passes.
     if (field.min !== undefined) {return field.min;}
     const n = field.name.toLowerCase();
     if (n.includes('count') || n.includes('size') || n.includes('head')) {return 3;}
@@ -18,7 +28,6 @@ function autoDefault(field: FieldDescriptor): string | number | boolean {
     return 1;
   }
 
-  // string / unknown — pick a contextual default first, then pad to meet min length.
   const n = field.name.toLowerCase();
   let base = 'value';
   if (/(by|lead|manager|officer|author|engineer)/.test(n)) {base = 'ENG-001';}
@@ -43,7 +52,6 @@ function autoDefault(field: FieldDescriptor): string | number | boolean {
   else if (n.includes('version')) {base = '1.0.0';}
   else if (n.includes('team')) {base = 'platform-eng';}
 
-  // Pad to satisfy z.string().min(n) constraints.
   const min = field.kind === 'string' ? (field.min ?? 0) : 0;
   return base.length >= min ? base : base.padEnd(min, '-');
 }
@@ -105,8 +113,6 @@ export function DynamicForm() {
   const [numValues, setNumValues] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
-  // When the available actions change (new section selected, or state advanced),
-  // pick the first available action and pre-populate all fields.
   useEffect(() => {
     const next = availableActions[0] ?? '';
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: sync selected action to available actions on change
@@ -124,7 +130,6 @@ export function DynamicForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [availableActions]);
 
-  // When the user manually picks a different action, re-populate defaults.
   function handleActionChange(action: string) {
     setSelectedAction(action);
     const schema = definition.actionSchemas.get(action);
@@ -154,123 +159,130 @@ export function DynamicForm() {
 
   if (snapshot.isTerminal) {
     return (
-      <div className="p-4 text-center text-sm font-medium text-green-700">
-        Section complete — power restored ✓
+      <div className="p-4 text-center text-sm font-medium text-green-700 dark:text-green-400">
+        Workflow complete ✓
       </div>
     );
   }
 
   if (availableActions.length === 0) {
-    return <div className="p-4 text-center text-sm text-slate-400">No actions available</div>;
+    return (
+      <div className="p-4 text-center text-sm text-muted-foreground">No actions available</div>
+    );
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="space-y-3 overflow-y-auto border-b border-slate-100 p-4"
-    >
+    <form onSubmit={handleSubmit} className="space-y-3 overflow-y-auto border-b border-border p-4">
       {/* Action selector */}
-      <div>
-        <label className="text-xs font-medium tracking-wide text-slate-500 uppercase">Action</label>
-        <select
-          value={selectedAction}
-          onChange={(e) => handleActionChange(e.target.value)}
-          className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1.5 text-sm focus:ring-2 focus:ring-blue-300 focus:outline-none"
-        >
-          {availableActions.map((a) => (
-            <option key={a} value={a}>
-              {a}
-            </option>
-          ))}
-        </select>
+      <div className="space-y-1.5">
+        <Label>Action</Label>
+        <Select value={selectedAction} onValueChange={handleActionChange}>
+          <SelectTrigger className="h-8 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {availableActions.map((a) => (
+              <SelectItem key={a} value={a}>
+                {a}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* SDUI field list */}
       {fields.map((field) => (
-        <div key={field.name}>
-          <label className="text-xs font-medium text-slate-600">
+        <div key={field.name} className="space-y-1.5">
+          <Label>
             {field.label}
-            {!field.optional && <span className="ml-0.5 text-red-400">*</span>}
-          </label>
+            {!field.optional && <span className="ml-0.5 text-destructive">*</span>}
+          </Label>
 
           {field.kind === 'boolean' && (
-            <div className="mt-1 flex items-center gap-2">
-              <input
-                type="checkbox"
+            <div className="flex items-center gap-2 pt-0.5">
+              <Checkbox
                 id={`f-${field.name}`}
                 checked={boolValues[field.name] ?? false}
-                onChange={(e) =>
-                  setBoolValues((p) => ({
-                    ...p,
-                    [field.name]: e.target.checked,
-                  }))
+                onCheckedChange={(v) =>
+                  setBoolValues((p) => ({ ...p, [field.name]: !!v }))
                 }
-                className="h-4 w-4 rounded border-slate-300 text-blue-500 focus:ring-blue-300"
               />
-              <label htmlFor={`f-${field.name}`} className="text-sm text-slate-700">
+              <label
+                htmlFor={`f-${field.name}`}
+                className="text-xs text-foreground cursor-pointer select-none"
+              >
                 {field.label}
               </label>
             </div>
           )}
 
           {field.kind === 'enum' && (
-            <select
+            <Select
               value={textValues[field.name] ?? ''}
-              onChange={(e) => setTextValues((p) => ({ ...p, [field.name]: e.target.value }))}
-              className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1.5 text-sm focus:ring-2 focus:ring-blue-300 focus:outline-none"
+              onValueChange={(v) => setTextValues((p) => ({ ...p, [field.name]: v }))}
             >
-              {field.options.map((o: string) => (
-                <option key={o} value={o}>
-                  {o}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {field.options.map((o: string) => (
+                  <SelectItem key={o} value={o}>
+                    {o}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
 
           {field.kind === 'number' && (
-            <input
+            <Input
               type="number"
               value={numValues[field.name] ?? ''}
               onChange={(e) => setNumValues((p) => ({ ...p, [field.name]: e.target.value }))}
-              className="mt-1 w-full rounded border border-slate-200 px-2 py-1.5 text-sm focus:ring-2 focus:ring-blue-300 focus:outline-none"
+              className="h-8 text-xs"
             />
           )}
 
           {field.kind === 'array' && (
-            <div>
-              <input
+            <div className="space-y-0.5">
+              <Input
                 type="text"
                 value={textValues[field.name] ?? ''}
                 onChange={(e) => setTextValues((p) => ({ ...p, [field.name]: e.target.value }))}
                 placeholder="comma-separated values"
-                className="mt-1 w-full rounded border border-slate-200 px-2 py-1.5 text-sm focus:ring-2 focus:ring-blue-300 focus:outline-none"
+                className="h-8 text-xs"
               />
-              <p className="mt-0.5 text-xs text-slate-400">Separate items with commas</p>
+              <p className="text-xs text-muted-foreground">Separate items with commas</p>
             </div>
           )}
 
           {(field.kind === 'string' || field.kind === 'unknown') && (
-            <input
+            <Input
               type="text"
               value={textValues[field.name] ?? ''}
               onChange={(e) => setTextValues((p) => ({ ...p, [field.name]: e.target.value }))}
               placeholder={field.kind === 'unknown' ? 'JSON value' : field.label}
-              className="mt-1 w-full rounded border border-slate-200 px-2 py-1.5 text-sm focus:ring-2 focus:ring-blue-300 focus:outline-none"
+              className="h-8 text-xs"
             />
           )}
         </div>
       ))}
 
       {/* Guard failure hint */}
-      {lastError && <p className="rounded bg-red-50 px-2 py-1 text-xs text-red-500">{lastError}</p>}
+      {lastError && (
+        <p className="rounded-md bg-destructive/10 border border-destructive/20 px-2 py-1.5 text-xs text-destructive">
+          {lastError}
+        </p>
+      )}
 
-      <button
+      <Button
         type="submit"
+        size="sm"
         disabled={submitting || !selectedAction}
-        className="w-full rounded bg-blue-500 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-40"
+        className="w-full"
       >
         {submitting ? 'Dispatching…' : `Dispatch ${selectedAction}`}
-      </button>
+      </Button>
     </form>
   );
 }
