@@ -33,7 +33,8 @@
       "Bash(python3 *)",
       "Bash(pnpm tsc *)",
       "Bash(xargs ls -la)",
-      "Bash(pnpm tsx *)"
+      "Bash(pnpm tsx *)",
+      "Bash(npm view *)"
     ]
   }
 }

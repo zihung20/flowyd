@@ -77,13 +77,16 @@ export function setupMonacoTypes(monacoInstance: Monaco): void {
   const ts = monacoInstance.languages.typescript;
 
   ts.typescriptDefaults.setCompilerOptions({
-    target: ts.ScriptTarget.ES2020,
+    target: ts.ScriptTarget.ESNext,
     module: ts.ModuleKind.ESNext,
     moduleResolution: ts.ModuleResolutionKind.NodeJs,
     strict: true,
     esModuleInterop: true,
     allowSyntheticDefaultImports: true,
-    lib: ['es2020', 'dom', 'dom.iterable'],
+    // Omitting `lib` lets Monaco use its bundled defaults, which include DOM.
+    // Explicitly listing libs causes the worker to look for lib.dom.d.ts on
+    // disk, which it can't find in a Vite/browser environment — producing
+    // "Cannot find name 'console'" (TS2584) inside editor widgets.
   });
 
   ts.typescriptDefaults.setDiagnosticsOptions({
