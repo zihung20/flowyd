@@ -1,4 +1,5 @@
 import { Link, useParams, Navigate } from 'react-router-dom';
+import { SiteNav } from '../components/SiteNav';
 import { SingleRunner } from '../runner/SingleRunner';
 import { purchaseOrderWorkflow } from '../workflows/purchase-order';
 import { predepartureWorkflow } from '../workflows/predeparture';
@@ -85,21 +86,16 @@ export default function ExamplesPage() {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-slate-50 font-sans">
-      <nav className="flex shrink-0 items-stretch gap-0 border-b border-slate-700 bg-slate-900 px-2">
-        <Link
-          to="/"
-          className="flex items-center border-b-2 border-transparent px-3 text-sm text-slate-400 transition-colors hover:text-white"
-        >
-          ← flowyd
-        </Link>
-        <span className="flex items-center px-1 text-sm text-slate-600">/</span>
+      <SiteNav />
 
+      {/* Example tab bar */}
+      <nav className="flex shrink-0 items-stretch gap-0 border-b border-slate-700 bg-slate-900 px-2">
         {EXAMPLES.map((ex) => (
           <Link
             key={ex.id}
             to={`/examples/${ex.id}`}
             className={[
-              'flex flex-col items-start border-b-2 px-4 py-2.5 text-left transition-colors',
+              'flex flex-col items-start border-b-2 px-4 py-2 text-left transition-colors',
               exId === ex.id
                 ? 'border-blue-400 bg-slate-800 text-white'
                 : 'border-transparent text-slate-400 hover:bg-slate-800 hover:text-slate-200',

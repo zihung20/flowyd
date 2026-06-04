@@ -9,10 +9,13 @@ import {
 } from '@xyflow/react';
 import type { Node, Edge, Connection, NodeChange, EdgeChange, OnConnect } from '@xyflow/react';
 import { DesignerToolbar } from './DesignerToolbar';
-import { DesignerStateNode } from './DesignerStateNode';
+import { FlowNode } from '../../components/FlowNode';
+import type { FlowNodeData } from '../../components/FlowNode';
+import { buildFlowEdge } from '../../lib/flowEdgeStyles';
 import type { DesignerWorkflow, DesignerNode, DesignerEdge, NodeKind, Selection } from '../types';
+import { useTheme } from '../../context/ThemeContext';
 
-const NODE_TYPES = { 'designer-node': DesignerStateNode };
+const NODE_TYPES = { flowNode: FlowNode };
 
 const POSITIONS_KEY = 'flowyd-positions';
 
@@ -44,6 +47,17 @@ function wfStructureKey(wf: DesignerWorkflow): string {
   return `${wf.name}||${n}||${e}`;
 }
 
+function designerNodeToFlowData(n: DesignerNode): FlowNodeData {
+  return {
+    label: n.label || n.id,
+    kind: n.kind,
+    isInitial: n.isInitial,
+    isTerminal: n.isTerminal,
+    handles: 'vertical',
+    ...(n.id !== n.label ? { sublabel: n.id } : {}),
+  };
+}
+
 function wfToRfNodes(
   wf: DesignerWorkflow,
   existingPositions: Map<string, { x: number; y: number }>,
@@ -51,53 +65,28 @@ function wfToRfNodes(
 ): Node[] {
   return wf.nodes.map((n, i) => ({
     id: n.id,
-    type: 'designer-node',
-    position: existingPositions.get(n.id) ??
+    type: 'flowNode',
+    position:
+      existingPositions.get(n.id) ??
       savedPositions.get(n.id) ?? { x: 80 + (i % 4) * 220, y: 80 + Math.floor(i / 4) * 140 },
-    data: n as unknown as Record<string, unknown>,
+    data: designerNodeToFlowData(n) as unknown as Record<string, unknown>,
   }));
 }
 
-function wfToRfEdges(wf: DesignerWorkflow): Edge[] {
-  return wf.edges.map((e) => {
-    if (e.kind === 'fork-target') {
-      return {
+function wfToRfEdges(wf: DesignerWorkflow, dark: boolean): Edge[] {
+  return wf.edges.map((e) =>
+    buildFlowEdge(
+      {
         id: e.id,
-        source: e.fromNodeId,
-        target: e.toNodeId,
-        label: '⑂ auto',
-        animated: false,
-        style: { strokeDasharray: '5 3', stroke: '#7c3aed', strokeWidth: 1.5 },
-        labelStyle: { fontSize: 11, fontFamily: 'monospace' },
-        labelBgStyle: { fill: '#0f172a', fillOpacity: 0.9 },
-        data: {} as Record<string, unknown>,
-      };
-    }
-    if (e.kind === 'join-requires') {
-      return {
-        id: e.id,
-        source: e.fromNodeId,
-        target: e.toNodeId,
-        label: '⑁ requires',
-        animated: false,
-        style: { strokeDasharray: '5 3', stroke: '#0ea5e9', strokeWidth: 1.5 },
-        labelStyle: { fontSize: 11, fontFamily: 'monospace' },
-        labelBgStyle: { fill: '#0f172a', fillOpacity: 0.9 },
-        data: {} as Record<string, unknown>,
-      };
-    }
-    return {
-      id: e.id,
-      source: e.fromNodeId,
-      target: e.toNodeId,
-      label: e.actionName || '—',
-      animated: false,
-      style: { stroke: '#64748b', strokeWidth: 1.5 },
-      labelStyle: { fontSize: 11, fontFamily: 'monospace' },
-      labelBgStyle: { fill: '#0f172a', fillOpacity: 0.85 },
-      data: {} as Record<string, unknown>,
-    };
-  });
+        from: e.fromNodeId,
+        to: e.toNodeId,
+        kind: e.kind,
+        label: e.actionName || '—',
+        dashed: e.kind === 'transition' && e.guardBody.trim() !== '',
+      },
+      dark,
+    ),
+  );
 }
 
 let nodeCounter = 1;
@@ -131,6 +120,7 @@ export function DesignerCanvas({
   onWorkflowChange,
   onSelectionChange,
 }: Props) {
+  const { theme } = useTheme();
   const savedPositions = useRef(loadSavedPositions());
   const prevKeyRef = useRef('');
 
@@ -147,8 +137,8 @@ export function DesignerCanvas({
       const existingPos = new Map(prev.map((n) => [n.id, n.position]));
       return wfToRfNodes(workflow, existingPos, savedPositions.current);
     });
-    setRfEdges(wfToRfEdges(workflow));
-  }, [workflow, setRfNodes, setRfEdges]);
+    setRfEdges(wfToRfEdges(workflow, theme === 'dark'));
+  }, [workflow, theme, setRfNodes, setRfEdges]);
 
   // Reflect selection state via node/edge `selected` flag
   useEffect(() => {
@@ -241,30 +231,21 @@ export function DesignerCanvas({
       onWorkflowChange({ ...workflow, edges: [...workflow.edges, newEdge] });
       onSelectionChange({ type: 'edge', id: newEdge.id });
 
-      const edgeStyle =
-        kind === 'fork-target'
-          ? { strokeDasharray: '5 3', stroke: '#7c3aed', strokeWidth: 1.5 }
-          : kind === 'join-requires'
-            ? { strokeDasharray: '5 3', stroke: '#0ea5e9', strokeWidth: 1.5 }
-            : { stroke: '#64748b', strokeWidth: 1.5 };
-      const edgeLabel =
-        kind === 'fork-target' ? '⑂ auto' : kind === 'join-requires' ? '⑁ requires' : 'ACTION';
-
       setRfEdges((es) => [
         ...es,
-        {
-          id: newEdge.id,
-          source: from,
-          target: to,
-          label: edgeLabel,
-          style: edgeStyle,
-          labelStyle: { fontSize: 11, fontFamily: 'monospace' },
-          labelBgStyle: { fill: '#0f172a', fillOpacity: 0.85 },
-          data: {} as Record<string, unknown>,
-        },
+        buildFlowEdge(
+          {
+            id: newEdge.id,
+            from,
+            to,
+            kind,
+            label: kind === 'transition' ? 'ACTION' : '',
+          },
+          theme === 'dark',
+        ),
       ]);
     },
-    [workflow, onWorkflowChange, onSelectionChange, setRfEdges],
+    [workflow, theme, onWorkflowChange, onSelectionChange, setRfEdges],
   );
 
   const handleAddNode = useCallback(
@@ -282,12 +263,13 @@ export function DesignerCanvas({
   );
 
   return (
-    <div className="relative h-full w-full bg-[#0f172a]">
+    <div className="relative h-full w-full bg-white dark:bg-[#0f172a]">
       <DesignerToolbar onAddNode={handleAddNode} />
       <ReactFlow
         nodes={rfNodes}
         edges={rfEdges}
         nodeTypes={NODE_TYPES}
+        colorMode={theme}
         onNodesChange={handleNodesChange}
         onEdgesChange={handleEdgesChange}
         onConnect={handleConnect}
@@ -299,8 +281,13 @@ export function DesignerCanvas({
         deleteKeyCode="Backspace"
         proOptions={{ hideAttribution: true }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#334155" />
-        <Controls className="!border-slate-600 !bg-slate-800 [&_button]:!border-slate-600 [&_button]:!bg-slate-800 [&_button]:!text-slate-300 [&_button:hover]:!bg-slate-700" />
+        <Background
+          variant={BackgroundVariant.Dots}
+          gap={20}
+          size={1}
+          color={theme === 'dark' ? '#334155' : '#cbd5e1'}
+        />
+        <Controls />
       </ReactFlow>
 
       {workflow.nodes.length === 0 && (

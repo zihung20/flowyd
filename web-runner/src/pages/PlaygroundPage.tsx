@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
+import { SiteNav } from '../components/SiteNav';
 import { CodeEditor } from '../designer/code/CodeEditor';
 import { SingleRunner } from '../runner/SingleRunner';
 import { evaluateWorkflowCode } from '../lib/evaluateWorkflowCode';
@@ -54,29 +55,7 @@ export default function PlaygroundPage() {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-white font-sans">
-      <header className="z-10 flex h-11 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4">
-        <Link
-          to="/"
-          className="text-sm font-semibold text-slate-500 transition-colors hover:text-slate-800"
-        >
-          flowyd
-        </Link>
-        <span className="text-slate-300">/</span>
-        <span className="text-sm font-medium text-slate-800">Playground</span>
-        <div className="flex-1" />
-        <Link
-          to="/designer"
-          className="text-xs text-slate-400 transition-colors hover:text-slate-600"
-        >
-          Designer
-        </Link>
-        <Link
-          to="/examples/purchase-order"
-          className="text-xs text-slate-400 transition-colors hover:text-slate-600"
-        >
-          Examples
-        </Link>
-      </header>
+      <SiteNav />
 
       <div className="flex min-h-0 flex-1">
         <div className="flex w-1/2 flex-col border-r border-slate-200">

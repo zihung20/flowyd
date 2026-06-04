@@ -30,7 +30,7 @@ function topoSort(nodes: DesignerNode[], edges: DesignerEdge[]): DesignerNode[] 
     visited.add(id);
     for (const dep of deps.get(id) ?? []) {visit(dep);}
     const node = nodes.find((n) => n.id === id);
-    if (node) {sorted.unshift(node);}
+    if (node) {sorted.push(node);}
   }
 
   for (const node of nodes) {visit(node.id);}

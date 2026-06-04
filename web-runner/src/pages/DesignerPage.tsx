@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactFlowProvider } from '@xyflow/react';
+import { SiteNav } from '../components/SiteNav';
 
 import { DesignerCanvas } from '../designer/canvas/DesignerCanvas';
 import { NodePanel } from '../designer/panels/NodePanel';
@@ -100,71 +101,60 @@ export default function DesignerPage() {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-white font-sans dark:bg-[#0f172a]">
       {/* ── Top bar ──────────────────────────────────────────────────────── */}
-      <header className="z-10 flex h-11 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 dark:border-slate-700/60 dark:bg-slate-900">
-        <Link
-          to="/"
-          className="text-sm font-semibold text-slate-500 transition-colors hover:text-slate-800 dark:hover:text-slate-200"
-        >
-          flowyd
-        </Link>
-        <span className="text-slate-300 dark:text-slate-700">/</span>
-        <input
-          className="w-44 border-none bg-transparent text-sm font-medium text-slate-900 placeholder-slate-400 outline-none dark:text-white"
-          value={workflow.name}
-          onChange={(e) => handleWorkflowChange({ ...workflow, name: e.target.value })}
-          placeholder="workflow-name"
-        />
-
-        <div className="flex-1" />
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-            onClick={toggleTheme}
-          >
-            {theme === 'dark' ? '☀' : '☾'}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            title="Reset canvas to default (clears localStorage)"
-            onClick={() => {
-              resetToDefault();
-              setSelection({ type: 'none' });
-            }}
-          >
-            Reset
-          </Button>
-          <Link
-            to="/examples/purchase-order"
-            className="text-xs text-slate-500 transition-colors hover:text-slate-700 dark:hover:text-slate-300"
-          >
-            Examples
-          </Link>
-          <Button
-            variant={selection.type === 'settings' ? 'secondary' : 'outline'}
-            size="sm"
-            title="Workflow context & settings"
-            onClick={() =>
-              setSelection((s) => (s.type === 'settings' ? { type: 'none' } : { type: 'settings' }))
-            }
-          >
-            Context
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setShowCode(true)}>
-            {'</>'} Show Code
-          </Button>
-          <Button
-            size="sm"
-            className="bg-blue-600 font-medium text-white hover:bg-blue-500"
-            onClick={handleClickRun}
-          >
-            ▶ Run
-          </Button>
-        </div>
-      </header>
+      <SiteNav
+        right={
+          <>
+            <input
+              className="w-40 border-none bg-transparent text-sm font-medium text-slate-900 placeholder-slate-400 outline-none dark:text-white"
+              value={workflow.name}
+              onChange={(e) => handleWorkflowChange({ ...workflow, name: e.target.value })}
+              placeholder="workflow-name"
+            />
+            <span className="w-px self-stretch bg-slate-200 dark:bg-slate-700" />
+            <Button
+              variant="ghost"
+              size="sm"
+              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+              onClick={toggleTheme}
+            >
+              {theme === 'dark' ? '☀' : '☾'}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              title="Reset canvas to default (clears localStorage)"
+              onClick={() => {
+                resetToDefault();
+                setSelection({ type: 'none' });
+              }}
+            >
+              Reset
+            </Button>
+            <Button
+              variant={selection.type === 'settings' ? 'secondary' : 'outline'}
+              size="sm"
+              title="Workflow context & settings"
+              onClick={() =>
+                setSelection((s) =>
+                  s.type === 'settings' ? { type: 'none' } : { type: 'settings' },
+                )
+              }
+            >
+              Context
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setShowCode(true)}>
+              {'</>'} Show Code
+            </Button>
+            <Button
+              size="sm"
+              className="bg-blue-600 font-medium text-white hover:bg-blue-500"
+              onClick={handleClickRun}
+            >
+              ▶ Run
+            </Button>
+          </>
+        }
+      />
 
       {/* ── Main canvas area ──────────────────────────────────────────────── */}
       <div className="relative min-h-0 flex-1">

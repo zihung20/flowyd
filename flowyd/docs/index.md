@@ -10,6 +10,9 @@ hero:
       text: Get Started
       link: /guide/
     - theme: alt
+      text: Interactive Playground
+      link: https://zihung20.github.io/flowyd/playground/
+    - theme: alt
       text: See Examples
       link: /examples/
     - theme: alt

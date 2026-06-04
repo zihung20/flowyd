@@ -2,25 +2,25 @@ import { useMemo } from 'react';
 import { ReactFlow, Background, BackgroundVariant } from '@xyflow/react';
 import type { Node, Edge } from '@xyflow/react';
 import { JsonGraphExporter } from 'flowyd/visualization';
-import type { JsonGraph, JsonGraphNode, JsonGraphEdge } from 'flowyd/visualization';
-import { StateNode } from './StateNode';
-import type { StateNodeType } from './StateNode';
+import type { JsonGraphNode, JsonGraphEdge } from 'flowyd/visualization';
+import { FlowNode } from '../../components/FlowNode';
+import type { FlowNodeData } from '../../components/FlowNode';
+import { buildFlowEdge } from '../../lib/flowEdgeStyles';
+import type { JsonGraph } from 'flowyd/visualization';
 import { useRunner } from '../context';
+import { useTheme } from '../../context/ThemeContext';
 
 const NODE_W = 180;
 const NODE_H = 64;
 
 // Object reference must be stable — defined outside the component.
-const nodeTypes = { stateNode: StateNode };
+const nodeTypes = { flowNode: FlowNode };
 
 const H_GAP = 60;
 const V_GAP = 28;
 
 /**
  * Compute left-to-right node positions using a longest-path layering algorithm.
- *
- * Assigns each node to the deepest layer reachable from any source, then
- * distributes nodes within each layer evenly along the y-axis.
  *
  * @param nodes - JsonGraph nodes to lay out.
  * @param edges - JsonGraph edges defining the DAG structure.
@@ -45,7 +45,7 @@ function computeLayout(
   const queue = ids.filter((id) => (remaining.get(id) ?? 0) === 0);
   const topoOrder: string[] = [];
   while (queue.length > 0) {
-    const id = queue.shift(); // non-null: loop condition guarantees length > 0
+    const id = queue.shift();
     if (id === undefined) {break;}
     topoOrder.push(id);
     for (const neighbor of outEdges.get(id) ?? []) {
@@ -55,7 +55,7 @@ function computeLayout(
     }
   }
 
-  // Longest-path layer assignment: layer[n] = max(layer[pred] + 1)
+  // Longest-path layer assignment
   const layer = new Map<string, number>(ids.map((id) => [id, 0]));
   for (const id of topoOrder) {
     const currentLayer = layer.get(id) ?? 0;
@@ -76,7 +76,7 @@ function computeLayout(
     }
   }
 
-  // Assign pixel positions: x from layer, y centered within layer
+  // Assign pixel positions
   const positions = new Map<string, { x: number; y: number }>();
   for (const [l, groupIds] of layerGroups) {
     const totalHeight = groupIds.length * NODE_H + (groupIds.length - 1) * V_GAP;
@@ -92,74 +92,50 @@ function computeLayout(
   return positions;
 }
 
-/**
- * Convert a JsonGraph and its computed positions into ReactFlow nodes.
- *
- * @param graph - Full JsonGraph; node metadata (label, kind, status, flags) is read from each entry.
- * @param positions - Map from node ID to top-left `{x, y}` pixel position, as returned by `computeLayout`.
- * @returns ReactFlow `Node[]` typed as `StateNodeType[]` for the custom `stateNode` renderer.
- */
 function toFlowNodes(
   graph: JsonGraph,
   positions: Map<string, { x: number; y: number }>,
-): StateNodeType[] {
-  return graph.nodes.map((n) => ({
-    id: n.id,
-    type: 'stateNode',
-    position: positions.get(n.id) ?? { x: 0, y: 0 },
-    data: {
+): Node[] {
+  return graph.nodes.map((n) => {
+    const status = (n.status ?? 'idle') as 'active' | 'waiting' | 'completed' | 'idle';
+    const data: FlowNodeData = {
       label: n.label,
-      kind: n.kind,
-      status: n.status,
+      kind: n.kind as FlowNodeData['kind'],
       isInitial: n.isInitial,
       isTerminal: n.isTerminal,
-    },
-  }));
-}
-
-/**
- * Convert JsonGraph edges to ReactFlow edges with visual encoding:
- * - `fork-target` edges: purple dashed, non-animated (structural, not traversable).
- * - `join-requires` edges: cyan dashed, non-animated (structural).
- * - Transition edges: animated when the source state is currently `active`;
- *   dashed stroke when the transition has a guard.
- *
- * @param graph - Full JsonGraph including node statuses needed for the animation flag.
- * @returns ReactFlow `Edge[]` ready for `<ReactFlow edges={…} />`.
- */
-function toFlowEdges(graph: JsonGraph): Edge[] {
-  const statusById = new Map(graph.nodes.map((n) => [n.id, n.status]));
-
-  return graph.edges.map((e) => {
-    const base = { id: e.id, source: e.from, target: e.to };
-    if (e.kind === 'fork-target') {
-      return {
-        ...base,
-        label: '⑂ auto',
-        animated: false,
-        style: { strokeDasharray: '5 3', stroke: '#7c3aed', strokeWidth: 1.5 },
-        labelStyle: { fontSize: 11, fontFamily: 'monospace' },
-      };
-    }
-    if (e.kind === 'join-requires') {
-      return {
-        ...base,
-        label: '⑁ requires',
-        animated: false,
-        style: { strokeDasharray: '5 3', stroke: '#0ea5e9', strokeWidth: 1.5 },
-        labelStyle: { fontSize: 11, fontFamily: 'monospace' },
-      };
-    }
+      status,
+      handles: 'horizontal',
+    };
     return {
-      ...base,
-      label: e.action,
-      animated: statusById.get(e.from) === 'active',
-      ...(e.hasGuard ? { style: { strokeDasharray: '5 3' } } : {}),
+      id: n.id,
+      type: 'flowNode',
+      position: positions.get(n.id) ?? { x: 0, y: 0 },
+      data: data as unknown as Record<string, unknown>,
     };
   });
 }
 
+function toFlowEdges(graph: JsonGraph, dark: boolean): Edge[] {
+  const statusById = new Map(graph.nodes.map((n) => [n.id, n.status]));
+
+  return graph.edges.map((e) =>
+    buildFlowEdge(
+      {
+        id: e.id,
+        from: e.from,
+        to: e.to,
+        kind: e.kind as 'fork-target' | 'join-requires' | 'transition',
+        label: e.action ?? '',
+        animated: statusById.get(e.from) === 'active',
+        ...(e.hasGuard ? { dashed: true } : {}),
+      },
+      dark,
+    ),
+  );
+}
+
 export function WorkflowGraph() {
+  const { theme } = useTheme();
   const { definition, snapshot } = useRunner();
 
   const graph = useMemo(
@@ -170,7 +146,7 @@ export function WorkflowGraph() {
   const positions = useMemo(() => computeLayout(graph.nodes, graph.edges), [graph]);
 
   const nodes: Node[] = useMemo(() => toFlowNodes(graph, positions), [graph, positions]);
-  const edges: Edge[] = useMemo(() => toFlowEdges(graph), [graph]);
+  const edges: Edge[] = useMemo(() => toFlowEdges(graph, theme === 'dark'), [graph, theme]);
 
   return (
     <div className="min-h-0 flex-1">
@@ -178,13 +154,19 @@ export function WorkflowGraph() {
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        colorMode={theme}
         nodesDraggable={false}
         nodesConnectable={false}
         elementsSelectable={false}
         fitView
         fitViewOptions={{ padding: 0.25 }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
+        <Background
+          variant={BackgroundVariant.Dots}
+          gap={16}
+          size={1}
+          color={theme === 'dark' ? '#334155' : '#cbd5e1'}
+        />
       </ReactFlow>
     </div>
   );
