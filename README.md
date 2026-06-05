@@ -18,6 +18,7 @@ The compiler catches every typo in a state ID, every wrong action name, and ever
 
 - [Library README](./flowyd/README.md) — install, quick start, API overview
 - [Full documentation](https://zihung20.github.io/flowyd/guide/)
+- [Playground](https://zihung20.github.io/flowyd/playground/) — an interactive online editor for building and testing workflows without installing anythings
 
 ---
 
