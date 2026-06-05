@@ -229,7 +229,11 @@ describe('WorkflowBuilder', () => {
         .addTransition({ from: 'start', to: 'dead-wait', on: 'GO' })
         .addTransition({ from: 'start', to: 'done', on: 'GO' });
       let msg = '';
-      try { b.build(); } catch (e) { msg = (e as Error).message; }
+      try {
+        b.build();
+      } catch (e) {
+        msg = (e as Error).message;
+      }
       expect(msg).toContain('orphan');
       expect(msg).toContain('WaitState');
     });

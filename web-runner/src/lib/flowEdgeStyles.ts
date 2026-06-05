@@ -25,8 +25,8 @@ export function buildFlowEdge(spec: EdgeSpec, dark: boolean): Edge {
   const labelBgOpacity = dark ? 0.9 : 1;
 
   const sharedLabel = {
-    labelStyle: { fontSize: 11, fontFamily: 'monospace' } as React.CSSProperties,
-    labelBgStyle: { fill: labelBg, fillOpacity: labelBgOpacity } as React.CSSProperties,
+    labelStyle: { fontSize: 11, fontFamily: 'monospace' } satisfies React.CSSProperties,
+    labelBgStyle: { fill: labelBg, fillOpacity: labelBgOpacity } satisfies React.CSSProperties,
   };
 
   if (spec.kind === 'fork-target') {

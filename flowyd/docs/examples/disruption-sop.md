@@ -343,7 +343,9 @@ async function runDisruptionSop() {
   // ── JSON graph for dashboard integration ─────────────────────────────────
   const graph = JsonGraphExporter.export(occDisruptionSop.getDefinition());
   console.log(`Nodes: ${graph.nodes.length}, Edges: ${graph.edges.length}`);
-  const guardedTransitions = graph.edges.filter((e) => e.hasGuard).map((e) => e.action);
+  const guardedTransitions = graph.edges
+    .filter((e) => e.kind === 'transition' && e.hasGuard)
+    .map((e) => e.action);
   console.log('Guarded:', guardedTransitions.join(', '));
 }
 

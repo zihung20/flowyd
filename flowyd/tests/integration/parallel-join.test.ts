@@ -29,10 +29,10 @@ const procurement = createWorkflow({
   .addStep('approved')
   .setInitial('start')
   .setTerminal(['approved'])
-  .addTransition({ from: 'start',   to: 'fork',             on: 'START' })
-  .addTransition({ from: 'legal',   to: 'legal-approved',   on: 'LEGAL_DONE' })
+  .addTransition({ from: 'start', to: 'fork', on: 'START' })
+  .addTransition({ from: 'legal', to: 'legal-approved', on: 'LEGAL_DONE' })
   .addTransition({ from: 'finance', to: 'finance-approved', on: 'FINANCE_DONE' })
-  .addTransition({ from: 'join',    to: 'approved',         on: 'FINALIZE' })
+  .addTransition({ from: 'join', to: 'approved', on: 'FINALIZE' })
   .build();
 
 describe('Parallel-join SOP — procurement', () => {
@@ -125,10 +125,10 @@ const anyJoin = createWorkflow({
   .addStep('end')
   .setInitial('start')
   .setTerminal(['end'])
-  .addTransition({ from: 'start',    to: 'fork',   on: 'GO' })
+  .addTransition({ from: 'start', to: 'fork', on: 'GO' })
   .addTransition({ from: 'branch-a', to: 'a-done', on: 'DONE_A' })
   .addTransition({ from: 'branch-b', to: 'b-done', on: 'DONE_B' })
-  .addTransition({ from: 'join',     to: 'end',    on: 'PROCEED' })
+  .addTransition({ from: 'join', to: 'end', on: 'PROCEED' })
   .build();
 
 describe('Any-join — fires on first branch completion', () => {

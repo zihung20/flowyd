@@ -29,7 +29,7 @@ Concrete implementations of `IState` and `IGuard`. Import only from `types/`. Ne
 
 ### `core/`
 
-The engine, builder, instance, and state/guard registries. Imports from `types/`, `states/`, and `guards/`. Five files:
+The engine, builder, instance, and state/guard registries. Imports from `types/`, `states/`, and `guards/`. The main files (plus `utils.ts` helpers and an `index.ts` barrel):
 
 | File          | Responsibility                                                                                 |
 | ------------- | ---------------------------------------------------------------------------------------------- |
@@ -51,9 +51,7 @@ Bidirectional imports create invisible coupling. If `core/engine.ts` imported `M
 
 The rule is also a forcing function for interface design. If you find yourself wanting to import "upward", it is a signal that the abstraction boundary is wrong — the shared concept should be extracted into `types/`, not shared via a cross-layer import.
 
-## The `ExecutionContext` exception
-
-`nodes/` (if present in future extensions) may import `ExecutionContext` from `core/`. `ExecutionContext` is a pure data carrier — it holds runtime state but contains no methods that reach back into the engine. It is the only permitted upward import and must remain a data-only type.
+There are **no exceptions** — every cross-layer dependency goes through a `types/` interface.
 
 ## File map
 
@@ -63,33 +61,41 @@ src/
 │   ├── state.ts         ← StateKind, StateStatus, IState, IForkState, IJoinState, IWaitState, JoinMode
 │   ├── guard.ts         ← IGuard, GuardFn, GuardContext
 │   ├── transition.ts    ← TransitionDefinition
-│   ├── instance.ts      ← ReadonlyInstanceState, InstanceSnapshot, DispatchResult, HistoryEntry
-│   └── workflow.ts      ← WorkflowDefinition, ActionPayloadMap
+│   ├── instance.ts      ← ReadonlyInstanceState, InstanceSnapshot, DispatchResult, HistoryEntry, HookContext/HookFn/StateHooks
+│   ├── workflow.ts      ← WorkflowDefinition, ActionPayloadMap
+│   └── index.ts         ← barrel re-export
 │
 ├── states/
 │   ├── base.ts
 │   ├── step-state.ts
 │   ├── fork-state.ts
 │   ├── join-state.ts
-│   └── wait-state.ts
+│   ├── wait-state.ts
+│   └── index.ts
 │
 ├── guards/
-│   ├── primitives.ts    ← AlwaysGuard, NeverGuard, FnGuard
-│   ├── inject-guard.ts  ← InjectedGuard
+│   ├── constant-guards.ts ← AlwaysGuard, NeverGuard
+│   ├── fn-guard.ts        ← FnGuard
+│   ├── inject-guard.ts    ← InjectedGuard
 │   ├── and-guard.ts
 │   ├── or-guard.ts
 │   ├── not-guard.ts
-│   ├── state-guard.ts   ← StateCompletedGuard, StateActiveGuard
-│   └── factory.ts       ← Guard namespace
+│   ├── state-guard.ts     ← StateCompletedGuard, StateActiveGuard
+│   ├── factory.ts         ← Guard namespace
+│   └── index.ts
 │
 ├── core/
 │   ├── builder.ts
 │   ├── workflow.ts
 │   ├── instance.ts
 │   ├── engine.ts
-│   └── registry.ts
+│   ├── registry.ts
+│   ├── utils.ts
+│   └── index.ts
 │
 └── visualization/
+    ├── exporter.ts
     ├── mermaid.ts
-    └── json-graph.ts
+    ├── json-graph.ts
+    └── index.ts
 ```

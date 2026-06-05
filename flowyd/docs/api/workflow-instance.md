@@ -1,6 +1,6 @@
 # WorkflowInstance & DispatchResult
 
-`WorkflowInstance<TActions>` is the mutable runtime object for a single workflow run. Create it via `workflow.createInstance(id)` or `workflow.restoreInstance(snapshot)`.
+`WorkflowInstance<TActions, TContext, TStates>` is the mutable runtime object for a single workflow run. Create it via `workflow.createInstance(id)` or `workflow.restoreInstance(snapshot)`.
 
 ```ts
 import type { WorkflowInstance, InstanceSnapshot, DispatchResult } from 'flowyd';
@@ -43,15 +43,15 @@ Dry-run: evaluates guards but commits no state change. Use to drive UI affordanc
 ### `getCurrentStates()`
 
 ```ts
-getCurrentStates(): string[]
+getCurrentStates(): TStates[]
 ```
 
-Returns IDs of all states currently `active` or `waiting`. Both statuses are included because they represent the current position in the workflow.
+Returns IDs of all states currently `active` or `waiting`, narrowed to the workflow's registered state-ID union `TStates`. Both statuses are included because they represent the current position in the workflow.
 
 ### `getStateStatus(stateId)`
 
 ```ts
-getStateStatus(stateId: string): StateStatus
+getStateStatus(stateId: TStates): StateStatus
 // 'idle' | 'active' | 'waiting' | 'completed'
 ```
 
@@ -68,10 +68,10 @@ Returns `true` once any terminal state is `active`. Once terminal, all subsequen
 ### `getAvailableTransitions()`
 
 ```ts
-getAvailableTransitions(): string[]
+getAvailableTransitions(): (keyof TActions & string)[]
 ```
 
-Returns action names that have at least one transition from a currently `active` state. Does **not** evaluate guards — use for displaying available action names without the cost of a guard round-trip. Use `canExecute` when you need guard evaluation.
+Returns action names that have at least one transition from a currently `active` state, narrowed to the workflow's registered action-name union. Does **not** evaluate guards — use for displaying available action names without the cost of a guard round-trip. Use `canExecute` when you need guard evaluation.
 
 ### `injectGuard(name, fn)`
 
@@ -104,6 +104,25 @@ resolveWait(
 Promotes a `WaitState` from `waiting` → `active`. Call from your service layer when the external process completes. Increments `snapshot.version` and appends a `__resolve_wait:<stateId>` history entry. Optionally stores `externalSnapshot` in the history for cross-workflow auditability.
 
 **Throws** if `stateId` is not a `WaitState` or is not currently `waiting`.
+
+### `getContext()` / `setContext(data)`
+
+```ts
+getContext(): TContext | undefined
+setContext(data: TContext): this
+```
+
+`getContext` returns the caller-owned instance context (set at `createInstance` time or via `setContext`), or `undefined` if none was set. `setContext` replaces it and returns `this` for chaining. The context is persisted in the snapshot and read by guards via `ctx.context`.
+
+### `rewind(version)`
+
+```ts
+rewind(version: number): InstanceSnapshot<TContext, TStates>
+```
+
+Returns an independent, deep-cloned `InstanceSnapshot` reconstructed as of any past `version` — with accurate `stateStatuses` and the context that was in effect at that point. Does not mutate the live instance.
+
+**Throws** if `version` is out of range for this instance's history.
 
 ## DispatchResult
 

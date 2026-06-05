@@ -407,7 +407,10 @@ export class WorkflowInstance<
    * `onExit` / `onEnter` are intentionally sequential (not parallel) so hook
    * execution order is deterministic.
    */
-  private async runHooks(exitedStates: readonly TStates[], enteredStates: readonly TStates[]): Promise<void> {
+  private async runHooks(
+    exitedStates: readonly TStates[],
+    enteredStates: readonly TStates[],
+  ): Promise<void> {
     const hooks = this.definition.stateHooks;
     if (!hooks) {
       return;

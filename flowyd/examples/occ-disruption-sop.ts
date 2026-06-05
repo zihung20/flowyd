@@ -164,11 +164,11 @@ const occDisruptionSop = createWorkflow({
   .addStep('duty-manager-notified', { label: 'DM Notified' })
   .addStep('response-authorised', { label: 'Response Authorised' })
   // done states — auto-complete when entered; join waits on these
-  .addStep('ops-notified',       { label: 'Ops Team Confirmed' })
-  .addStep('stn-notified',       { label: 'Station Masters Confirmed' })
-  .addStep('public-notified',    { label: 'Public Comms Confirmed' })
+  .addStep('ops-notified', { label: 'Ops Team Confirmed' })
+  .addStep('stn-notified', { label: 'Station Masters Confirmed' })
+  .addStep('public-notified', { label: 'Public Comms Confirmed' })
   // in-progress states — fork targets; each requires an explicit dispatch
-  .addStep('ops-team',    { label: 'Notifying Ops Team' })
+  .addStep('ops-team', { label: 'Notifying Ops Team' })
   .addStep('stn-masters', { label: 'Notifying Station Masters' })
   .addStep('public-comms', { label: 'Sending Public Comms' })
   .addFork('notification-fork', {
@@ -211,8 +211,8 @@ const occDisruptionSop = createWorkflow({
     to: 'notification-fork',
     on: 'START_NOTIFICATIONS',
   })
-  .addTransition({ from: 'ops-team',     to: 'ops-notified',    on: 'NOTIFY_OPS_TEAM' })
-  .addTransition({ from: 'stn-masters',  to: 'stn-notified',    on: 'NOTIFY_STN_MASTERS' })
+  .addTransition({ from: 'ops-team', to: 'ops-notified', on: 'NOTIFY_OPS_TEAM' })
+  .addTransition({ from: 'stn-masters', to: 'stn-notified', on: 'NOTIFY_STN_MASTERS' })
   .addTransition({ from: 'public-comms', to: 'public-notified', on: 'NOTIFY_PUBLIC' })
   .addTransition({
     from: 'notification-join',

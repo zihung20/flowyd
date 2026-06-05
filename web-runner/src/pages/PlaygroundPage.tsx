@@ -6,26 +6,14 @@ import { SingleRunner } from '../runner/SingleRunner';
 import { evaluateWorkflowCode } from '../lib/evaluateWorkflowCode';
 import type { EvalResult } from '../lib/evaluateWorkflowCode';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import predepartureSource from '../workflows/predeparture.ts?raw';
 
 const STORAGE_KEY = 'flowyd-playground-code';
 
-const STARTER = `import { createWorkflow } from 'flowyd';
-import { z } from 'zod';
-
-const workflow = createWorkflow({ name: 'my-workflow' })
-  .defineAction('SUBMIT', z.object({ submittedBy: z.string() }))
-  .defineAction('APPROVE', z.object({ approverId: z.string() }))
-  .defineAction('REJECT', z.object({ reason: z.string() }))
-  .addStep('draft', { label: 'Draft' })
-  .addStep('review', { label: 'In Review' })
-  .addStep('approved', { label: 'Approved' })
-  .addStep('rejected', { label: 'Rejected' })
-  .setInitial('draft')
-  .setTerminal(['approved', 'rejected'])
-  .addTransition({ from: 'draft', to: 'review', on: 'SUBMIT' })
-  .addTransition({ from: 'review', to: 'approved', on: 'APPROVE' })
-  .addTransition({ from: 'review', to: 'rejected', on: 'REJECT' })
-  .build();`;
+// Rename the named export to `workflow` and append an instance with sample context.
+const STARTER =
+  predepartureSource.replace(/\bpredepartureWorkflow\b/g, 'workflow') +
+  "\nconst instance = workflow.createInstance('run-1', { operatorId: 'ENG-001', depot: 'Central' });";
 
 type PanelState = 'split' | 'code-only' | 'runner-only';
 
@@ -160,7 +148,7 @@ export default function PlaygroundPage() {
                 title={evalResult.definition.name}
                 subtitle="Playground run"
                 definition={evalResult.definition}
-                makeInstance={() => evalResult.workflow.createInstance(`run-${Date.now()}`)}
+                makeInstance={evalResult.makeInstance}
               />
             )}
           </div>

@@ -75,15 +75,15 @@ const engineerChecklist = createWorkflow({
 
   // ── States ───────────────────────────────────────────────────────────────
   .addStep('reported-for-duty', { label: 'Reported for Duty' })
-  .addStep('briefed',           { label: 'Briefed' })
+  .addStep('briefed', { label: 'Briefed' })
 
   // done states — auto-complete when entered; registered before the join that requires them
-  .addStep('mech-cleared',   { label: 'Mechanical Check Cleared' })
-  .addStep('elec-cleared',   { label: 'Electrical Check Cleared' })
+  .addStep('mech-cleared', { label: 'Mechanical Check Cleared' })
+  .addStep('elec-cleared', { label: 'Electrical Check Cleared' })
   .addStep('safety-cleared', { label: 'Safety Check Cleared' })
   // in-progress states — fork targets; wait for an explicit technician dispatch
-  .addStep('mechanical',     { label: 'Mechanical Check' })
-  .addStep('electrical',     { label: 'Electrical Check' })
+  .addStep('mechanical', { label: 'Mechanical Check' })
+  .addStep('electrical', { label: 'Electrical Check' })
   .addStep('safety-systems', { label: 'Safety Systems Check' })
 
   .addFork('inspection-fork', {
@@ -97,18 +97,18 @@ const engineerChecklist = createWorkflow({
   })
 
   .addStep('signed-off', { label: 'Signed Off' })
-  .addStep('departed',   { label: 'Departed' })
+  .addStep('departed', { label: 'Departed' })
 
   // ── Graph ─────────────────────────────────────────────────────────────────
   .setInitial('reported-for-duty')
   .setTerminal(['departed'])
 
-  .addTransition({ from: 'reported-for-duty', to: 'briefed',         on: 'BRIEFING_RECEIVED' })
-  .addTransition({ from: 'briefed',           to: 'inspection-fork', on: 'START_INSPECTION' })
+  .addTransition({ from: 'reported-for-duty', to: 'briefed', on: 'BRIEFING_RECEIVED' })
+  .addTransition({ from: 'briefed', to: 'inspection-fork', on: 'START_INSPECTION' })
 
   // each technician dispatches their check; the done state auto-completes
-  .addTransition({ from: 'mechanical',     to: 'mech-cleared',   on: 'MECH_OK' })
-  .addTransition({ from: 'electrical',     to: 'elec-cleared',   on: 'ELEC_OK' })
+  .addTransition({ from: 'mechanical', to: 'mech-cleared', on: 'MECH_OK' })
+  .addTransition({ from: 'electrical', to: 'elec-cleared', on: 'ELEC_OK' })
   .addTransition({ from: 'safety-systems', to: 'safety-cleared', on: 'SAFETY_OK' })
 
   .addTransition({
@@ -154,7 +154,9 @@ async function runChecklist() {
   console.log(`[4] Safety cleared — active: ${instance.getCurrentStates()}`);
 
   await instance.dispatch('MECH_OK', { technicianId: 'MECH-12', notes: 'Bogie within spec' });
-  console.log(`[5] Mechanical cleared — all done states auto-completed → join active: ${instance.getCurrentStates()}`);
+  console.log(
+    `[5] Mechanical cleared — all done states auto-completed → join active: ${instance.getCurrentStates()}`,
+  );
 
   // Step 6: Engineer signs off
   await instance.dispatch('SIGN_OFF', { engineerId: 'ENG-042', certifies: true });
@@ -175,15 +177,22 @@ async function runChecklist() {
   console.log('\n=== Guard demo: sign-off with certifies=false is rejected ===\n');
 
   const blocked = engineerChecklist.createInstance('ENG-099-demo');
-  await blocked.dispatch('BRIEFING_RECEIVED', { trainId: 'ENG-099', routeCode: 'EW2', shiftTime: '14:00' });
+  await blocked.dispatch('BRIEFING_RECEIVED', {
+    trainId: 'ENG-099',
+    routeCode: 'EW2',
+    shiftTime: '14:00',
+  });
   await blocked.dispatch('START_INSPECTION', {});
   await blocked.dispatch('MECH_OK', { technicianId: 'MECH-1' });
-  await blocked.dispatch('ELEC_OK',  { technicianId: 'ELEC-1' });
+  await blocked.dispatch('ELEC_OK', { technicianId: 'ELEC-1' });
   await blocked.dispatch('SAFETY_OK', { technicianId: 'SAFE-1' });
 
   try {
-    // @ts-expect-error — intentional: simulating a form submission without the checkbox ticked
-    const guardResult = await blocked.dispatch('SIGN_OFF', { engineerId: 'ENG-099', certifies: false });
+    const guardResult = await blocked.dispatch('SIGN_OFF', {
+      engineerId: 'ENG-099',
+      // @ts-expect-error — intentional: simulating a form submission without the checkbox ticked
+      certifies: false,
+    });
     if (!guardResult.success) {
       console.log(`Sign-off blocked: reason = "${guardResult.reason}"`);
     }

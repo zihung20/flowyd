@@ -50,6 +50,7 @@ pnpm format:check   # Prettier — check without writing
 pnpm typecheck      # tsc --noEmit
 pnpm lint           # ESLint
 pnpm lint:fix       # ESLint with auto-fix
+pnpm check:filemap  # verify CLAUDE.md / architecture.md file maps match src/
 pnpm test           # Vitest (all three projects: unit, integration, e2e)
 pnpm test:unit
 pnpm test:integration
@@ -62,10 +63,10 @@ pnpm docs:build     # VitePress production build
 
 ## Before opening a PR
 
-Run the full gate — all four must exit clean:
+Run the full gate — every command must exit clean:
 
 ```sh
-pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build
+pnpm format:check && pnpm lint && pnpm check:filemap && pnpm typecheck && pnpm test && pnpm build
 ```
 
 ## Code style
@@ -147,4 +148,4 @@ types/
 
 ## After every code change
 
-Run `pnpm lint && pnpm typecheck && pnpm test && pnpm build`. Append a version entry to Section 4 of `CLAUDE.md` and update `README.md`.
+Run `pnpm lint && pnpm check:filemap && pnpm typecheck && pnpm test && pnpm build`. Append a version entry to Section 5 of `CLAUDE.md` and update `README.md`.
