@@ -51,6 +51,7 @@ Use an inline function when the guard is a pure expression with no external depe
 The inline function receives a `GuardContext` with:
 
 - `ctx.payload` — the validated action payload
+- `ctx.context` — the caller-owned instance context set via `setContext()` (typed `unknown` until a context schema is declared)
 - `ctx.instanceState` — read-only view of all state statuses
 
 ## Guard.fn — explicit wrapper

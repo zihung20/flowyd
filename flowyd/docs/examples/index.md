@@ -11,8 +11,18 @@ Each example is a complete, runnable TypeScript file demonstrating a different c
 
 ## How to run an example locally
 
+Three of these examples ship as standalone runnable files in `flowyd/examples/`:
+
+| Example                          | File                                          |
+| -------------------------------- | --------------------------------------------- |
+| Engineer Pre-Departure Checklist | `examples/engineer-predeparture-checklist.ts` |
+| OCC Service Disruption SOP       | `examples/occ-disruption-sop.ts`              |
+| Station Opening Checklist        | `examples/station-opening-checklist.ts`       |
+
 ```sh
 cd flowyd
 pnpm build
-npx tsx examples/<filename>.ts
+npx tsx examples/occ-disruption-sop.ts
 ```
+
+The **Purchase Order Approval** example is the canonical introductory walkthrough — its full source is inline on [its page](./approval-flow) and in the [Installation quick start](../guide/installation), so it has no separate file.

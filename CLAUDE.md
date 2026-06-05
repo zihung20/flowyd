@@ -20,9 +20,11 @@ This file is the authoritative reference for every agent and developer working i
 ```
 src/
 ├── types/
-│   ├── state.ts          — IStepState, IForkState, IJoinState, IWaitState, AnyState discriminated union
-│   ├── workflow.ts       — WorkflowDefinition, InstanceSnapshot, TransitionDefinition
-│   ├── guards.ts         — IGuard interface, GuardContext
+│   ├── state.ts          — StateKind, StateStatus, IState/IStepState/IForkState/IJoinState/IWaitState, JoinMode, AnyState
+│   ├── instance.ts       — ReadonlyInstanceState, HistoryEntry, InstanceSnapshot, TransitionSuccess/Blocked, DispatchResult, HookContext/HookFn/StateHooks
+│   ├── transition.ts     — TransitionDefinition
+│   ├── guard.ts          — IGuard, GuardFn, GuardContext
+│   ├── workflow.ts       — WorkflowDefinition, ActionPayloadMap
 │   └── index.ts          — barrel re-export
 
 ├── states/
@@ -37,23 +39,30 @@ src/
 │   └── *.test.ts         — unit tests co-located with source
 
 ├── core/
-│   ├── builder.ts        — WorkflowBuilder<TActions, TStates> — Config-First fluent builder
+│   ├── builder.ts        — WorkflowBuilder<TActions, TStates, TContext> — accumulating fluent builder
+│   ├── workflow.ts       — Workflow — immutable compiled definition; exposes createInstance/restoreInstance/getDefinition
+│   ├── instance.ts       — WorkflowInstance — stateful wrapper; holds snapshot; exposes dispatch/canExecute/getSnapshot/resolveWait/setContext/rewind
 │   ├── engine.ts         — WorkflowEngine — pure static dispatch; fixed-point join loop
-│   ├── instance.ts       — WorkflowInstance — stateful wrapper; holds snapshot; exposes dispatch/getSnapshot/restoreInstance
 │   ├── registry.ts       — StateRegistry — typed Map<string, AnyState>
+│   ├── utils.ts          — internal helpers
+│   ├── index.ts          — core barrel (createWorkflow, createDynamicWorkflow, WorkflowInstance)
 │   └── *.test.ts         — unit tests co-located with source
 
 ├── visualization/
+│   ├── exporter.ts       — shared exporter helpers
 │   ├── mermaid.ts        — MermaidExporter
-│   └── json-graph.ts     — JsonGraphExporter, JsonGraph, JsonGraphNode, JsonGraphEdge
+│   ├── json-graph.ts     — JsonGraphExporter, JsonGraph, JsonGraphNode, JsonGraphEdge
+│   └── index.ts          — visualization barrel
 
-└── index.ts              — public barrel: WorkflowBuilder, Guard, state classes, types, exporters
+└── index.ts              — public barrel: createWorkflow, createDynamicWorkflow, WorkflowInstance (type), Guard, StateKind/StateStatus enums, and type-only interfaces (state/guard/transition/instance/workflow). Exporters are NOT here — they live behind the `flowyd/visualization` entry point.
 ```
 
 **Key entry points in `package.json`:**
 
 - `"."` → `dist/index.js` — core library
 - `"./visualization"` → `dist/visualization/index.js` — visualization (tree-shakeable)
+
+> This file map and the one in `docs/dev/architecture.md` are machine-checked against `src/` by `pnpm check:filemap` (`scripts/check-file-map.ts`, run directly via Node 24 type-stripping). It fails CI if a map names a `.ts` file that no longer exists, or if a new source file is missing from the architecture map. Run `node scripts/check-file-map.ts --print` to dump the canonical tree.
 
 ---
 
@@ -177,7 +186,7 @@ The `kind` property is a literal on each interface. Narrow with `state.kind === 
 
 Functions that can fail must throw a typed error with a precise message. Do not return `null`, `undefined`, or `false` to signal failure.
 
-The only sanctioned exception: `dispatch` returns `TransitionBlocked` for domain failures (`guard-failed`, `terminal-state`, `no-active-source`). These are valid, expected outcomes that the caller's business logic must handle. Payload validation failure still throws `ZodError`.
+The only sanctioned exception: `dispatch` returns `TransitionBlocked` for domain failures (`guard-failed`, `terminal-state`, `no-active-source`, `invalid-action`). These are valid, expected outcomes that the caller's business logic must handle. Payload validation failure still throws `ZodError`.
 
 ---
 
@@ -266,9 +275,9 @@ pnpm test:e2e          # e2e only
 
 After every code change:
 
-1. Run `pnpm lint && pnpm typecheck && pnpm test && pnpm build` — all four must exit clean before declaring the task done.
-2. Append a version entry to **Section 4** below and update `README.md` to reflect what changed. Future agents read this file first — leave a clear trail.
-3. After updating the version history: if Section 4 contains **5 or more entries**, merge all entries into a single condensed summary that is shorter than the combined text of the individual entries, then replace Section 4 with that single merged entry.
+1. Run `pnpm lint && pnpm check:filemap && pnpm typecheck && pnpm test && pnpm build` — all must exit clean before declaring the task done. (`check:filemap` verifies the §2 / architecture file maps still match `src/`.)
+2. Append a version entry to **Section 5 (Project Version History)** below and update `README.md` to reflect what changed. Future agents read this file first — leave a clear trail.
+3. After updating the version history: if Section 5 contains **5 or more entries**, merge all entries into a single condensed summary that is shorter than the combined text of the individual entries, then replace Section 5 with that single merged entry.
 
 ---
 
@@ -292,3 +301,4 @@ After every code change:
 - **Graph validation + hooks (v0.28, 2026-06-02):** `build()` now runs graph checks after structural validation — BFS reachability from initial state (transitions + fork fan-out + join activation edges), no reachable terminal state, non-terminal `WaitState`/`JoinState` with no outgoing transitions; all violations combined into one thrown error. `onEnter`/`onExit` lifecycle hooks: optional callbacks on all four `add*` methods; stored type-erased in `WorkflowDefinition.stateHooks` (`ReadonlyMap<TStates, StateHooks<TContext>>`); fired by `WorkflowInstance.runHooks()` after the snapshot commits — `onExit` before `onEnter`, sequential, async, throw-propagating. `StateHooks` uses method shorthand (bivariant) to remain assignable to the type-erased definition form. New public exports: `HookContext`, `HookFn`, `StateHooks`. 242 tests; all pipeline steps clean.
 - **web-runner navigation (2026-06-04):** Added shared `SiteNav` component (`src/components/SiteNav.tsx`) used by all three tool pages — Examples, Designer, Playground — providing consistent cross-section links with active-state highlighting. Examples page now has a two-tier header (SiteNav + dark example-tab bar). Designer page right-slots its toolbar into SiteNav. Playground header replaced entirely by SiteNav. VitePress docs home page gains an "Interactive Playground" action button.
 - **web-runner shadcn/ui migration (2026-06-04):** Migrated all UI to shadcn/ui as single source of truth. Added `components.json`, `@/` path alias (tsconfig + vite), `tailwindcss-animate` plugin. Installed 7 new packages (`@radix-ui/react-{separator,tabs,dialog,scroll-area,toggle,toggle-group}`, `tailwindcss-animate`). Updated 6 existing components (button, input, label, checkbox, select, textarea) to latest shadcn/ui conventions with `data-slot` attributes. Added 9 new components: card, badge, tabs, separator, tooltip, scroll-area, dialog, toggle, toggle-group. `App.tsx` wraps the tree in `TooltipProvider`. Pages updated: `HomePage` uses Card+Badge for features/examples; `PlaygroundPage` uses ToggleGroup for layout selector; `DynamicForm` uses Select/Input/Checkbox/Label/Button from shadcn/ui; `HistoryPanel` uses ScrollArea+Badge; `RunnerToolbar` uses Tooltip+Separator+Badge; `ShowCodeModal` uses Dialog; `ExamplesPage` uses Badge for tags.
+- **Documentation accuracy sweep (2026-06-05):** Full audit of all docs against source; no behaviour changes. Fixes — README: removed nonexistent `addStep({ autoComplete: true })` option (auto-complete is inferred at `build()`, no flag). `dev/architecture.md`: deleted fictional `ExecutionContext`/`nodes/` section; corrected file map (`primitives.ts` → real `constant-guards.ts`+`fn-guard.ts`; added `index.ts`/`utils.ts`/`exporter.ts`). `scenarios/persistence.md`: `HistoryEntry.timestamp` → `at` (+ `payload`/`context`); audit-trail example used `e.timestamp`. `guide/concepts.md` + `scenarios/persistence.md`: added missing `context?` field to `InstanceSnapshot`. `api/visualization.md`: `JsonGraphEdge` gained `kind` discriminant, `action`/`hasGuard` made optional. `api/guards.md` + `scenarios/guards.md`: added `context` to `GuardContext`; `Guard.fn` second generic. `api/workflow-builder.md`: documented `onEnter`/`onExit` on add* methods, context-arg `createInstance`, graph-validation throws, `build()` returns `Workflow<TActions, TContext, TStates>`, added `setContext`. `api/workflow-instance.md`: `getCurrentStates(): TStates[]`, `getAvailableTransitions(): (keyof TActions & string)[]`, added `getContext`/`setContext`/`rewind`. `examples/index.md`: corrected run instructions to the 3 files that actually exist. This file: §2 file map (real `types/` filenames + `core/workflow.ts` + accurate `index.ts` exports), §3 block-reason list gained `invalid-action`, agent-protocol "Section 4" → "Section 5". Source TSDoc: `InstanceSnapshot.version` increments on dispatch **and** `resolveWait`. New tooling: `scripts/check-file-map.ts` (`pnpm check:filemap`, run via Node 24 type-stripping) verifies both file maps against the real `src/` tree and is wired into the pre-PR gate so the maps can't silently drift again.

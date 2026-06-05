@@ -5,13 +5,14 @@
 ## The snapshot object
 
 ```ts
-interface InstanceSnapshot {
+interface InstanceSnapshot<TContext = unknown> {
   instanceId: string;
   workflowName: string;
   version: number; // increments on every successful dispatch or resolveWait
   stateStatuses: Readonly<Record<string, 'idle' | 'active' | 'waiting' | 'completed'>>;
   isTerminal: boolean;
   history: readonly HistoryEntry[];
+  context?: TContext; // caller-owned context set via setContext(); undefined when unset
   createdAt: string; // ISO 8601
   updatedAt: string;
 }
@@ -91,9 +92,11 @@ inst.injectGuard('isManager', myGuardFn);
 ```ts
 interface HistoryEntry {
   action: string; // action name, or '__resolve_wait:<stateId>' for resolveWait calls
-  timestamp: string; // ISO 8601
+  payload: unknown; // the Zod-validated payload dispatched with the action
   enteredStates: string[];
   exitedStates: string[];
+  context?: unknown; // instance context in effect at this transition (used by rewind)
+  at: string; // ISO 8601 timestamp
 }
 ```
 
@@ -102,7 +105,7 @@ Query it directly to produce an audit trail:
 ```ts
 const trail = inst.getSnapshot().history.map((e) => ({
   action: e.action,
-  at: e.timestamp,
+  at: e.at,
   from: e.exitedStates,
   to: e.enteredStates,
 }));

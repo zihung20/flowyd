@@ -189,11 +189,7 @@ export class WorkflowBuilder<
     } = {},
   ): WorkflowBuilder<TActions, TStates | K, TContext> {
     this.stateRegistry.register(new StepState(id, options));
-    this.recordHooks(
-      id,
-      options.onEnter,
-      options.onExit,
-    );
+    this.recordHooks(id, options.onEnter, options.onExit);
     return this as WorkflowBuilder<TActions, TStates | K, TContext>;
   }
 
@@ -221,11 +217,7 @@ export class WorkflowBuilder<
     },
   ): WorkflowBuilder<TActions, TStates | K, TContext> {
     this.stateRegistry.register(new ForkState(id, options));
-    this.recordHooks(
-      id,
-      options.onEnter,
-      options.onExit,
-    );
+    this.recordHooks(id, options.onEnter, options.onExit);
     return this as WorkflowBuilder<TActions, TStates | K, TContext>;
   }
 
@@ -255,11 +247,7 @@ export class WorkflowBuilder<
     },
   ): WorkflowBuilder<TActions, TStates | K, TContext> {
     this.stateRegistry.register(new JoinState(id, options));
-    this.recordHooks(
-      id,
-      options.onEnter,
-      options.onExit,
-    );
+    this.recordHooks(id, options.onEnter, options.onExit);
     return this as WorkflowBuilder<TActions, TStates | K, TContext>;
   }
 
@@ -283,11 +271,7 @@ export class WorkflowBuilder<
     },
   ): WorkflowBuilder<TActions, TStates | K, TContext> {
     this.stateRegistry.register(new WaitState(id, options));
-    this.recordHooks(
-      id,
-      options.onEnter,
-      options.onExit,
-    );
+    this.recordHooks(id, options.onEnter, options.onExit);
     return this as WorkflowBuilder<TActions, TStates | K, TContext>;
   }
 

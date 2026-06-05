@@ -143,13 +143,14 @@ Guards are **not persisted** in snapshots — re-inject them after every `restor
 A snapshot is a plain JSON object that captures the complete state of a running workflow instance.
 
 ```ts
-interface InstanceSnapshot {
+interface InstanceSnapshot<TContext = unknown> {
   instanceId: string;
   workflowName: string;
   version: number; // increments on every successful dispatch or resolveWait
   stateStatuses: Record<string, 'idle' | 'active' | 'waiting' | 'completed'>;
   isTerminal: boolean;
   history: HistoryEntry[]; // append-only audit log
+  context?: TContext; // caller-owned context set via setContext(); undefined when unset
   createdAt: string; // ISO 8601
   updatedAt: string;
 }

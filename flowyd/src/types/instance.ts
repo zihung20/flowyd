@@ -70,7 +70,8 @@ export interface InstanceSnapshot<TContext = unknown, TStates extends string = s
   readonly instanceId: string;
   readonly workflowName: string;
   /**
-   * Monotonically increasing counter incremented on every successful dispatch.
+   * Monotonically increasing counter incremented on every successful dispatch
+   * and on every `resolveWait` call.
    * Use for optimistic locking in your service layer (e.g. a Prisma `where: { version }` check).
    */
   readonly version: number;

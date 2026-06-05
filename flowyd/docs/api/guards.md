@@ -18,8 +18,9 @@ interface IGuard<TPayload = unknown> {
 ## GuardContext
 
 ```ts
-interface GuardContext<TPayload> {
+interface GuardContext<TPayload, TContext = unknown> {
   payload: TPayload; // validated action payload
+  context: TContext; // caller-owned instance context set via setContext()
   instanceState: ReadonlyInstanceState; // read-only view of all state statuses
 }
 ```
@@ -59,12 +60,12 @@ Error: Guard "isManager" has not been injected. Call instance.injectGuard("isMan
 ### `Guard.fn(fn)`
 
 ```ts
-Guard.fn<TPayload>(
-  fn: (ctx: GuardContext<TPayload>) => boolean | Promise<boolean>
-): FnGuard<TPayload>
+Guard.fn<TPayload, TContext = unknown>(
+  fn: (ctx: GuardContext<TPayload, TContext>) => boolean | Promise<boolean>
+): FnGuard<TPayload, TContext>
 ```
 
-Wraps an inline function as a guard. The generic parameter types `ctx.payload`.
+Wraps an inline function as a guard. The generic parameters type `ctx.payload` and `ctx.context`.
 
 ```ts
 Guard.fn<{ role: string }>((ctx) => ctx.payload.role === 'admin');

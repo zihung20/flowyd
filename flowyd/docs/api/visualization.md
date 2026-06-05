@@ -114,12 +114,25 @@ interface JsonGraphNode {
 
 ```ts
 interface JsonGraphEdge {
-  id: string; // "{from}__{action}__{to}__{index}"
+  id: string;
   from: string;
   to: string;
-  action: string;
-  hasGuard: boolean;
+  kind: 'transition' | 'fork-target' | 'join-requires';
+  action?: string; // present only when kind === 'transition'
+  hasGuard?: boolean; // present only when kind === 'transition'
 }
+```
+
+Edges carry a `kind` discriminant. `'transition'` edges are user-defined action-triggered
+transitions and carry `action` + `hasGuard`. `'fork-target'` and `'join-requires'` are
+**structural** edges — they make the fork fan-out and join fan-in topology visible without
+explicit transitions, and carry neither `action` nor `hasGuard`. Filter to
+`kind === 'transition'` before reading `action`/`hasGuard`:
+
+```ts
+const guarded = graph.edges
+  .filter((e) => e.kind === 'transition' && e.hasGuard)
+  .map((e) => e.action);
 ```
 
 `hasGuard` lets dashboards highlight which transitions require authorization.

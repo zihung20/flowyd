@@ -26,10 +26,11 @@ const wf = createWorkflow({ name: 'purchase-order' });
 Methods must be called in this sequence:
 
 1. `defineAction()` — register each action and its payload schema
-2. `addStep()` / `addFork()` / `addJoin()` / `addWait()` — register every state
-3. `setInitial()` / `setTerminal()` — declare entry and exit points
-4. `addTransition()` — wire states together
-5. `build()` — validate and compile
+2. `setContext()` _(optional)_ — declare a typed instance context
+3. `addStep()` / `addFork()` / `addJoin()` / `addWait()` — register every state
+4. `setInitial()` / `setTerminal()` — declare entry and exit points
+5. `addTransition()` — wire states together
+6. `build()` — validate and compile
 
 ## `.defineAction(name, schema)`
 
@@ -46,13 +47,34 @@ Registers an action and binds a Zod schema to its payload. Returns a new builder
 .defineAction('APPROVE', z.object({ approverId: z.string(), reason: z.string() }))
 ```
 
+## `.setContext(schema)`
+
+```ts
+setContext<C>(schema: ZodSchema<C>): WorkflowBuilder<TActions, TStates, C>
+```
+
+Declares a typed, caller-owned instance context. Once set, `createInstance` **requires** an initial context value, guards read it via `ctx.context`, and it is persisted in the snapshot (survives `getSnapshot` / `restoreInstance`).
+
+```ts
+createWorkflow({ name: 'review' })
+  .setContext(z.object({ score: z.number(), isDutyManager: z.boolean() }))
+  // ...
+  .build();
+// const inst = wf.createInstance('req-001', { score: 92, isDutyManager: true });
+```
+
 ## `.addStep(id, options?)`
 
 ```ts
-addStep<K extends string>(id: K, options?: { label?: string }): WorkflowBuilder<TActions, TStates | K>
+addStep<K extends string>(
+  id: K,
+  options?: { label?: string; onEnter?: HookFn; onExit?: HookFn },
+): WorkflowBuilder<TActions, TStates | K>
 ```
 
-Registers a `StepState` and widens `TStates` to include `K`. Becomes `active` on entry; waits for a dispatch to advance.
+Registers a `StepState` and widens `TStates` to include `K`. Becomes `active` on entry; waits for a dispatch to advance. Optional `onEnter`/`onExit` lifecycle hooks fire after the snapshot commits (`onExit` before `onEnter`).
+
+A dead-end non-terminal `StepState` (no outgoing transitions) auto-completes the moment it becomes active — this is inferred at `build()` time and needs no flag. It is the basis for pass-through fork branches that let a `JoinState` activate without explicit branch→join transitions.
 
 ## `.addFork(id, options)`
 
@@ -60,6 +82,8 @@ Registers a `StepState` and widens `TStates` to include `K`. Becomes `active` on
 addFork(id: TStates, options: {
   targets: [TStates, ...TStates[]];
   label?: string;
+  onEnter?: HookFn;
+  onExit?: HookFn;
 }): this
 ```
 
@@ -72,6 +96,8 @@ addJoin(id: TStates, options: {
   requires: [TStates, ...TStates[]];
   mode: 'all' | 'any' | number;
   label?: string;
+  onEnter?: HookFn;
+  onExit?: HookFn;
 }): this
 ```
 
@@ -86,7 +112,12 @@ Registers a `JoinState`. Activates automatically when the `mode` threshold of `r
 ## `.addWait(id, options?)`
 
 ```ts
-addWait(id: TStates, options?: { externalName?: string; label?: string }): this
+addWait(id: TStates, options?: {
+  externalName?: string;
+  label?: string;
+  onEnter?: HookFn;
+  onExit?: HookFn;
+}): this
 ```
 
 Registers a `WaitState`. On entry its status becomes `waiting` (not `active`). Resume with `inst.resolveWait(id)`.
@@ -127,27 +158,31 @@ Wires a directed edge. `from`, `to`, and `on` are all constrained to registered 
 ## `.build()`
 
 ```ts
-build(): Workflow<TActions, TStates>
+build(): Workflow<TActions, TContext, TStates>
 ```
 
 Validates the complete definition and returns an immutable `Workflow` object.
 
-**Throws** if:
+**Throws** if (all violations are collected and reported in one error):
 
 - Any declared state was not registered via `addStep/addFork/addJoin/addWait`
 - No initial state was set
 - No terminal state was set
 - A transition references an unregistered state or action
+- **Graph checks** — a state is unreachable from the initial state (BFS over transitions + fork fan-out + join activation edges), no terminal state is reachable, or a non-terminal `WaitState`/`JoinState` has no outgoing transitions
 
 ## `Workflow` object (returned by `build()`)
 
 ### `.createInstance(instanceId)`
 
 ```ts
-createInstance(instanceId: string): WorkflowInstance<TActions>
+createInstance(
+  instanceId: string,
+  context?: TContext, // required when setContext() was declared on the builder
+): WorkflowInstance<TActions, TContext>
 ```
 
-Creates a new `WorkflowInstance` with the initial state set to `active`.
+Creates a new `WorkflowInstance` with the initial state set to `active`. When `setContext()` was used on the builder, the `context` argument is **required** (the type enforces it); otherwise it is optional.
 
 ### `.restoreInstance(snapshot)`
 

@@ -100,9 +100,7 @@ export class WorkflowEngine {
     for (const candidate of candidates) {
       // Cast is safe: IGuard.evaluate is the type-erased guard boundary;
       // FnGuard re-narrows to the concrete payload/context/state types via its own cast.
-      const allowed = candidate.guard
-        ? await candidate.guard.evaluate(guardCtx)
-        : true;
+      const allowed = candidate.guard ? await candidate.guard.evaluate(guardCtx) : true;
       if (allowed) {
         passing.push(candidate);
       }
@@ -225,8 +223,9 @@ export class WorkflowEngine {
 
     switch (state.kind) {
       case StateKind.Step: {
-        const isDeadEnd = !definition.transitions.some((t) => t.from === stateId)
-          && !definition.terminalStateIds.includes(stateId);
+        const isDeadEnd =
+          !definition.transitions.some((t) => t.from === stateId) &&
+          !definition.terminalStateIds.includes(stateId);
         statuses.set(stateId, isDeadEnd ? StateStatus.Completed : StateStatus.Active);
         entered.push(stateId);
         break;

@@ -18,7 +18,7 @@ pnpm install
 pnpm build
 
 # 2. Run the full pipeline before opening a PR
-pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build
+pnpm format:check && pnpm lint && pnpm check:filemap && pnpm typecheck && pnpm test && pnpm build
 ```
 
-All four commands must exit clean. See [Contributing](./contributing) for details.
+Every command must exit clean. See [Contributing](./contributing) for details.

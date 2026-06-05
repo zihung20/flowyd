@@ -534,7 +534,11 @@ describe('WorkflowInstance — onEnter / onExit hooks', () => {
     const wf = createWorkflow({ name: 'hook-enter' })
       .defineAction('GO', z.object({}))
       .addStep('start')
-      .addStep('end', { onEnter: ({ stateId }) => { entered.push(stateId); } })
+      .addStep('end', {
+        onEnter: ({ stateId }) => {
+          entered.push(stateId);
+        },
+      })
       .setInitial('start')
       .setTerminal(['end'])
       .addTransition({ from: 'start', to: 'end', on: 'GO' })
@@ -548,7 +552,11 @@ describe('WorkflowInstance — onEnter / onExit hooks', () => {
     const exited: string[] = [];
     const wf = createWorkflow({ name: 'hook-exit' })
       .defineAction('GO', z.object({}))
-      .addStep('start', { onExit: ({ stateId }) => { exited.push(stateId); } })
+      .addStep('start', {
+        onExit: ({ stateId }) => {
+          exited.push(stateId);
+        },
+      })
       .addStep('end')
       .setInitial('start')
       .setTerminal(['end'])
@@ -563,8 +571,16 @@ describe('WorkflowInstance — onEnter / onExit hooks', () => {
     const log: string[] = [];
     const wf = createWorkflow({ name: 'hook-order' })
       .defineAction('GO', z.object({}))
-      .addStep('start', { onExit: () => { log.push('exit:start'); } })
-      .addStep('end', { onEnter: () => { log.push('enter:end'); } })
+      .addStep('start', {
+        onExit: () => {
+          log.push('exit:start');
+        },
+      })
+      .addStep('end', {
+        onEnter: () => {
+          log.push('enter:end');
+        },
+      })
       .setInitial('start')
       .setTerminal(['end'])
       .addTransition({ from: 'start', to: 'end', on: 'GO' })
@@ -600,7 +616,11 @@ describe('WorkflowInstance — onEnter / onExit hooks', () => {
       .defineAction('GO', z.object({}))
       .setContext(z.object({ score: z.number() }))
       .addStep('start')
-      .addStep('end', { onEnter: ({ context }) => { seen = context; } })
+      .addStep('end', {
+        onEnter: ({ context }) => {
+          seen = context;
+        },
+      })
       .setInitial('start')
       .setTerminal(['end'])
       .addTransition({ from: 'start', to: 'end', on: 'GO' })
@@ -614,8 +634,16 @@ describe('WorkflowInstance — onEnter / onExit hooks', () => {
     const ids: string[] = [];
     const wf = createWorkflow({ name: 'hook-id' })
       .defineAction('GO', z.object({}))
-      .addStep('start', { onExit: ({ stateId }) => { ids.push(stateId); } })
-      .addStep('end', { onEnter: ({ stateId }) => { ids.push(stateId); } })
+      .addStep('start', {
+        onExit: ({ stateId }) => {
+          ids.push(stateId);
+        },
+      })
+      .addStep('end', {
+        onEnter: ({ stateId }) => {
+          ids.push(stateId);
+        },
+      })
       .setInitial('start')
       .setTerminal(['end'])
       .addTransition({ from: 'start', to: 'end', on: 'GO' })
@@ -629,8 +657,16 @@ describe('WorkflowInstance — onEnter / onExit hooks', () => {
     const fired: string[] = [];
     const wf = createWorkflow({ name: 'hook-dryrun' })
       .defineAction('GO', z.object({}))
-      .addStep('start', { onExit: () => { fired.push('exit'); } })
-      .addStep('end', { onEnter: () => { fired.push('enter'); } })
+      .addStep('start', {
+        onExit: () => {
+          fired.push('exit');
+        },
+      })
+      .addStep('end', {
+        onEnter: () => {
+          fired.push('enter');
+        },
+      })
       .setInitial('start')
       .setTerminal(['end'])
       .addTransition({ from: 'start', to: 'end', on: 'GO' })
@@ -654,7 +690,9 @@ describe('WorkflowInstance — onEnter / onExit hooks', () => {
       .addFork('fork', { targets: ['branch-a', 'branch-b'] })
       .addJoin('joined', {
         requires: ['branch-a', 'branch-b'],
-        onEnter: ({ stateId }) => { entered.push(stateId); },
+        onEnter: ({ stateId }) => {
+          entered.push(stateId);
+        },
       })
       .addStep('done')
       .setInitial('start')
@@ -677,7 +715,11 @@ describe('WorkflowInstance — onEnter / onExit hooks', () => {
     const wf = createWorkflow({ name: 'hook-throw' })
       .defineAction('GO', z.object({}))
       .addStep('start')
-      .addStep('end', { onEnter: () => { throw new Error('hook-error'); } })
+      .addStep('end', {
+        onEnter: () => {
+          throw new Error('hook-error');
+        },
+      })
       .setInitial('start')
       .setTerminal(['end'])
       .addTransition({ from: 'start', to: 'end', on: 'GO' })
