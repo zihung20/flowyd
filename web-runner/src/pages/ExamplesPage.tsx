@@ -41,7 +41,10 @@ function makePoInstance() {
 }
 
 function makePdInstance() {
-  return predepartureWorkflow.createInstance(`pd-${Date.now()}`);
+  return predepartureWorkflow.createInstance(`pd-${Date.now()}`, {
+    operatorId: 'ENG-001',
+    depot: 'Central',
+  });
 }
 
 function makeReleasePipelineInstance() {

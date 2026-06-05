@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import { createWorkflow } from 'flowyd';
 
+const ContextSchema = z.object({
+  operatorId: z.string().min(1),
+  depot: z.string().min(1),
+});
+
 const BriefingSchema = z.object({
   trainId: z.string().min(1),
   routeCode: z.string().min(1),
@@ -25,6 +30,7 @@ const DepartSchema = z.object({
 export const predepartureWorkflow = createWorkflow({
   name: 'engineer-predeparture-checklist',
 })
+  .setContext(ContextSchema)
   .defineAction('BRIEFING_RECEIVED', BriefingSchema)
   .defineAction('START_INSPECTION', z.object({}))
   .defineAction('MECH_OK', InspectionSchema)
@@ -72,10 +78,9 @@ export const predepartureWorkflow = createWorkflow({
     from: 'inspections-joined',
     to: 'signed-off',
     on: 'SIGN_OFF',
-    guard: (ctx) => ctx.payload.certifies,
+    // only the operator who opened this instance may sign off
+    guard: (ctx) => ctx.payload.certifies && ctx.payload.engineerId === ctx.context.operatorId,
   })
   .addTransition({ from: 'signed-off', to: 'departed', on: 'DEPART' })
 
   .build();
-
-export type PredepartureInstance = ReturnType<typeof predepartureWorkflow.createInstance>;

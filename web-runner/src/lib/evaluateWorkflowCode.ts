@@ -2,32 +2,31 @@ import { createWorkflow, createDynamicWorkflow, Guard, StateKind, StateStatus } 
 import { z } from 'zod';
 import type { WorkflowDefinition, DispatchResult, InstanceSnapshot } from 'flowyd';
 
-type RunWorkflow = {
-  getDefinition(): WorkflowDefinition;
-  createInstance(id: string): {
-    dispatch(a: string, p: unknown): Promise<DispatchResult>;
-    getSnapshot(): InstanceSnapshot;
-    injectGuard(n: string, fn: () => boolean | Promise<boolean>): unknown;
-  };
+type AnyInstance = {
+  dispatch(action: string, payload: unknown): Promise<DispatchResult>;
+  getSnapshot(): InstanceSnapshot;
+  injectGuard(name: string, fn: () => boolean | Promise<boolean>): unknown;
 };
 
+type RunWorkflow = {
+  getDefinition(): WorkflowDefinition;
+  createInstance(id: string): AnyInstance;
+};
+
+type UserExports = { workflow: unknown; instance: unknown };
+
 export type EvalResult =
-  | { ok: true; workflow: RunWorkflow; definition: WorkflowDefinition }
+  | { ok: true; workflow: RunWorkflow; definition: WorkflowDefinition; makeInstance: () => AnyInstance }
   | { ok: false; error: string };
 
+const FN_PARAMS = ['createWorkflow', 'createDynamicWorkflow', 'Guard', 'z', 'StateKind', 'StateStatus'] as const;
+const FN_ARGS   = [createWorkflow,   createDynamicWorkflow,   Guard,   z,   StateKind,   StateStatus  ] as const;
+
 /**
- * Remove TypeScript-only syntax so the output can be fed to `new Function()`.
+ * Strip TypeScript-only syntax so the output can be passed to `new Function()`.
  *
- * Transforms applied in order:
- * 1. Strip named imports (`import { … } from '…'` and `import type { … } from '…'`).
- * 2. Strip bare side-effect imports (`import '…'`).
- * 3. Strip `export` modifier from declarations (`export const` → `const`).
- * 4. Rewrite `export default` as an assignment so the value is in scope.
- * 5. Strip re-export blocks (`export { … }`).
- * 6. Strip `"use strict"` directives (inserted by some TS compilers).
- *
- * @param tsCode - TypeScript source as typed in the Monaco editor.
- * @returns JavaScript-compatible source ready for `new Function()`.
+ * @param tsCode - TypeScript source from the Monaco editor.
+ * @returns JavaScript-compatible source.
  */
 function stripToJS(tsCode: string): string {
   return tsCode
@@ -40,54 +39,87 @@ function stripToJS(tsCode: string): string {
 }
 
 /**
+ * Execute stripped JS and capture the `workflow` and `instance` variables the
+ * user defined. Library globals are injected as function parameters so the
+ * user's code can reference them without real imports.
+ *
+ * @param js - Stripped JavaScript source.
+ * @returns Object with whatever the user defined as `workflow` / `instance` (null if absent).
+ */
+function runUserCode(js: string): UserExports {
+  const fn = new Function(
+    ...FN_PARAMS,
+    `${js}\n` +
+    `return {\n` +
+    `  workflow: typeof workflow !== 'undefined' ? workflow : null,\n` +
+    `  instance: typeof instance !== 'undefined' ? instance : null,\n` +
+    `};\n`,
+  );
+  return fn(...FN_ARGS) as UserExports;
+}
+
+/**
+ * Build the instance factory that `SingleRunner` calls on mount and reset.
+ *
+ * When the user defined `instance`, the factory re-runs the user's code so
+ * the context is re-applied on every reset. Otherwise it creates a plain
+ * instance directly from the compiled workflow.
+ *
+ * @param js - Stripped JavaScript source (closed over for re-evaluation).
+ * @param wf - Compiled workflow (used for the no-context fallback).
+ * @param hasUserInstance - Whether the user defined `const instance = ...`.
+ */
+function buildMakeInstance(js: string, wf: RunWorkflow, hasUserInstance: boolean): () => AnyInstance {
+  if (!hasUserInstance) {
+    return () => wf.createInstance(`run-${Date.now()}`);
+  }
+  return () => runUserCode(js).instance as AnyInstance;
+}
+
+/**
  * Evaluate TypeScript workflow code without a build step.
  *
- * Uses `new Function()` to avoid a Babel/SWC runtime dependency; flowyd and
- * zod are injected as parameters so the stripped code can reference them by
- * name. Three distinct failure paths are mapped to `ok:false`:
- * - Syntax errors / runtime exceptions during evaluation.
- * - The code ran but exported no `workflow` variable.
- * - A `workflow` variable exists but lacks `getDefinition()` (wrong shape).
+ * Looks for two top-level variables in the editor:
+ * - `workflow` (required) — result of `.build()`.
+ * - `instance` (optional) — `workflow.createInstance(id, context)`. Required
+ *   when the workflow declares a context schema.
  *
- * @param tsCode - Raw TypeScript from the Monaco editor (may include imports and `export` keywords).
- * @returns A discriminated `EvalResult`; callers must check `.ok` before using `.workflow`.
+ * @param tsCode - Raw TypeScript from the Monaco editor.
+ * @returns Discriminated `EvalResult`; check `.ok` before accessing other fields.
  */
 export async function evaluateWorkflowCode(tsCode: string): Promise<EvalResult> {
   try {
     const js = stripToJS(tsCode);
+    const { workflow: rawWorkflow, instance: rawInstance } = runUserCode(js);
 
-    const fn = new Function(
-      'createWorkflow',
-      'createDynamicWorkflow',
-      'Guard',
-      'z',
-      'StateKind',
-      'StateStatus',
-      `${js}\n` + `if (typeof workflow !== 'undefined') return workflow;\n` + `return null;`,
-    );
-
-    const result: unknown = fn(
-      createWorkflow,
-      createDynamicWorkflow,
-      Guard,
-      z,
-      StateKind,
-      StateStatus,
-    );
-
-    if (!result || typeof result !== 'object') {
-      return {
-        ok: false,
-        error: 'Define "const workflow = createWorkflow(...).build();" in the editor.',
-      };
+    if (!rawWorkflow || typeof rawWorkflow !== 'object') {
+      return { ok: false, error: 'Define "const workflow = createWorkflow(...).build();" in the editor.' };
     }
 
-    const wf = result as RunWorkflow;
+    const wf = rawWorkflow as RunWorkflow;
     if (typeof wf.getDefinition !== 'function') {
       return { ok: false, error: '"workflow" exists but is not a compiled Workflow object.' };
     }
 
-    return { ok: true, workflow: wf, definition: wf.getDefinition() };
+    const definition = wf.getDefinition();
+    const hasUserInstance = rawInstance !== null;
+
+    if (!hasUserInstance && definition.contextSchema) {
+      return {
+        ok: false,
+        error:
+          'This workflow declares a context schema — the runner needs an instance with context pre-loaded.\n\n' +
+          'Add a variable named exactly "instance":\n\n' +
+          'const instance = workflow.createInstance("run-1", { /* your context */ });',
+      };
+    }
+
+    return {
+      ok: true,
+      workflow: wf,
+      definition,
+      makeInstance: buildMakeInstance(js, wf, hasUserInstance),
+    };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }

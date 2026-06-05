@@ -107,14 +107,16 @@ function coercePayload(
 export function DynamicForm() {
   const { definition, snapshot, availableActions, dispatch, lastError } = useRunner();
 
-  const [selectedAction, setSelectedAction] = useState<string>('');
+  const [selectedAction, setSelectedAction] = useState<string>(
+    () => availableActions[Math.floor(Math.random() * availableActions.length)] ?? '',
+  );
   const [textValues, setTextValues] = useState<Record<string, string>>({});
   const [boolValues, setBoolValues] = useState<Record<string, boolean>>({});
   const [numValues, setNumValues] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    const next = availableActions[0] ?? '';
+    const next = availableActions[Math.floor(Math.random() * availableActions.length)] ?? '';
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: sync selected action to available actions on change
     setSelectedAction(next);
     if (next) {
