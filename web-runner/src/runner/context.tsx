@@ -6,6 +6,12 @@ export interface RunnerContextValue {
   snapshot: InstanceSnapshot;
   availableActions: string[];
   dispatch: (action: string, payload: unknown) => Promise<void>;
+  /**
+   * Rewind the run to a past version: rebuilds the instance and replays the
+   * first `version` history entries, discarding everything after. Lets the user
+   * branch off and dispatch different actions from an earlier point.
+   */
+  rewindTo: (version: number) => Promise<void>;
   lastError: string | null;
   reset: () => void;
 }
@@ -24,6 +30,8 @@ export const RunnerContext = createContext<RunnerContextValue | null>(null);
  */
 export function useRunner(): RunnerContextValue {
   const ctx = useContext(RunnerContext);
-  if (!ctx) {throw new Error('useRunner must be used inside a runner provider');}
+  if (!ctx) {
+    throw new Error('useRunner must be used inside a runner provider');
+  }
   return ctx;
 }

@@ -24,7 +24,7 @@ The compiler catches every typo in a state ID, every wrong action name, and ever
 
 ## `web-runner/` — the browser UI
 
-A React SPA (Vite + Tailwind + shadcn/ui + React Flow) that visualises and drives workflows in the browser. Not published to npm — used for local development and demonstration.
+A React SPA (Vite + Tailwind + shadcn/ui + React Flow) that visualises and drives workflows in the browser. Not published to npm — used for local development and demonstration. The run panel shows each dispatched action's payload in an expandable history, and lets you rewind the run to any earlier step (replaying recorded actions) to branch off and try a different path.
 
 UI components are provided by **shadcn/ui** — see `web-runner/components.json` for configuration. Add new components with `pnpm dlx shadcn@latest add <component>` inside `web-runner/`. Iconography is **lucide-react** throughout — no emoji or Unicode-glyph icons; reach for a lucide icon component instead.
 

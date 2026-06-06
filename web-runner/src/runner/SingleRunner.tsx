@@ -81,6 +81,30 @@ export function SingleRunner({ title, subtitle, definition, makeInstance }: Prop
     setLastError(null);
   }, [makeInstance]);
 
+  // `rewind()` on the instance is a pure read, so to actually move the live run
+  // back we rebuild from the factory (which re-injects guards) and replay the
+  // recorded (action, payload) pairs up to the target version. The runner has no
+  // resolveWait UI, so history only ever holds real dispatched actions.
+  const rewindTo = useCallback(
+    async (version: number) => {
+      const history = instRef.current.getSnapshot().history.slice(0, version);
+      const fresh = makeInstance();
+      let divergedAt: string | null = null;
+      for (const entry of history) {
+        // Sequential, ordered replay — each dispatch depends on the prior state.
+        const result = await fresh.dispatch(entry.action, entry.payload);
+        if (!result.success) {
+          divergedAt = `Rewind diverged at ${entry.action}: ${result.reason}`;
+          break;
+        }
+      }
+      instRef.current = fresh;
+      setSnapshot(fresh.getSnapshot());
+      setLastError(divergedAt);
+    },
+    [makeInstance],
+  );
+
   return (
     <RunnerContext.Provider
       value={{
@@ -88,6 +112,7 @@ export function SingleRunner({ title, subtitle, definition, makeInstance }: Prop
         snapshot,
         availableActions,
         dispatch,
+        rewindTo,
         lastError,
         reset,
       }}
@@ -104,7 +129,7 @@ export function SingleRunner({ title, subtitle, definition, makeInstance }: Prop
           <WorkflowGraph />
         </div>
 
-        <div className="flex w-72 shrink-0 flex-col overflow-hidden border-l border-border bg-background">
+        <div className="border-border bg-background flex w-72 shrink-0 flex-col overflow-hidden border-l">
           <DynamicForm />
           <HistoryPanel />
         </div>
