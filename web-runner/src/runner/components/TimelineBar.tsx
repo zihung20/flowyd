@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pause, Play, Radio } from 'lucide-react';
+import { Pause, Play, Radio, SkipBack, SkipForward } from 'lucide-react';
 import { useRunner } from '../context';
 import { Button } from '@/components/ui/button';
 
@@ -46,6 +46,20 @@ export function TimelineBar() {
     setPlaying(true);
   }
 
+  function stepPrev() {
+    setPlaying(false);
+    scrubTo(Math.max(0, position - 1));
+  }
+
+  function stepNext() {
+    setPlaying(false);
+    const next = position + 1;
+    scrubTo(next >= headVersion ? null : next);
+  }
+
+  const atStart = position <= 0;
+  const atLive = position >= headVersion;
+
   // The action that produced the currently-viewed version (v0 is the start).
   const frameLabel =
     position === 0
@@ -58,10 +72,32 @@ export function TimelineBar() {
         variant="ghost"
         size="icon"
         className="h-7 w-7 shrink-0"
+        title="Previous step"
+        onClick={stepPrev}
+        disabled={atStart}
+      >
+        <SkipBack className="h-4 w-4" />
+      </Button>
+
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-7 w-7 shrink-0"
         title={playing ? 'Pause' : 'Play the run'}
         onClick={togglePlay}
       >
         {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+      </Button>
+
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-7 w-7 shrink-0"
+        title="Next step"
+        onClick={stepNext}
+        disabled={atLive}
+      >
+        <SkipForward className="h-4 w-4" />
       </Button>
 
       <span className="text-muted-foreground/70 w-7 shrink-0 text-center font-mono text-[11px]">
