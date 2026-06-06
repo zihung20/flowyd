@@ -8,9 +8,7 @@ export interface EdgeSpec {
   to: string;
   kind: EdgeKind;
   label: string;
-  /** Highlight this edge as the live path (source state is active). Rendered as a
-   * static colour change — not React Flow's animated marching-ants, which restart
-   * on every re-render and flicker while scrubbing the timeline. */
+  /** Highlight as the live path (source state active) — a static colour, not animation. */
   active?: boolean;
   dashed?: boolean | undefined;
 }

@@ -6,21 +6,13 @@ export interface RunnerContextValue {
   snapshot: InstanceSnapshot;
   availableActions: string[];
   dispatch: (action: string, payload: unknown) => Promise<void>;
-  /**
-   * Rewind the run to a past version: rebuilds the instance and replays the
-   * first `version` history entries, discarding everything after. Lets the user
-   * branch off and dispatch different actions from an earlier point.
-   */
+  /** Destructively rewind the run to a past version, discarding later history. */
   rewindTo: (version: number) => Promise<void>;
-  /**
-   * Move the scrub playhead for non-destructive time-travel. Pass a past version
-   * to preview it read-only (the live run is untouched), or `null` to return to
-   * the live head. `snapshot` reflects the playhead position.
-   */
+  /** Move the read-only scrub playhead; `null` returns to the live head. */
   scrubTo: (version: number | null) => void;
   /** Current scrub position — `null` when following the live head. */
   previewVersion: number | null;
-  /** The live instance's current version (the rightmost point on the timeline). */
+  /** The live instance's current version (rightmost point on the timeline). */
   headVersion: number;
   /** True while `snapshot` is a past version rather than the live head. */
   isPreviewing: boolean;

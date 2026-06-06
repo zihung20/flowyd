@@ -120,11 +120,9 @@ function toFlowNodes(graph: JsonGraph, positions: Map<string, { x: number; y: nu
 type EdgeCacheEntry = { sig: string; edge: Edge };
 
 /**
- * Build ReactFlow edges, reusing the previous edge object whenever an edge's
- * visual signature is unchanged. Stable identity stops ReactFlow from
- * re-rendering an edge's label every time the snapshot changes — which made
- * the labels flicker while scrubbing the timeline, even though the edge line
- * itself was identical.
+ * Build ReactFlow edges, reusing the previous edge object when its visual
+ * signature is unchanged so ReactFlow doesn't re-render (and flicker) the
+ * unchanged edge labels on every scrub.
  */
 function toFlowEdges(graph: JsonGraph, dark: boolean, cache: Map<string, EdgeCacheEntry>): Edge[] {
   const statusById = new Map(graph.nodes.map((n) => [n.id, n.status]));
@@ -167,10 +165,9 @@ export function WorkflowGraph() {
 
   const nodes: Node[] = useMemo(() => toFlowNodes(graph, positions), [graph, positions]);
 
-  // Persisted across renders so unchanged edges keep their object identity.
   const edgeCacheRef = useRef<Map<string, EdgeCacheEntry>>(new Map());
   const edges: Edge[] = useMemo(
-    // eslint-disable-next-line react-hooks/refs -- the cache is a render-stable memoization store, not reactive state
+    // eslint-disable-next-line react-hooks/refs -- cache is a memoization store, not reactive state
     () => toFlowEdges(graph, theme === 'dark', edgeCacheRef.current),
     [graph, theme],
   );

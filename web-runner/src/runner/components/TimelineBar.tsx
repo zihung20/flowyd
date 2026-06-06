@@ -3,22 +3,16 @@ import { Pause, Play, Radio, SkipBack, SkipForward } from 'lucide-react';
 import { useRunner } from '../context';
 import { Button } from '@/components/ui/button';
 
-/** Milliseconds each frame holds while auto-playing the run. */
 const FRAME_MS = 850;
 
-/**
- * Video-style scrubber for the run. Dragging the playhead previews any past
- * version read-only (via the instance's pure `rewind()`), and "Live" snaps back
- * to the head. Play auto-advances frame by frame — the workflow's replay.
- */
+/** Video-style scrubber: drag, step, or play through past versions of the run. */
 export function TimelineBar() {
   const { snapshot, previewVersion, headVersion, isPreviewing, scrubTo } = useRunner();
   const [playing, setPlaying] = useState(false);
 
   const position = previewVersion ?? headVersion;
 
-  // Auto-play chains one frame at a time off the current playhead position;
-  // reaching the head stops playback and returns to live.
+  // Advance one frame per tick while playing; stop and go live at the head.
   useEffect(() => {
     if (!playing || previewVersion === null) {
       return;
@@ -60,7 +54,6 @@ export function TimelineBar() {
   const atStart = position <= 0;
   const atLive = position >= headVersion;
 
-  // The action that produced the currently-viewed version (v0 is the start).
   const frameLabel =
     position === 0
       ? 'initial'

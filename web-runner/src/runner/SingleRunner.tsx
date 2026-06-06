@@ -59,26 +59,24 @@ export function SingleRunner({ title, subtitle, definition, makeInstance }: Prop
   const [liveSnapshot, setLiveSnapshot] = useState<InstanceSnapshot>(() =>
     instRef.current.getSnapshot(),
   );
-  // `null` = following the live head; a number = scrubbed to that past version.
+  // null while following the live head; a version number while scrubbing the past.
   const [previewVersion, setPreviewVersion] = useState<number | null>(null);
   const [lastError, setLastError] = useState<string | null>(null);
 
   const headVersion = liveSnapshot.version;
   const isPreviewing = previewVersion !== null && previewVersion < headVersion;
 
-  // The snapshot the whole UI renders from. When scrubbing, this is a pure
-  // `rewind()` read of a past version — the live instance is never touched.
+  // Snapshot the UI renders from. While scrubbing it's a pure rewind() of a past
+  // version; the live instance is never touched.
   const snapshot = useMemo<InstanceSnapshot>(() => {
     if (previewVersion === null || previewVersion >= liveSnapshot.version) {
       return liveSnapshot;
     }
-    // eslint-disable-next-line react-hooks/refs -- rewind() is a pure read; memo is keyed on previewVersion + liveSnapshot, which move with the instance
+    // eslint-disable-next-line react-hooks/refs -- rewind() is a pure read, keyed by the deps below
     return instRef.current.rewind(previewVersion);
   }, [previewVersion, liveSnapshot]);
 
-  // Memoised so its identity is stable across re-renders at the same version —
-  // otherwise downstream effects (e.g. the dispatch form) re-fire on every tick
-  // while scrubbing the timeline.
+  // Stable identity per version so the dispatch form doesn't re-fire on every scrub tick.
   const availableActions = useMemo(
     () =>
       definition.transitions
@@ -88,18 +86,14 @@ export function SingleRunner({ title, subtitle, definition, makeInstance }: Prop
     [definition, snapshot],
   );
 
-  // `rewind()` is a pure read, so to actually move the live run back we rebuild
-  // from the factory (which re-injects guards) and replay the recorded
-  // (action, payload) pairs up to `version`. The runner has no resolveWait UI,
-  // so history only ever holds real dispatched actions. Returns a divergence
-  // message if a replayed dispatch is unexpectedly blocked.
+  // Moving the live run to a past version: rebuild from the factory (re-injecting
+  // guards) and replay its recorded actions, since rewind() itself can't mutate.
   const replayInto = useCallback(
     async (version: number): Promise<string | null> => {
       const history = instRef.current.getSnapshot().history.slice(0, version);
       const fresh = makeInstance();
       let divergedAt: string | null = null;
       for (const entry of history) {
-        // Sequential, ordered replay — each dispatch depends on the prior state.
         const result = await fresh.dispatch(entry.action, entry.payload);
         if (!result.success) {
           divergedAt = `Rewind diverged at ${entry.action}: ${result.reason}`;
@@ -112,7 +106,7 @@ export function SingleRunner({ title, subtitle, definition, makeInstance }: Prop
     [makeInstance],
   );
 
-  // Non-destructive: move the scrub playhead. `null` (or the head) returns to live.
+  // Non-destructive: move the playhead. null (or the head) returns to live.
   const scrubTo = useCallback(
     (version: number | null) => {
       setPreviewVersion(version === null || version >= headVersion ? null : Math.max(0, version));
@@ -122,8 +116,7 @@ export function SingleRunner({ title, subtitle, definition, makeInstance }: Prop
 
   const dispatch = useCallback(
     async (action: string, payload: unknown) => {
-      // Dispatching while scrubbed into the past commits a branch from there,
-      // discarding the versions after the playhead.
+      // Dispatching while scrubbed branches from the playhead, dropping later versions.
       if (previewVersion !== null && previewVersion < headVersion) {
         const divergedAt = await replayInto(previewVersion);
         setPreviewVersion(null);

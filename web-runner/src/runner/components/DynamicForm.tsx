@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { describeSchema } from '../../lib/zod-introspect';
 import type { FieldDescriptor } from '../../lib/zod-introspect';
 import { useRunner } from '../context';
@@ -147,42 +147,41 @@ export function DynamicForm() {
   const [selectedAction, setSelectedAction] = useState<string>(
     () => availableActions[Math.floor(Math.random() * availableActions.length)] ?? '',
   );
-  const [textValues, setTextValues] = useState<Record<string, string>>({});
-  const [boolValues, setBoolValues] = useState<Record<string, boolean>>({});
-  const [numValues, setNumValues] = useState<Record<string, string>>({});
+  const [textValues, setTextValues] = useState<Record<string, string>>(
+    () => defaultsFor(selectedAction).text,
+  );
+  const [boolValues, setBoolValues] = useState<Record<string, boolean>>(
+    () => defaultsFor(selectedAction).bool,
+  );
+  const [numValues, setNumValues] = useState<Record<string, string>>(
+    () => defaultsFor(selectedAction).num,
+  );
   const [submitting, setSubmitting] = useState(false);
 
-  function applyDefaults(action: string) {
+  function defaultsFor(action: string) {
     const schema = action ? definition.actionSchemas.get(action) : undefined;
-    if (!schema) {
-      return;
-    }
-    const { text, bool, num } = buildDefaults(describeSchema(schema));
+    return schema ? buildDefaults(describeSchema(schema)) : { text: {}, bool: {}, num: {} };
+  }
+
+  function applyDefaults(action: string) {
+    const { text, bool, num } = defaultsFor(action);
     setTextValues(text);
     setBoolValues(bool);
     setNumValues(num);
   }
 
-  // Seed the field defaults for the initial selection, once on mount.
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional one-time seed of field defaults
-    applyDefaults(selectedAction);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only
-  }, []);
-
-  // Keep the current selection while it stays valid — only switch (and reseed
-  // defaults) when it leaves the available set. This avoids re-picking an action
-  // on every render, which made the form flicker while scrubbing the timeline.
-  useEffect(() => {
-    if (availableActions.length === 0 || availableActions.includes(selectedAction)) {
-      return;
+  // When the available set changes (after a dispatch, or while scrubbing) and the
+  // current pick is no longer valid, switch to a valid one — adjusted during
+  // render rather than in an effect (https://react.dev/learn/you-might-not-need-an-effect).
+  const [trackedActions, setTrackedActions] = useState(availableActions);
+  if (trackedActions !== availableActions) {
+    setTrackedActions(availableActions);
+    if (availableActions.length > 0 && !availableActions.includes(selectedAction)) {
+      const next = availableActions[0] ?? '';
+      setSelectedAction(next);
+      applyDefaults(next);
     }
-    const next = availableActions[0] ?? '';
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync selection only when it leaves the available set
-    setSelectedAction(next);
-    applyDefaults(next);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [availableActions]);
+  }
 
   function handleActionChange(action: string) {
     setSelectedAction(action);
