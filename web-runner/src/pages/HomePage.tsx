@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
 import Editor from '@monaco-editor/react';
 import type { Monaco } from '@monaco-editor/react';
+import type { LucideIcon } from 'lucide-react';
+import { ShieldCheck, GitFork, GitBranch, Workflow } from 'lucide-react';
 import { setupMonacoTypes } from '../designer/code/monacoSetup';
 import { SiteNav } from '../components/SiteNav';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -8,28 +10,28 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import purchaseOrderSource from '../workflows/purchase-order.ts?raw';
 
-const FEATURES = [
+const FEATURES: { icon: LucideIcon; title: string; desc: string }[] = [
   {
-    icon: '⬡',
+    icon: ShieldCheck,
     title: 'Compile-time type safety',
     desc: 'State IDs, action names, and payload shapes are all checked at build time. Typos in addTransition are compile errors.',
   },
   {
-    icon: '⑂',
+    icon: GitFork,
     title: 'Fork / Join parallelism',
     desc: 'Split into parallel branches with ForkState and synchronise them with JoinState. All/any/quorum modes supported.',
   },
   {
-    icon: '⊕',
+    icon: GitBranch,
     title: 'Composable guards',
     desc: 'Inline guards, injected guards, and combinators (and, or, not). Async-first — every guard returns Promise<boolean>.',
   },
   {
-    icon: '◑',
+    icon: Workflow,
     title: 'Pure stateless engine',
     desc: 'WorkflowEngine.dispatch() is a static function. No I/O. Snapshots are plain JSON — persist anywhere.',
   },
-] as const;
+];
 
 const EXAMPLES = [
   {
@@ -57,7 +59,7 @@ const EXAMPLES = [
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-background font-sans">
+    <div className="bg-background min-h-screen font-sans">
       <div className="sticky top-0 z-40">
         <SiteNav />
       </div>
@@ -131,14 +133,14 @@ export default function HomePage() {
       </section>
 
       {/* Features */}
-      <section className="border-b border-border bg-muted/40 px-6 py-16">
+      <section className="border-border bg-muted/40 border-b px-6 py-16">
         <div className="mx-auto max-w-5xl">
-          <h2 className="mb-8 text-xl font-bold text-foreground">Features</h2>
+          <h2 className="text-foreground mb-8 text-xl font-bold">Features</h2>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {FEATURES.map((f) => (
               <Card key={f.title} className="gap-3 py-5">
                 <CardHeader className="px-5 pb-0">
-                  <span className="block text-2xl">{f.icon}</span>
+                  <f.icon className="text-muted-foreground h-5 w-5" strokeWidth={1.75} />
                   <CardTitle className="text-sm">{f.title}</CardTitle>
                 </CardHeader>
                 <CardContent className="px-5">
@@ -154,10 +156,10 @@ export default function HomePage() {
       <section className="px-6 py-16">
         <div className="mx-auto max-w-5xl">
           <div className="mb-8 flex items-baseline justify-between">
-            <h2 className="text-xl font-bold text-foreground">Examples</h2>
+            <h2 className="text-foreground text-xl font-bold">Examples</h2>
             <Link
               to="/examples/purchase-order"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="text-muted-foreground hover:text-foreground text-sm transition-colors"
             >
               View all →
             </Link>
@@ -169,10 +171,8 @@ export default function HomePage() {
                   <CardHeader className="px-5 pb-0">
                     <CardTitle className="text-base">{ex.label}</CardTitle>
                   </CardHeader>
-                  <CardContent className="px-5 space-y-3">
-                    <CardDescription className="text-sm leading-relaxed">
-                      {ex.desc}
-                    </CardDescription>
+                  <CardContent className="space-y-3 px-5">
+                    <CardDescription className="text-sm leading-relaxed">{ex.desc}</CardDescription>
                     <div className="flex flex-wrap gap-1.5">
                       {ex.tags.map((t) => (
                         <Badge key={t} variant={ex.badgeVariant}>
@@ -198,18 +198,14 @@ export default function HomePage() {
               Full IntelliSense powered by Monaco Editor.
             </p>
           </div>
-          <Button
-            asChild
-            size="lg"
-            className="shrink-0 bg-blue-600 text-white hover:bg-blue-500"
-          >
+          <Button asChild size="lg" className="shrink-0 bg-blue-600 text-white hover:bg-blue-500">
             <Link to="/designer">Open Designer →</Link>
           </Button>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border px-6 py-6 text-center text-xs text-muted-foreground">
+      <footer className="border-border text-muted-foreground border-t px-6 py-6 text-center text-xs">
         flowyd — MIT licence
       </footer>
     </div>

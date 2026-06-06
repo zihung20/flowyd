@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ArrowUpRight } from 'lucide-react';
 import type { InstanceSnapshot, WorkflowDefinition } from 'flowyd';
 import { MermaidExporter, JsonGraphExporter } from 'flowyd/visualization';
 import { Button } from '@/components/ui/button';
@@ -75,9 +76,9 @@ export function RunnerToolbar({ title, subtitle, definition, snapshot, onReset }
   }
 
   return (
-    <div className="flex shrink-0 items-center gap-2 border-b border-border bg-background px-4 py-2">
-      <span className="text-sm font-bold text-foreground">{title}</span>
-      <span className="text-xs text-muted-foreground">{subtitle}</span>
+    <div className="border-border bg-background flex shrink-0 items-center gap-2 border-b px-4 py-2">
+      <span className="text-foreground text-sm font-bold">{title}</span>
+      <span className="text-muted-foreground text-xs">{subtitle}</span>
 
       <div className="ml-auto flex items-center gap-2">
         <Badge variant={snapshot.isTerminal ? 'green' : 'secondary'} className="text-[10px]">
@@ -88,7 +89,12 @@ export function RunnerToolbar({ title, subtitle, definition, snapshot, onReset }
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground" onClick={handleCopyMermaid}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground h-7 px-2 text-xs"
+              onClick={handleCopyMermaid}
+            >
               {copied ? 'Copied!' : 'Copy .mmd'}
             </Button>
           </TooltipTrigger>
@@ -97,7 +103,12 @@ export function RunnerToolbar({ title, subtitle, definition, snapshot, onReset }
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground" onClick={handleDownloadMmd}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground h-7 px-2 text-xs"
+              onClick={handleDownloadMmd}
+            >
               .mmd
             </Button>
           </TooltipTrigger>
@@ -106,7 +117,12 @@ export function RunnerToolbar({ title, subtitle, definition, snapshot, onReset }
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground" onClick={handleDownloadJson}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground h-7 px-2 text-xs"
+              onClick={handleDownloadJson}
+            >
               .json
             </Button>
           </TooltipTrigger>
@@ -115,8 +131,14 @@ export function RunnerToolbar({ title, subtitle, definition, snapshot, onReset }
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground" onClick={handleOpenMermaidLive}>
-              Live ↗
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground h-7 px-2 text-xs"
+              onClick={handleOpenMermaidLive}
+            >
+              Live
+              <ArrowUpRight className="h-3.5 w-3.5" />
             </Button>
           </TooltipTrigger>
           <TooltipContent>Open in mermaid.live</TooltipContent>

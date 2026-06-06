@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ReactFlowProvider } from '@xyflow/react';
+import { Sun, Moon, X, Play, Code2 } from 'lucide-react';
 import { SiteNav } from '../components/SiteNav';
 
 import { DesignerCanvas } from '../designer/canvas/DesignerCanvas';
@@ -49,8 +50,9 @@ export default function DesignerPage() {
             toNodeId: e.toNodeId === oldId ? updated.id : e.toNodeId,
           }))
         : workflow.edges;
-    if (updated.id !== oldId && selection.type === 'node')
-      {setSelection({ type: 'node', id: updated.id });}
+    if (updated.id !== oldId && selection.type === 'node') {
+      setSelection({ type: 'node', id: updated.id });
+    }
     handleWorkflowChange({ ...workflow, nodes, edges });
   }
 
@@ -62,7 +64,9 @@ export default function DesignerPage() {
   }
 
   function handleDeleteNode() {
-    if (selection.type !== 'node') {return;}
+    if (selection.type !== 'node') {
+      return;
+    }
     const id = selection.id;
     handleWorkflowChange({
       ...workflow,
@@ -73,7 +77,9 @@ export default function DesignerPage() {
   }
 
   function handleDeleteEdge() {
-    if (selection.type !== 'edge') {return;}
+    if (selection.type !== 'edge') {
+      return;
+    }
     handleWorkflowChange({
       ...workflow,
       edges: workflow.edges.filter((e) => e.id !== selection.id),
@@ -99,25 +105,25 @@ export default function DesignerPage() {
   const hasPanel = selectedNode !== null || selectedEdge !== null || selection.type === 'settings';
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background font-sans">
+    <div className="bg-background flex h-screen flex-col overflow-hidden font-sans">
       {/* ── Top bar ──────────────────────────────────────────────────────── */}
       <SiteNav
         right={
           <>
             <input
-              className="w-40 border-none bg-transparent text-sm font-medium text-foreground placeholder:text-muted-foreground outline-none"
+              className="text-foreground placeholder:text-muted-foreground w-40 border-none bg-transparent text-sm font-medium outline-none"
               value={workflow.name}
               onChange={(e) => handleWorkflowChange({ ...workflow, name: e.target.value })}
               placeholder="workflow-name"
             />
-            <span className="w-px self-stretch bg-border" />
+            <span className="bg-border w-px self-stretch" />
             <Button
               variant="ghost"
               size="sm"
               title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
               onClick={toggleTheme}
             >
-              {theme === 'dark' ? '☀' : '☾'}
+              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
             <Button
               variant="ghost"
@@ -143,14 +149,16 @@ export default function DesignerPage() {
               Context
             </Button>
             <Button variant="outline" size="sm" onClick={() => setShowCode(true)}>
-              {'</>'} Show Code
+              <Code2 className="h-4 w-4" />
+              Show Code
             </Button>
             <Button
               size="sm"
               className="bg-blue-600 font-medium text-white hover:bg-blue-500"
               onClick={handleClickRun}
             >
-              ▶ Run
+              <Play className="h-4 w-4" />
+              Run
             </Button>
           </>
         }
@@ -169,9 +177,9 @@ export default function DesignerPage() {
 
         {/* Floating config panel — overlays canvas on the right */}
         {hasPanel && (
-          <div className="absolute top-0 right-0 z-10 h-full w-72 overflow-y-auto border-l border-border bg-background shadow-xl">
-            <div className="sticky top-0 flex items-center justify-between border-b border-border bg-background px-3 py-2">
-              <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+          <div className="border-border bg-background absolute top-0 right-0 z-10 h-full w-72 overflow-y-auto border-l shadow-xl">
+            <div className="border-border bg-background sticky top-0 flex items-center justify-between border-b px-3 py-2">
+              <span className="text-muted-foreground text-[11px] font-semibold tracking-wider uppercase">
                 {selection.type === 'settings' ? 'Workflow' : selectedNode ? 'State' : 'Transition'}
               </span>
               <Button
@@ -181,7 +189,7 @@ export default function DesignerPage() {
                 title="Close panel"
                 onClick={() => setSelection({ type: 'none' })}
               >
-                ✕
+                <X className="h-4 w-4" />
               </Button>
             </div>
 

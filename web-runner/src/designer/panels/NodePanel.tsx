@@ -1,3 +1,5 @@
+import { Play, Square } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { Label } from '../../components/ui/label';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
@@ -72,15 +74,16 @@ export function NodePanel({ node, onChange, onDelete }: Props) {
         <div className="flex flex-wrap gap-4 pt-0.5">
           {(
             [
-              ['isInitial', '▶ Initial'],
-              ['isTerminal', '■ Terminal'],
-            ] as const
-          ).map(([key, lbl]) => (
+              ['isInitial', 'Initial', Play],
+              ['isTerminal', 'Terminal', Square],
+            ] as ['isInitial' | 'isTerminal', string, LucideIcon][]
+          ).map(([key, lbl, Icon]) => (
             <label
               key={key}
               className="text-foreground flex cursor-pointer items-center gap-2 text-xs select-none"
             >
               <Checkbox checked={node[key] as boolean} onCheckedChange={(v) => set(key, !!v)} />
+              <Icon className="h-3.5 w-3.5" />
               {lbl}
             </label>
           ))}

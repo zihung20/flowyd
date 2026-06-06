@@ -1,12 +1,8 @@
+import { X } from 'lucide-react';
 import { CodeEditor } from './CodeEditor';
 import { generateCode } from './codeGenerator';
 import type { DesignerWorkflow } from '../types';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 
 interface Props {
@@ -22,7 +18,14 @@ export function ShowCodeModal({ workflow, onClose }: Props) {
   }
 
   return (
-    <Dialog open onOpenChange={(open) => { if (!open) { onClose(); } }}>
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
+    >
       <DialogContent
         className="flex h-[80vh] max-w-3xl flex-col gap-0 overflow-hidden p-0"
         showCloseButton={false}
@@ -39,7 +42,7 @@ export function ShowCodeModal({ workflow, onClose }: Props) {
               variant="ghost"
               size="sm"
               onClick={handleCopy}
-              className="h-6 px-2 text-[11px] text-slate-400 hover:text-slate-200 hover:bg-transparent"
+              className="h-6 px-2 text-[11px] text-slate-400 hover:bg-transparent hover:text-slate-200"
             >
               Copy
             </Button>
@@ -47,10 +50,10 @@ export function ShowCodeModal({ workflow, onClose }: Props) {
               variant="ghost"
               size="sm"
               onClick={onClose}
-              className="h-6 w-6 p-0 text-slate-400 hover:text-slate-200 hover:bg-transparent"
+              className="h-6 w-6 p-0 text-slate-400 hover:bg-transparent hover:text-slate-200"
               title="Close (Esc)"
             >
-              ✕
+              <X className="h-4 w-4" />
             </Button>
           </div>
         </DialogHeader>

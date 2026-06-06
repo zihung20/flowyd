@@ -1,5 +1,7 @@
 import { Handle, Position } from '@xyflow/react';
 import type { Node, NodeProps } from '@xyflow/react';
+import { GitFork, GitMerge, Pause, Play, Square } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 export type FlowNodeData = {
   label: string;
@@ -24,24 +26,36 @@ const KIND_CONTAINER: Record<string, string> = {
   wait: 'border-amber-400 bg-amber-50 dark:border-amber-600 dark:bg-amber-950/60',
 };
 
-const KIND_BADGE: Record<string, { cls: string; icon: string; text: string }> = {
-  fork: { cls: 'bg-violet-100 text-violet-700 dark:bg-violet-900/60 dark:text-violet-300', icon: '⑂', text: 'fork' },
-  join: { cls: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/60 dark:text-cyan-300', icon: '⑁', text: 'join' },
-  wait: { cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300', icon: '⏸', text: 'wait' },
+const KIND_BADGE: Record<string, { cls: string; icon: LucideIcon; text: string }> = {
+  fork: {
+    cls: 'bg-violet-100 text-violet-700 dark:bg-violet-900/60 dark:text-violet-300',
+    icon: GitFork,
+    text: 'fork',
+  },
+  join: {
+    cls: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/60 dark:text-cyan-300',
+    icon: GitMerge,
+    text: 'join',
+  },
+  wait: {
+    cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300',
+    icon: Pause,
+    text: 'wait',
+  },
 };
 
 // ── Status colours (override kind when not idle) ──────────────────────────────
 const STATUS_CONTAINER: Record<string, string> = {
-  active:    'border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950/60',
-  waiting:   'border-amber-400 bg-amber-50 dark:border-amber-500 dark:bg-amber-950/60',
+  active: 'border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950/60',
+  waiting: 'border-amber-400 bg-amber-50 dark:border-amber-500 dark:bg-amber-950/60',
   completed: 'border-green-500 bg-green-50 dark:border-green-400 dark:bg-green-950/60',
 };
 
 const STATUS_LABEL: Record<string, string> = {
-  active:    'text-blue-700 dark:text-blue-300',
-  waiting:   'text-amber-700 dark:text-amber-300',
+  active: 'text-blue-700 dark:text-blue-300',
+  waiting: 'text-amber-700 dark:text-amber-300',
   completed: 'text-green-700 dark:text-green-300',
-  idle:      'text-slate-400 dark:text-slate-500',
+  idle: 'text-slate-400 dark:text-slate-500',
 };
 
 export function FlowNode({ data, selected }: NodeProps<FlowNodeType>) {
@@ -54,8 +68,7 @@ export function FlowNode({ data, selected }: NodeProps<FlowNodeType>) {
   const badge = KIND_BADGE[data.kind];
   const horizontal = data.handles === 'horizontal';
 
-  const handleCls =
-    '!border-slate-300 !bg-slate-400 dark:!border-slate-600 dark:!bg-slate-500';
+  const handleCls = '!border-slate-300 !bg-slate-400 dark:!border-slate-600 dark:!bg-slate-500';
 
   return (
     <div
@@ -83,7 +96,9 @@ export function FlowNode({ data, selected }: NodeProps<FlowNodeType>) {
         )}
 
         {status !== undefined && (
-          <p className={`mt-0.5 text-[10px] capitalize ${STATUS_LABEL[status] ?? STATUS_LABEL.idle}`}>
+          <p
+            className={`mt-0.5 text-[10px] capitalize ${STATUS_LABEL[status] ?? STATUS_LABEL.idle}`}
+          >
             {status}
           </p>
         )}
@@ -92,18 +107,23 @@ export function FlowNode({ data, selected }: NodeProps<FlowNodeType>) {
       {(badge !== undefined || data.isInitial || data.isTerminal) && (
         <div className="flex flex-wrap items-center justify-center gap-1 px-2 pb-2">
           {badge !== undefined && (
-            <span className={`rounded px-1.5 py-0.5 text-[9px] font-medium ${badge.cls}`}>
-              {badge.icon} {badge.text}
+            <span
+              className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-medium ${badge.cls}`}
+            >
+              <badge.icon className="h-2.5 w-2.5" />
+              {badge.text}
             </span>
           )}
           {data.isInitial && (
-            <span className="rounded bg-green-100 px-1.5 py-0.5 text-[9px] font-medium text-green-700 dark:bg-green-900/60 dark:text-green-400">
-              ▶ initial
+            <span className="inline-flex items-center gap-1 rounded bg-green-100 px-1.5 py-0.5 text-[9px] font-medium text-green-700 dark:bg-green-900/60 dark:text-green-400">
+              <Play className="h-2.5 w-2.5" />
+              initial
             </span>
           )}
           {data.isTerminal && (
-            <span className="rounded bg-rose-100 px-1.5 py-0.5 text-[9px] font-medium text-rose-700 dark:bg-rose-900/60 dark:text-rose-400">
-              ■ terminal
+            <span className="inline-flex items-center gap-1 rounded bg-rose-100 px-1.5 py-0.5 text-[9px] font-medium text-rose-700 dark:bg-rose-900/60 dark:text-rose-400">
+              <Square className="h-2.5 w-2.5" />
+              terminal
             </span>
           )}
         </div>
