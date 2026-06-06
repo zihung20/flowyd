@@ -152,33 +152,41 @@ export function DynamicForm() {
   const [numValues, setNumValues] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    const next = availableActions[Math.floor(Math.random() * availableActions.length)] ?? '';
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: sync selected action to available actions on change
-    setSelectedAction(next);
-    if (next) {
-      const schema = definition.actionSchemas.get(next);
-      if (schema) {
-        const fields = describeSchema(schema);
-        const { text, bool, num } = buildDefaults(fields);
-        setTextValues(text);
-        setBoolValues(bool);
-        setNumValues(num);
-      }
+  function applyDefaults(action: string) {
+    const schema = action ? definition.actionSchemas.get(action) : undefined;
+    if (!schema) {
+      return;
     }
+    const { text, bool, num } = buildDefaults(describeSchema(schema));
+    setTextValues(text);
+    setBoolValues(bool);
+    setNumValues(num);
+  }
+
+  // Seed the field defaults for the initial selection, once on mount.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional one-time seed of field defaults
+    applyDefaults(selectedAction);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only
+  }, []);
+
+  // Keep the current selection while it stays valid — only switch (and reseed
+  // defaults) when it leaves the available set. This avoids re-picking an action
+  // on every render, which made the form flicker while scrubbing the timeline.
+  useEffect(() => {
+    if (availableActions.length === 0 || availableActions.includes(selectedAction)) {
+      return;
+    }
+    const next = availableActions[0] ?? '';
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync selection only when it leaves the available set
+    setSelectedAction(next);
+    applyDefaults(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [availableActions]);
 
   function handleActionChange(action: string) {
     setSelectedAction(action);
-    const schema = definition.actionSchemas.get(action);
-    if (schema) {
-      const fields = describeSchema(schema);
-      const { text, bool, num } = buildDefaults(fields);
-      setTextValues(text);
-      setBoolValues(bool);
-      setNumValues(num);
-    }
+    applyDefaults(action);
   }
 
   const schema = selectedAction ? definition.actionSchemas.get(selectedAction) : undefined;

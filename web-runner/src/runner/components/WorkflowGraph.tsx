@@ -13,8 +13,9 @@ import { useTheme } from '../../context/ThemeContext';
 const NODE_W = 180;
 const NODE_H = 64;
 
-// Object reference must be stable — defined outside the component.
+// Object references must be stable — defined outside the component.
 const nodeTypes = { flowNode: FlowNode };
+const fitViewOptions = { padding: 0.25 };
 
 const H_GAP = 60;
 const V_GAP = 28;
@@ -46,12 +47,16 @@ function computeLayout(
   const topoOrder: string[] = [];
   while (queue.length > 0) {
     const id = queue.shift();
-    if (id === undefined) {break;}
+    if (id === undefined) {
+      break;
+    }
     topoOrder.push(id);
     for (const neighbor of outEdges.get(id) ?? []) {
       const deg = (remaining.get(neighbor) ?? 1) - 1;
       remaining.set(neighbor, deg);
-      if (deg === 0) {queue.push(neighbor);}
+      if (deg === 0) {
+        queue.push(neighbor);
+      }
     }
   }
 
@@ -92,10 +97,7 @@ function computeLayout(
   return positions;
 }
 
-function toFlowNodes(
-  graph: JsonGraph,
-  positions: Map<string, { x: number; y: number }>,
-): Node[] {
+function toFlowNodes(graph: JsonGraph, positions: Map<string, { x: number; y: number }>): Node[] {
   return graph.nodes.map((n) => {
     const status = (n.status ?? 'idle') as 'active' | 'waiting' | 'completed' | 'idle';
     const data: FlowNodeData = {
@@ -159,7 +161,7 @@ export function WorkflowGraph() {
         nodesConnectable={false}
         elementsSelectable={false}
         fitView
-        fitViewOptions={{ padding: 0.25 }}
+        fitViewOptions={fitViewOptions}
       >
         <Background
           variant={BackgroundVariant.Dots}

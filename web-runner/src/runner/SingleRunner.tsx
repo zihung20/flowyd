@@ -76,10 +76,17 @@ export function SingleRunner({ title, subtitle, definition, makeInstance }: Prop
     return instRef.current.rewind(previewVersion);
   }, [previewVersion, liveSnapshot]);
 
-  const availableActions = definition.transitions
-    .filter((t) => snapshot.stateStatuses[t.from] === 'active')
-    .map((t) => t.on)
-    .filter((v, i, a) => a.indexOf(v) === i);
+  // Memoised so its identity is stable across re-renders at the same version —
+  // otherwise downstream effects (e.g. the dispatch form) re-fire on every tick
+  // while scrubbing the timeline.
+  const availableActions = useMemo(
+    () =>
+      definition.transitions
+        .filter((t) => snapshot.stateStatuses[t.from] === 'active')
+        .map((t) => t.on)
+        .filter((v, i, a) => a.indexOf(v) === i),
+    [definition, snapshot],
+  );
 
   // `rewind()` is a pure read, so to actually move the live run back we rebuild
   // from the factory (which re-injects guards) and replay the recorded
