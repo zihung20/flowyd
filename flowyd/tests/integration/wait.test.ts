@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import { createWorkflow } from '../../src/core/builder.js';
-import { StateStatus } from '../../src/types/index.js';
 
 const Empty = z.object({});
 
@@ -98,23 +97,15 @@ describe('WaitState SOP — vendor onboarding', () => {
     expect(resolveEntry?.action).toBe('__resolve_wait:kyc-check');
   });
 
-  it('stores an optional external snapshot in history', async () => {
-    const inst = vendorOnboarding.createInstance('vo-009');
+  it('stamps the resolve history entry with an injected now', async () => {
+    const inst = vendorOnboarding.createInstance('vo-008b');
     await inst.dispatch('SUBMIT', {});
-    const fakeExternal = {
-      instanceId: 'kyc-run-42',
-      workflowName: 'vendor-kyc',
-      version: 3,
-      stateStatuses: { done: StateStatus.Completed },
-      isTerminal: true,
-      history: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    inst.resolveWait('kyc-check', fakeExternal);
-    const history = inst.getSnapshot().history;
-    const entry = history.find((e) => e.action.startsWith('__resolve_wait'));
-    expect(entry?.payload).toMatchObject({ instanceId: 'kyc-run-42' });
+    const at = new Date('2026-06-06T08:30:00.000Z');
+    inst.resolveWait('kyc-check', { now: at });
+    const snap = inst.getSnapshot();
+    const resolveEntry = snap.history.find((e) => e.action.startsWith('__resolve_wait'));
+    expect(resolveEntry?.at).toBe('2026-06-06T08:30:00.000Z');
+    expect(snap.updatedAt).toBe('2026-06-06T08:30:00.000Z');
   });
 
   it('throws when resolveWait is called on a non-WaitState', () => {

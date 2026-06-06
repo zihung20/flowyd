@@ -2,7 +2,7 @@
 
 The incident-response protocol the Operations Control Centre (OCC) follows when a train service disruption is detected. This is the most complex example — it combines multi-role guards, parallel notification branches, and a wait state delegating to an external bus-bridging SOP.
 
-**Features shown:** `Guard.inject` with role-based auth context, fork + join + `WaitState` in one workflow, `resolveWait` with an external snapshot, `JsonGraphExporter`.
+**Features shown:** `Guard.inject` with role-based auth context, fork + join + `WaitState` in one workflow, `resolveWait`, `JsonGraphExporter`.
 
 ## Workflow diagram
 
@@ -285,9 +285,8 @@ async function runDisruptionSop() {
 
   // Step 7: Bus-bridging SOP completes externally.
   // In production: a separate WorkflowInstance runs the bus-bridging SOP.
-  // When it reaches terminal, your service calls resolveWait().
-  const externalSnap = occDisruptionSop.createInstance('BB-001').getSnapshot();
-  inst.resolveWait('bus-bridging', externalSnap);
+  // When it reaches terminal, your service calls resolveWait() to un-pause.
+  inst.resolveWait('bus-bridging');
   console.log(inst.getCurrentStates()); // ['bus-bridging'] — status now 'active'
 
   // Step 8: Confirm buses are in position
@@ -358,6 +357,6 @@ runDisruptionSop().catch(console.error);
 
 **Fork + join + wait in sequence.** This example chains all three "automatic" state types: the fork fans out, the join re-synchronises, and the wait state pauses the workflow for an external SOP. All three resolve without the caller needing extra dispatches.
 
-**`resolveWait` accepts an external snapshot.** The optional second argument stores the bus-bridging SOP's final snapshot inside the parent's audit history. This gives a complete audit trail across both workflows.
+**The external result rides the next dispatch.** After `resolveWait` un-pauses the wait state, the `BUS_BRIDGE_ACTIVE` dispatch that follows carries the outcome (bus count, first-bus time) in its payload — which is recorded in the audit history. No separate snapshot argument is needed.
 
 **`JsonGraphExporter` exposes guard metadata.** The `hasGuard` flag on each edge lets a dashboard highlight which transitions require authorization, useful for building access-aware UI affordances.

@@ -1,6 +1,8 @@
 import { type ZodSchema } from 'zod';
 import type {
   TransitionDefinition,
+  ActionTrigger,
+  TimedTrigger,
   ActionPayloadMap,
   WorkflowDefinition,
   IGuard,
@@ -11,6 +13,7 @@ import type {
 } from '../types/index.js';
 import type { JoinMode } from '../types/state.js';
 import { StateKind } from '../types/index.js';
+import { parseDuration } from './utils.js';
 import { StateRegistry } from './registry.js';
 import { Workflow } from './workflow.js';
 import { FnGuard } from '../guards/index.js';
@@ -18,6 +21,37 @@ import { StepState } from '../states/step-state.js';
 import { ForkState } from '../states/fork-state.js';
 import { JoinState } from '../states/join-state.js';
 import { WaitState } from '../states/wait-state.js';
+
+/**
+ * Argument to {@link WorkflowBuilder.addTransition}: a directed edge triggered
+ * by **exactly one** of an action (`on`) or a deadline (`after`).
+ *
+ * The two members are mutually exclusive — each forbids the other's key via
+ * `?: never` — so supplying both, or neither, is a compile-time error. On an
+ * action edge the guard's `ctx.payload` is typed as `TActions[K]`; a deadline
+ * carries no payload, so its guard payload is `unknown`.
+ *
+ * @template TActions - Accumulated map of action names → payload types.
+ * @template TStates  - Union of registered state IDs.
+ * @template TContext - Instance context type.
+ * @template K        - The specific action name (action edges only).
+ */
+type TransitionInput<
+  TActions extends ActionPayloadMap,
+  TStates extends string,
+  TContext,
+  K extends keyof TActions & string,
+> = {
+  readonly from: TStates;
+  readonly to: TStates;
+} & (
+  | (ActionTrigger<K> & {
+      readonly guard?: IGuard<TActions[K]> | GuardFn<TActions[K], TContext, TStates>;
+    })
+  | (TimedTrigger<string | number> & {
+      readonly guard?: IGuard<unknown> | GuardFn<unknown, TContext, TStates>;
+    })
+);
 
 /**
  * Fluent builder for composing and validating a workflow definition.
@@ -301,43 +335,62 @@ export class WorkflowBuilder<
   }
 
   /**
-   * Adds a directed transition arc to the workflow graph.
+   * Adds a directed transition arc to the workflow graph, triggered by **either**
+   * an action **or** a deadline — exactly one of `on` / `after`.
    *
-   * `from` and `to` are constrained to `TStates` — the union of declared state
-   * IDs — and `on` is constrained to `keyof TActions`, preventing typos at
-   * compile time for both state IDs and action names.
+   * **Action-triggered** (`on`): fires when the matching action is dispatched
+   * and `from` is `active`. `on` is constrained to `keyof TActions` and `ctx.payload`
+   * is typed as `TActions[K]` in an inline `guard`.
    *
-   * The `guard` property accepts either:
-   * - A raw arrow function `(ctx) => boolean | Promise<boolean>`: `ctx.payload`
-   *   is automatically typed as `TActions[K]`, eliminating the need for an
-   *   explicit type annotation.
-   * - Any `IGuard` instance (e.g. `Guard.and([...])`, `Guard.inject('name')`).
-   * Raw functions are wrapped in `FnGuard` internally; the engine sees only `IGuard`.
+   * **Time-triggered** (`after`): a deadline. The clock is anchored to `from`,
+   * starting when it is entered; once `after` elapses the edge fires
+   * automatically, moving exactly `from → to` (never broadcasting to other
+   * active states). `after` accepts a millisecond number or a duration string
+   * (`'48h'`, `'7d'`, …). Firing is driven by `WorkflowInstance.tick(now)` and
+   * at the start of every `dispatch`; the host owns the clock — see
+   * `getNextDueAt()`. For "action OR deadline to the same target", declare two
+   * transitions sharing a `to`.
    *
-   * @param transition - The transition definition. `from`, `to`, and `on` are required.
+   * The trigger is an action (`on`) or a deadline (`after`) — see
+   * {@link TransitionInput}, which makes "exactly one" a compile-time guarantee.
+   * `from`/`to` are constrained to `TStates`, preventing state-ID typos. The
+   * `guard` accepts a raw `(ctx) => boolean | Promise<boolean>` (wrapped in
+   * `FnGuard` internally) or any `IGuard`; on a timed edge it is re-evaluated on
+   * each tick until it passes or `from` exits.
+   *
+   * @param transition - `from`, `to`, and exactly one of `on` / `after`.
    */
-  addTransition<K extends keyof TActions & string>(transition: {
-    readonly from: TStates;
-    readonly to: TStates;
-    readonly on: K;
-    readonly guard?: IGuard<TActions[K]> | GuardFn<TActions[K], TContext, TStates>;
-  }): this {
-    const guard: IGuard<unknown> | undefined =
-      transition.guard === undefined
-        ? undefined
-        : typeof transition.guard === 'function'
-          ? new FnGuard<TActions[K], TContext, TStates>(transition.guard)
-          : transition.guard;
+  addTransition<K extends keyof TActions & string>(
+    transition: TransitionInput<TActions, TStates, TContext, K>,
+  ): this {
+    const { from, to } = transition;
 
-    // exactOptionalPropertyTypes requires the property to be absent rather than
-    // set to `undefined`, so we conditionally include `guard`.
-    const entry: TransitionDefinition =
-      guard !== undefined
-        ? { from: transition.from, to: transition.to, on: transition.on, guard }
-        : { from: transition.from, to: transition.to, on: transition.on };
-
-    this.transitions.push(entry);
+    // exactOptionalPropertyTypes requires `guard` to be absent rather than
+    // `undefined`, so each branch conditionally spreads it.
+    if (transition.after !== undefined) {
+      const guard = this.wrapGuard<unknown>(transition.guard);
+      const after = parseDuration(transition.after);
+      this.transitions.push(guard !== undefined ? { from, to, after, guard } : { from, to, after });
+    } else {
+      const guard = this.wrapGuard<TActions[K]>(transition.guard);
+      const on = transition.on;
+      this.transitions.push(guard !== undefined ? { from, to, on, guard } : { from, to, on });
+    }
     return this;
+  }
+
+  /**
+   * Wraps a raw guard function in `FnGuard`, passes an `IGuard` through
+   * unchanged, and erases the payload type to `IGuard<unknown>` for storage
+   * (payload typing is re-resolved at `dispatch` via `GuardContext`).
+   */
+  private wrapGuard<P>(
+    guard: IGuard<P> | GuardFn<P, TContext, TStates> | undefined,
+  ): IGuard<unknown> | undefined {
+    if (guard === undefined) {
+      return undefined;
+    }
+    return typeof guard === 'function' ? new FnGuard<P, TContext, TStates>(guard) : guard;
   }
 
   /**
@@ -458,7 +511,12 @@ export class WorkflowBuilder<
       if (!states.has(t.to)) {
         throw new Error(`Transition to unregistered state "${t.to}"`);
       }
-      if (!this.actionSchemas.has(t.on)) {
+      // The on/after XOR (and a positive `after`) are guaranteed by
+      // addTransition's typed union, so they need no runtime check. Action edges
+      // must still resolve to a registered schema — the dynamic path widens
+      // action names to `string`, which the compiler cannot verify. Narrowing on
+      // `after` refines `t` to the action member, so `t.on` is `string` here.
+      if (t.after === undefined && !this.actionSchemas.has(t.on)) {
         throw new Error(
           `Transition uses action "${t.on}" which has no registered schema (call defineAction)`,
         );

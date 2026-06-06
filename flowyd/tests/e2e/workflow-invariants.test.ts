@@ -272,14 +272,4 @@ describe('Invariant: WaitState full lifecycle', () => {
     expect(inst.isTerminal()).toBe(true);
   });
 
-  it('external snapshot is stored in history on resolve', async () => {
-    const externalSnap = subWf.createInstance('child').getSnapshot();
-    const inst = subWf.createInstance('sw-005');
-    await inst.dispatch('ENTER', {});
-    inst.resolveWait('external', externalSnap);
-    const resolveEntry = inst
-      .getSnapshot()
-      .history.find((e) => e.action.startsWith('__resolve_wait'));
-    expect(resolveEntry?.payload).toMatchObject({ instanceId: 'child' });
-  });
 });

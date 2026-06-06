@@ -52,6 +52,9 @@ export class WorkflowEngine {
    * @param action          - The action name being dispatched.
    * @param payload         - The Zod-validated action payload.
    * @param context         - The accumulated instance context, passed through to guards.
+   * @param at              - ISO-8601 timestamp to record on the history entry.
+   *                          Supplied by the caller (the engine never reads a
+   *                          clock) so dispatch stays pure and deterministic.
    * @returns A `DispatchResult<TContext, TStates, TAction>` discriminated union. On success,
    *          includes the updated snapshot and lists of entered/exited states.
    * @throws Any error thrown by a guard's `evaluate()` method — guard errors
@@ -65,6 +68,7 @@ export class WorkflowEngine {
     action: TAction,
     payload: unknown,
     context: TContext | undefined,
+    at: string,
   ): Promise<DispatchResult<TContext, TStates, TAction>> {
     if (currentSnapshot.isTerminal) {
       return {
@@ -133,7 +137,7 @@ export class WorkflowEngine {
       payload,
       exitedStates: result.exitedStates,
       enteredStates: result.enteredStates,
-      at: new Date().toISOString(),
+      at,
       ...(context !== undefined && { context }),
     };
 
@@ -144,6 +148,108 @@ export class WorkflowEngine {
       isTerminal,
       history: [...currentSnapshot.history, historyEntry],
       updatedAt: historyEntry.at,
+    };
+
+    return {
+      success: true,
+      action,
+      enteredStates: result.enteredStates,
+      exitedStates: result.exitedStates,
+      snapshot: updatedSnapshot,
+    };
+  }
+
+  /**
+   * Fires a single **time-triggered** transition, scoped to its `from` state.
+   *
+   * Unlike `dispatch`, this never resolves an action against every active
+   * source — it advances exactly the one edge whose deadline elapsed, so a
+   * timeout on one branch can never disturb another. The `from` state may be
+   * `active` or `waiting` (a timed edge is how a `WaitState` times out).
+   *
+   * The resulting history entry is stamped with `at` (the logical due time, not
+   * wall-clock) and a synthetic action `__timeout:<from>-><to>` so the audit
+   * trail distinguishes deadline firings from human actions.
+   *
+   * @param definition      - The immutable compiled workflow graph.
+   * @param instanceState   - Read-only view of the current instance state.
+   * @param guardRegistry   - The instance's registered guard functions.
+   * @param currentSnapshot - Full snapshot used to produce the updated one on success.
+   * @param transition      - The time-triggered transition to fire.
+   * @param at              - ISO-8601 logical fire time (the edge's `dueAt`).
+   * @param context         - The accumulated instance context, passed to the guard.
+   * @returns A `DispatchResult` — blocked with `guard-failed`/`no-active-source`
+   *          when the edge cannot fire, otherwise the updated snapshot.
+   * @throws Any error thrown by the transition's guard.
+   */
+  static async fireTimed<TContext, TStates extends string = string>(
+    definition: WorkflowDefinition<TContext, TStates>,
+    instanceState: ReadonlyInstanceState<TStates>,
+    guardRegistry: GuardRegistry,
+    currentSnapshot: InstanceSnapshot<TContext, TStates>,
+    transition: TransitionDefinition<TStates>,
+    at: string,
+    context: TContext | undefined,
+  ): Promise<DispatchResult<TContext, TStates, string>> {
+    const action = `__timeout:${transition.from}->${transition.to}`;
+
+    if (currentSnapshot.isTerminal) {
+      return {
+        success: false,
+        action,
+        reason: 'terminal-state',
+        activeStates: instanceState.getActiveStates().slice(),
+      };
+    }
+
+    if (!instanceState.isStateActive(transition.from) && !instanceState.isStateWaiting(transition.from)) {
+      return {
+        success: false,
+        action,
+        reason: 'no-active-source',
+        activeStates: instanceState.getActiveStates().slice(),
+      };
+    }
+
+    if (transition.guard) {
+      const guardCtx = WorkflowEngine.buildGuardContext(null, instanceState, guardRegistry, context);
+      const allowed = await transition.guard.evaluate(guardCtx);
+      if (!allowed) {
+        return {
+          success: false,
+          action,
+          reason: 'guard-failed',
+          activeStates: instanceState.getActiveStates().slice(),
+        };
+      }
+    }
+
+    const result = WorkflowEngine.computeTransitions(
+      [transition],
+      definition,
+      currentSnapshot.stateStatuses,
+    );
+
+    const isTerminal = definition.terminalStateIds.some(
+      (id) => result.newStatuses.get(id) === StateStatus.Active,
+    );
+
+    const historyEntry: HistoryEntry<TContext, TStates> = {
+      action,
+      payload: null,
+      exitedStates: result.exitedStates,
+      enteredStates: result.enteredStates,
+      at,
+      ...(context !== undefined && { context }),
+    };
+
+    const updatedSnapshot: InstanceSnapshot<TContext, TStates> = {
+      ...currentSnapshot,
+      version: currentSnapshot.version + 1,
+      stateStatuses: typedFromEntries(result.newStatuses),
+      isTerminal,
+      history: [...currentSnapshot.history, historyEntry],
+      updatedAt: at,
     };
 
     return {

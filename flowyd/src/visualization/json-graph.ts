@@ -41,8 +41,16 @@ export interface JsonGraphEdge {
   to: string;
   /** Discriminates structural edges from user-defined transitions. */
   kind: 'transition' | 'fork-target' | 'join-requires';
-  /** The action name that triggers this transition. Only present when `kind === 'transition'`. */
+  /**
+   * The action name that triggers this transition. Present on action-triggered
+   * transitions (`kind === 'transition'` with no `after`).
+   */
   action?: string;
+  /**
+   * Delay in milliseconds for a **time-triggered** transition. Present instead
+   * of `action` when this `kind === 'transition'` edge fires on a deadline.
+   */
+  after?: number;
   /** `true` when this transition has a guard attached. Only present when `kind === 'transition'`. */
   hasGuard?: boolean;
 }
@@ -107,14 +115,19 @@ export const JsonGraphExporter: IExporter<JsonGraph> = {
       nodes.push(node);
     }
 
-    const edges: JsonGraphEdge[] = definition.transitions.map((t, i) => ({
-      id: `${t.from}__${t.on}__${t.to}__${i}`,
-      from: t.from,
-      to: t.to,
-      kind: 'transition' as const,
-      action: t.on,
-      hasGuard: t.guard !== undefined,
-    }));
+    const edges: JsonGraphEdge[] = definition.transitions.map((t, i) => {
+      // Narrowing on `after` refines `t` to the action member, so `t.on` is `string`.
+      const trigger = t.after !== undefined ? { after: t.after } : { action: t.on };
+      const label = t.after !== undefined ? `after${t.after}` : t.on;
+      return {
+        id: `${t.from}__${label}__${t.to}__${i}`,
+        from: t.from,
+        to: t.to,
+        kind: 'transition' as const,
+        ...trigger,
+        hasGuard: t.guard !== undefined,
+      };
+    });
 
     // Structural fork fan-out and join fan-in edges — symmetric with MermaidExporter.
     for (const [id, state] of definition.states) {

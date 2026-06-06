@@ -338,15 +338,16 @@ async function runDisruptionSop() {
 
   // ── Step 9: Bus-bridging SOP completes externally ─────────────────────────
   // In production: bus-bridging-sop runs in a separate WorkflowInstance.
-  // When it reaches terminal, the service calls resolveWait().
+  // When it reaches terminal, the service calls resolveWait() to un-pause.
   console.log('\n  [external] Bus bridging SOP running...');
   console.log('  [external] Buses confirmed at JE, CS, BN ✓');
 
-  const fakeExternalSnap = occDisruptionSop.createInstance(bbRef).getSnapshot();
-  inst.resolveWait('bus-bridging', fakeExternalSnap);
+  inst.resolveWait('bus-bridging');
   logStep('9. Wait state resolved', inst.getCurrentStates());
 
   // ── Step 10: Confirm buses are active; advance past WaitState ──────────────
+  // The external result rides this dispatch's payload, so it lands in the audit
+  // history (busCount / firstBusAt below).
   currentActor = ctrl;
   await inst.dispatch('BUS_BRIDGE_ACTIVE', {
     confirmedBy: { staffId: ctrl.staffId },

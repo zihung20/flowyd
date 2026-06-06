@@ -80,7 +80,10 @@ order-placed ──SUBMIT──▶ payment-processing ⤴ ──PAYMENT_OK──
 
 ## Transitions
 
-A transition is a directed edge from one state to another, fired when a specific action is dispatched.
+A transition is a directed edge from one state to another. It is triggered by **exactly one** of two things:
+
+- **An action** (`on`) — fires when that action is dispatched.
+- **A deadline** (`after`) — fires automatically after the source state has been active for a given duration.
 
 ```ts
 .addTransition({ from: 'draft', to: 'review', on: 'SUBMIT' })
@@ -92,8 +95,32 @@ Every transition has:
 
 - `from` — the source state (must be `active` for the transition to fire)
 - `to` — the destination state
-- `on` — the action name that triggers it
+- `on` _or_ `after` — the trigger (an action name, or a delay) — exactly one
 - `guard` _(optional)_ — a predicate that must return `true` for the transition to fire
+
+### Deadlines — time-triggered transitions
+
+Use `after` instead of `on` for *"if still here after N, go there"* — escalations, auto-cancels, SLA breaches. The clock starts when `from` is entered.
+
+```ts
+.addTransition({ from: 'pending-approval', to: 'approved',  on: 'APPROVE' })
+.addTransition({ from: 'pending-approval', to: 'escalated', after: '48h' })
+```
+
+`after` accepts a duration string (`'90s'`, `'15m'`, `'48h'`, `'7d'`, …) or raw milliseconds. A deadline never fires on its own — **the host owns the clock**. It advances at the start of every `dispatch`, and a scheduler can fire deadlines on idle instances with `inst.tick(now)`, finding due instances via `inst.getNextDueAt()`. See [Add deadlines and escalation](../scenarios/timeouts).
+
+## Lifecycle hooks
+
+Every state can declare `onEnter` / `onExit` callbacks — side effects tied to entering or leaving it (notify, log, kick off an external job). They fire **after** the snapshot commits, so they see the new state.
+
+```ts
+.addStep('pending-approval', {
+  onEnter: async (ctx) => { await notifyManagers(ctx.instanceState.instanceId); },
+  onExit:  (ctx) => { metrics.stopTimer('approval'); },
+})
+```
+
+`onExit` hooks run before `onEnter`, sequentially and `await`ed, for every state entered/exited that step (including fork/join and deadline firings). A throwing hook propagates out of `dispatch`/`tick`. Hooks are definition code — they are not stored in snapshots and need no re-injection after restore. See [Run side effects on enter/exit](../scenarios/hooks).
 
 ## Actions
 
@@ -146,7 +173,7 @@ A snapshot is a plain JSON object that captures the complete state of a running 
 interface InstanceSnapshot<TContext = unknown> {
   instanceId: string;
   workflowName: string;
-  version: number; // increments on every successful dispatch or resolveWait
+  version: number; // increments on every successful dispatch, fired deadline, or resolveWait
   stateStatuses: Record<string, 'idle' | 'active' | 'waiting' | 'completed'>;
   isTerminal: boolean;
   history: HistoryEntry[]; // append-only audit log

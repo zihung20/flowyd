@@ -11,9 +11,8 @@ import { BaseState } from './base.js';
  *
  * 1. Creating and driving the external process (via Prisma, a queue, an
  *    external API, etc.).
- * 2. Calling `parentInstance.resolveWait(stateId, externalSnapshot?)`
- *    once the external process has completed. This promotes the `WaitState`
- *    from `waiting` → `active`.
+ * 2. Calling `parentInstance.resolveWait(stateId)` once the external process
+ *    has completed. This promotes the `WaitState` from `waiting` → `active`.
  * 3. Calling `parentInstance.dispatch(action, payload)` with the transition
  *    defined to leave this state (e.g. `'EXTERNAL_COMPLETE'`).
  *

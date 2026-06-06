@@ -71,14 +71,16 @@ async function onKycWebhook(parentInstanceId: string, passed: boolean) {
 ```ts
 inst.resolveWait(
   stateId: string,
-  externalSnapshot?: InstanceSnapshot,
+  options?: { now?: Date },
 ): void
 ```
 
 - Promotes the named state from `waiting` → `active`
 - Increments `snapshot.version`
 - Appends a `__resolve_wait:<stateId>` entry to the audit history
-- Optionally stores `externalSnapshot` in the history for cross-workflow auditability
+- `options.now` stamps the history entry (defaults to `new Date()`; pass it for deterministic replay/testing)
+
+To record what the external process returned, put it in the payload of the action you dispatch next to leave the wait state — that payload is recorded in the audit history.
 
 **Throws** if `stateId` is not a `WaitState` or is not currently `waiting`.
 

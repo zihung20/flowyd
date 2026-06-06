@@ -1,5 +1,6 @@
 import type { WorkflowDefinition, InstanceSnapshot, AnyState } from '../types/index.js';
 import { StateKind, StateStatus } from '../types/index.js';
+import { formatDuration } from '../core/utils.js';
 import type { IExporter } from './exporter.js';
 
 /**
@@ -78,7 +79,8 @@ export const MermaidExporter: IExporter<string> = {
     for (const t of definition.transitions) {
       const from = sanitizeId(t.from);
       const to = sanitizeId(t.to);
-      lines.push(`  ${from} --> ${to} : ${t.on}`);
+      const label = t.after !== undefined ? `after ${formatDuration(t.after)}` : t.on;
+      lines.push(`  ${from} --> ${to} : ${label}`);
     }
 
     for (const [id, state] of definition.states) {

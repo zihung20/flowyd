@@ -5,9 +5,14 @@ import type {
   HistoryEntry,
   InstanceSnapshot,
   ReadonlyInstanceState,
+  TransitionDefinition,
   GuardFn,
   HookContext,
 } from '../types/index.js';
+import { StateStatus, StateKind } from '../types/index.js';
+import { GuardRegistry } from './registry.js';
+import { WorkflowEngine } from './engine.js';
+import { typedEntries, typedFromEntries } from './utils.js';
 
 /**
  * Produces `Base` intersected with `{ [extra keys in Given]: never }`.
@@ -16,10 +21,6 @@ import type {
  * `.strict()` check.
  */
 type Exact<Base, Given extends Base> = Given & { [K in Exclude<keyof Given, keyof Base>]: never };
-import { StateStatus, StateKind } from '../types/index.js';
-import { GuardRegistry } from './registry.js';
-import { WorkflowEngine } from './engine.js';
-import { typedEntries, typedFromEntries } from './utils.js';
 
 /**
  * Mutable runtime state for a single SOP execution.
@@ -150,7 +151,8 @@ export class WorkflowInstance<
 
     const actions = new Set<string>();
     for (const t of this.definition.transitions) {
-      if (activeStates.has(t.from)) {
+      // Skip time-triggered edges — they have no `on` and are not user-dispatchable.
+      if (t.on !== undefined && activeStates.has(t.from)) {
         actions.add(t.on);
       }
     }
@@ -171,7 +173,7 @@ export class WorkflowInstance<
     action: TAction,
     payload: Exact<TActions[TAction], P>,
   ): Promise<boolean> {
-    const result = await this.dispatch(action, payload, true);
+    const result = await this.dispatch(action, payload, { dryRun: true });
     return result.success;
   }
 
@@ -187,6 +189,11 @@ export class WorkflowInstance<
    * @param action  - An action name declared via `WorkflowBuilder.defineAction()`.
    * @param payload - The typed payload for this action, validated against the
    *                  action's Zod schema before any guard is evaluated.
+   * @param options.now - The current time, used both to fire any overdue
+   *                  deadlines before the action and to stamp the history entry.
+   *                  Defaults to `new Date()`; pass it explicitly for
+   *                  deterministic replay or testing — the instance is the only
+   *                  clock-reader, the engine is given the time.
    * @returns A discriminated `DispatchResult` — check `result.success` to
    *          distinguish a successful transition from a blocked one.
    * @throws {Error}    If the action name has no registered schema.
@@ -197,6 +204,7 @@ export class WorkflowInstance<
   async dispatch<TAction extends keyof TActions & string, P extends TActions[TAction]>(
     action: TAction,
     payload: Exact<TActions[TAction], P>,
+    options?: { now?: Date },
   ): Promise<DispatchResult<TContext, TStates, TAction>>;
 
   /**
@@ -206,20 +214,29 @@ export class WorkflowInstance<
   async dispatch<TAction extends keyof TActions & string>(
     action: TAction,
     payload: TActions[TAction],
-    dryRun: boolean,
+    options: { now?: Date; dryRun: boolean },
   ): Promise<DispatchResult<TContext, TStates, TAction>>;
 
   async dispatch<TAction extends keyof TActions & string>(
     action: TAction,
     payload: TActions[TAction],
-    dryRun = false,
+    options: { now?: Date; dryRun?: boolean } = {},
   ): Promise<DispatchResult<TContext, TStates, TAction>> {
+    const { now = new Date(), dryRun = false } = options;
     const schema = this.definition.actionSchemas.get(action);
     if (!schema) {
       throw new Error(`Action "${action}" is not registered in workflow "${this.definition.name}"`);
     }
 
     const validatedPayload = schema.parse(payload);
+
+    // Fire overdue deadlines first so a late action can't act on a state that
+    // should already have timed out (e.g. an APPROVE arriving after the 48h
+    // escalation deadline is blocked, not applied); dry runs (`canExecute`) skip
+    // it — no mutation.
+    if (!dryRun) {
+      await this.advanceTimers(now);
+    }
 
     const result = await WorkflowEngine.dispatch<TContext, TStates, TAction>(
       this.definition,
@@ -229,6 +246,7 @@ export class WorkflowInstance<
       action,
       validatedPayload,
       this.snapshot.context,
+      now.toISOString(),
     );
 
     if (result.success && !dryRun) {
@@ -244,15 +262,19 @@ export class WorkflowInstance<
    * `WaitState` from `waiting` to `active`.
    *
    * After calling this, dispatch the appropriate action to transition out of
-   * the wait state (e.g. `instance.dispatch('KYC_PASSED', {})`).
+   * the wait state (e.g. `instance.dispatch('KYC_PASSED', {})`). To record what
+   * the external process returned, put it in that follow-up dispatch's payload —
+   * it lands in the audit history there.
    *
-   * @param stateId          - ID of the `WaitState` to resolve.
-   * @param externalSnapshot - Optional snapshot of the completed external process.
-   *                           Stored in the history entry for auditability.
+   * @param stateId     - ID of the `WaitState` to resolve.
+   * @param options.now - Time to stamp the history entry with. Defaults to
+   *                      `new Date()`; pass it explicitly for deterministic
+   *                      replay or testing.
    * @throws {Error} If the state is not a `WaitState` or is not currently
    *                 in `waiting` status.
    */
-  resolveWait(stateId: TStates, externalSnapshot?: InstanceSnapshot): void {
+  resolveWait(stateId: TStates, options: { now?: Date } = {}): void {
+    const { now = new Date() } = options;
     const state = this.definition.states.get(stateId);
     if (!state || state.kind !== StateKind.Wait) {
       throw new Error(`State "${stateId}" is not a WaitState`);
@@ -273,10 +295,10 @@ export class WorkflowInstance<
     const ctx = this.snapshot.context;
     const historyEntry: HistoryEntry<TContext, TStates> = {
       action: `__resolve_wait:${stateId}`,
-      payload: externalSnapshot ?? null,
+      payload: null,
       exitedStates: [],
       enteredStates: [stateId],
-      at: new Date().toISOString(),
+      at: now.toISOString(),
       ...(ctx !== undefined && { context: ctx }),
     };
 
@@ -287,6 +309,142 @@ export class WorkflowInstance<
       history: [...this.snapshot.history, historyEntry],
       updatedAt: historyEntry.at,
     };
+  }
+
+  /**
+   * Advances all elapsed time-triggered transitions ("deadlines") up to `now`.
+   *
+   * The engine never reads a clock — the host supplies `now` and decides when to
+   * call this. There are two ways deadlines advance: automatically at the start
+   * of every `dispatch`, and explicitly via this method (which a host's
+   * scheduler calls for idle instances; see `getNextDueAt()`).
+   *
+   * Firing runs to a fixed point and catches up cleanly after downtime: if the
+   * process was offline past several chained deadlines, one `tick` fires them
+   * all in due-time order. Each firing is stamped with its logical `dueAt` (not
+   * wall-clock `now`), so cascades and the audit trail are independent of when
+   * the sweep actually ran. A guard on a timed edge that blocks is retried on
+   * the next `tick`, not consumed.
+   *
+   * @param now - The current time. Deadlines with `dueAt <= now` fire.
+   * @returns The number of time-triggered transitions that fired.
+   */
+  async tick(now: Date): Promise<number> {
+    return this.advanceTimers(now);
+  }
+
+  /**
+   * Returns the earliest moment at which a deadline will fire, across every
+   * currently `active` or `waiting` state, or `null` when none is armed (or the
+   * instance is terminal).
+   *
+   * Persist this as an indexed column so a scheduler can sweep due instances
+   * (`SELECT ... WHERE next_due_at <= now()`) and call `tick(now)` on each —
+   * the library owns no scheduler and no storage.
+   *
+   * @returns An ISO-8601 timestamp, or `null` if no deadline is pending.
+   */
+  getNextDueAt(): string | null {
+    if (this.snapshot.isTerminal) {
+      return null;
+    }
+    let earliest: number | null = null;
+    for (const stateId of this.armedStateIds()) {
+      const enteredAt = this.enteredAtMs(stateId);
+      for (const t of this.timedTransitionsFrom(stateId)) {
+        const due = enteredAt + (t.after as number);
+        if (earliest === null || due < earliest) {
+          earliest = due;
+        }
+      }
+    }
+    return earliest === null ? null : new Date(earliest).toISOString();
+  }
+
+  /**
+   * Shared deadline-advancement loop used by `tick` and the auto-advance at the
+   * start of `dispatch`. See `tick` for semantics.
+   */
+  private async advanceTimers(now: Date): Promise<number> {
+    const nowMs = now.getTime();
+    const blocked = new Set<string>();
+    let fired = 0;
+
+    for (;;) {
+      if (this.snapshot.isTerminal) {
+        break;
+      }
+
+      let chosen: { transition: TransitionDefinition<TStates>; dueMs: number } | null = null;
+      for (const stateId of this.armedStateIds()) {
+        const enteredAt = this.enteredAtMs(stateId);
+        for (const t of this.timedTransitionsFrom(stateId)) {
+          const key = `${t.from}->${t.to}:${t.after}`;
+          if (blocked.has(key)) {
+            continue;
+          }
+          const dueMs = enteredAt + (t.after as number);
+          if (dueMs <= nowMs && (chosen === null || dueMs < chosen.dueMs)) {
+            chosen = { transition: t, dueMs };
+          }
+        }
+      }
+
+      if (chosen === null) {
+        break;
+      }
+
+      const result = await WorkflowEngine.fireTimed<TContext, TStates>(
+        this.definition,
+        this.buildReadonlyView(),
+        this.guardRegistry,
+        this.snapshot,
+        chosen.transition,
+        new Date(chosen.dueMs).toISOString(),
+        this.snapshot.context,
+      );
+
+      if (result.success) {
+        this.snapshot = result.snapshot;
+        await this.runHooks(result.exitedStates, result.enteredStates);
+        fired += 1;
+      } else {
+        // Guard blocked (or source no longer armed) — skip this edge for the rest
+        // of this advancement so we don't spin; it is retried on the next tick.
+        blocked.add(`${chosen.transition.from}->${chosen.transition.to}:${chosen.transition.after}`);
+      }
+    }
+
+    return fired;
+  }
+
+  /** IDs of states a deadline can fire from: those currently `active` or `waiting`. */
+  private armedStateIds(): TStates[] {
+    return typedEntries(this.snapshot.stateStatuses)
+      .filter(([, s]) => s === StateStatus.Active || s === StateStatus.Waiting)
+      .map(([id]) => id);
+  }
+
+  /** The time-triggered transitions leaving a given state, in declaration order. */
+  private timedTransitionsFrom(stateId: TStates): TransitionDefinition<TStates>[] {
+    return this.definition.transitions.filter((t) => t.from === stateId && t.after !== undefined);
+  }
+
+  /**
+   * Milliseconds-since-epoch at which the instance last entered `stateId`,
+   * derived from history — no separate timer state is persisted. Falls back to
+   * `createdAt` for the initial state, which is active from creation and never
+   * appears in an `enteredStates` list.
+   */
+  private enteredAtMs(stateId: TStates): number {
+    const history = this.snapshot.history;
+    for (let i = history.length - 1; i >= 0; i--) {
+      const entry = history[i];
+      if (entry && entry.enteredStates.includes(stateId)) {
+        return Date.parse(entry.at);
+      }
+    }
+    return Date.parse(this.snapshot.createdAt);
   }
 
   /**

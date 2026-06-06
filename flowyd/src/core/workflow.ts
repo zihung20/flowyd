@@ -35,13 +35,22 @@ export class Workflow<
    *                     `setContext()` was called on the builder (`TContext` is
    *                     concrete); omitted when no context schema was declared
    *                     (`TContext` is `unknown`).
+   * @param now        - Creation time, recorded as `createdAt`/`updatedAt` and
+   *                     used as the entry time of the initial state (so a
+   *                     deadline on it counts from here). Defaults to
+   *                     `new Date()`; pass it explicitly for deterministic
+   *                     replay or testing.
    * @returns A new `WorkflowInstance<TActions, TContext>` ready for guard injection and dispatch.
    */
   createInstance(
     instanceId: string,
-    ...args: unknown extends TContext ? [context?: TContext] : [context: TContext]
+    ...args: unknown extends TContext
+      ? [context?: TContext, now?: Date]
+      : [context: TContext, now?: Date]
   ): WorkflowInstance<TActions, TContext, TStates> {
-    const now = new Date().toISOString();
+    // Conditional rest params collapse to [TContext?, Date?] at runtime.
+    const restArgs = args as [TContext | undefined, Date | undefined];
+    const now = (restArgs[1] ?? new Date()).toISOString();
 
     const stateStatuses = new Map<TStates, StateStatus>();
     for (const id of this.definition.states.keys()) {
@@ -49,9 +58,8 @@ export class Workflow<
     }
     stateStatuses.set(this.definition.initialStateId, StateStatus.Active);
 
-    // Conditional rest params collapse to TContext | undefined at runtime; the
-    // overload signature enforces presence when TContext is concrete.
-    const context = (args as [TContext | undefined])[0];
+    // The signature enforces context presence when TContext is concrete.
+    const context = restArgs[0];
     // contextSchema is ZodSchema<TContext>, so parse() returns TContext directly.
     const validatedContext =
       context !== undefined

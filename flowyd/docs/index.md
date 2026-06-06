@@ -32,6 +32,10 @@ features:
     title: Parallel branches
     details: ForkState fans out to concurrent steps; JoinState synchronises them with "all", "any", or a quorum threshold — resolved in a single engine tick.
 
+  - icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M5 3 2 6"/><path d="m22 6-3-3"/><path d="M6.38 18.7 4 21"/><path d="M17.64 18.67 20 21"/></svg>'
+    title: Deadlines &amp; SLAs
+    details: Time-triggered transitions escalate, auto-cancel, or give up on a stalled branch after a delay. The host owns the clock — the engine never reads it, so runs stay pure and replayable.
+
   - icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="3" width="5" height="18" rx="1"/><rect x="5" y="3" width="5" height="18" rx="1"/></svg>'
     title: External wait states
     details: WaitState pauses the workflow until your service layer signals completion. The engine has no I/O, no polling, no callbacks.
