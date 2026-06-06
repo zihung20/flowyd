@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { ReactFlow, Background, BackgroundVariant } from '@xyflow/react';
 import type { Node, Edge } from '@xyflow/react';
 import { JsonGraphExporter } from 'flowyd/visualization';
@@ -117,23 +117,41 @@ function toFlowNodes(graph: JsonGraph, positions: Map<string, { x: number; y: nu
   });
 }
 
-function toFlowEdges(graph: JsonGraph, dark: boolean): Edge[] {
+type EdgeCacheEntry = { sig: string; edge: Edge };
+
+/**
+ * Build ReactFlow edges, reusing the previous edge object whenever an edge's
+ * visual signature is unchanged. Stable identity stops ReactFlow from
+ * re-rendering an edge's label every time the snapshot changes — which made
+ * the labels flicker while scrubbing the timeline, even though the edge line
+ * itself was identical.
+ */
+function toFlowEdges(graph: JsonGraph, dark: boolean, cache: Map<string, EdgeCacheEntry>): Edge[] {
   const statusById = new Map(graph.nodes.map((n) => [n.id, n.status]));
 
-  return graph.edges.map((e) =>
-    buildFlowEdge(
+  return graph.edges.map((e) => {
+    const active = statusById.get(e.from) === 'active';
+    const dashed = e.hasGuard ?? false;
+    const sig = `${e.from}|${e.to}|${e.kind}|${e.action ?? ''}|${active}|${dashed}|${dark}`;
+    const hit = cache.get(e.id);
+    if (hit && hit.sig === sig) {
+      return hit.edge;
+    }
+    const edge = buildFlowEdge(
       {
         id: e.id,
         from: e.from,
         to: e.to,
         kind: e.kind as 'fork-target' | 'join-requires' | 'transition',
         label: e.action ?? '',
-        active: statusById.get(e.from) === 'active',
-        ...(e.hasGuard ? { dashed: true } : {}),
+        active,
+        ...(dashed ? { dashed: true } : {}),
       },
       dark,
-    ),
-  );
+    );
+    cache.set(e.id, { sig, edge });
+    return edge;
+  });
 }
 
 export function WorkflowGraph() {
@@ -148,7 +166,14 @@ export function WorkflowGraph() {
   const positions = useMemo(() => computeLayout(graph.nodes, graph.edges), [graph]);
 
   const nodes: Node[] = useMemo(() => toFlowNodes(graph, positions), [graph, positions]);
-  const edges: Edge[] = useMemo(() => toFlowEdges(graph, theme === 'dark'), [graph, theme]);
+
+  // Persisted across renders so unchanged edges keep their object identity.
+  const edgeCacheRef = useRef<Map<string, EdgeCacheEntry>>(new Map());
+  const edges: Edge[] = useMemo(
+    // eslint-disable-next-line react-hooks/refs -- the cache is a render-stable memoization store, not reactive state
+    () => toFlowEdges(graph, theme === 'dark', edgeCacheRef.current),
+    [graph, theme],
+  );
 
   return (
     <div className="min-h-0 flex-1">
