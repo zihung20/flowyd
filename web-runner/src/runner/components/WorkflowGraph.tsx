@@ -128,7 +128,7 @@ function toFlowEdges(graph: JsonGraph, dark: boolean): Edge[] {
         to: e.to,
         kind: e.kind as 'fork-target' | 'join-requires' | 'transition',
         label: e.action ?? '',
-        animated: statusById.get(e.from) === 'active',
+        active: statusById.get(e.from) === 'active',
         ...(e.hasGuard ? { dashed: true } : {}),
       },
       dark,

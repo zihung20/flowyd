@@ -8,7 +8,10 @@ export interface EdgeSpec {
   to: string;
   kind: EdgeKind;
   label: string;
-  animated?: boolean;
+  /** Highlight this edge as the live path (source state is active). Rendered as a
+   * static colour change — not React Flow's animated marching-ants, which restart
+   * on every re-render and flicker while scrubbing the timeline. */
+  active?: boolean;
   dashed?: boolean | undefined;
 }
 
@@ -54,16 +57,17 @@ export function buildFlowEdge(spec: EdgeSpec, dark: boolean): Edge {
   }
 
   // transition
-  const stroke = dark ? '#94a3b8' : '#64748b';
+  const active = spec.active ?? false;
+  const stroke = active ? '#3b82f6' : dark ? '#94a3b8' : '#64748b';
   return {
     id: spec.id,
     source: spec.from,
     target: spec.to,
     label: spec.label,
-    animated: spec.animated ?? false,
+    animated: false,
     style: {
       stroke,
-      strokeWidth: 1.5,
+      strokeWidth: active ? 2 : 1.5,
       ...(spec.dashed ? { strokeDasharray: '5 3' } : {}),
     },
     ...sharedLabel,
