@@ -17,40 +17,66 @@ import {
 // ─── Default value generator ──────────────────────────────────────────────────
 
 function autoDefault(field: FieldDescriptor): string | number | boolean {
-  if (field.kind === 'boolean') {return true;}
-  if (field.kind === 'enum') {return field.options[0] ?? '';}
+  if (field.kind === 'boolean') {
+    return true;
+  }
+  if (field.kind === 'enum') {
+    return field.options[0] ?? '';
+  }
 
   if (field.kind === 'number') {
-    if (field.min !== undefined) {return field.min;}
+    if (field.min !== undefined) {
+      return field.min;
+    }
     const n = field.name.toLowerCase();
-    if (n.includes('count') || n.includes('size') || n.includes('head')) {return 3;}
-    if (n.includes('platform')) {return 1;}
+    if (n.includes('count') || n.includes('size') || n.includes('head')) {
+      return 3;
+    }
+    if (n.includes('platform')) {
+      return 1;
+    }
     return 1;
   }
 
   const n = field.name.toLowerCase();
   let base = 'value';
-  if (/(by|lead|manager|officer|author|engineer)/.test(n)) {base = 'ENG-001';}
-  else if (
+  if (/(by|lead|manager|officer|author|engineer)/.test(n)) {
+    base = 'ENG-001';
+  } else if (
     n.includes('reason') ||
     n.includes('description') ||
     n.includes('summary') ||
     n.includes('actions')
-  )
-    {base = 'Completed as scheduled';}
-  else if (n.includes('url')) {base = 'https://example.com/doc';}
-  else if (n.includes('sha')) {base = 'a'.repeat(40);}
-  else if (n.includes('switch') && n.includes('ref')) {base = 'SW-A01';}
-  else if (n.includes('clearance') && n.includes('ref')) {base = 'CLR-001';}
-  else if (n.endsWith('ref') || n.includes('ref')) {base = 'REF-001';}
-  else if (n.endsWith('id') || n.includes('trainid') || n.includes('ticket')) {base = 'ID-001';}
-  else if (n.includes('at') || n.includes('expires'))
-    {base = new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 16);}
-  else if (n.includes('note') || n.includes('finding') || n.includes('cause') || n.includes('fix'))
-    {base = 'No issues noted';}
-  else if (n.includes('channel')) {base = '#incident-response';}
-  else if (n.includes('version')) {base = '1.0.0';}
-  else if (n.includes('team')) {base = 'platform-eng';}
+  ) {
+    base = 'Completed as scheduled';
+  } else if (n.includes('url')) {
+    base = 'https://example.com/doc';
+  } else if (n.includes('sha')) {
+    base = 'a'.repeat(40);
+  } else if (n.includes('switch') && n.includes('ref')) {
+    base = 'SW-A01';
+  } else if (n.includes('clearance') && n.includes('ref')) {
+    base = 'CLR-001';
+  } else if (n.endsWith('ref') || n.includes('ref')) {
+    base = 'REF-001';
+  } else if (n.endsWith('id') || n.includes('trainid') || n.includes('ticket')) {
+    base = 'ID-001';
+  } else if (n.includes('at') || n.includes('expires')) {
+    base = new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 16);
+  } else if (
+    n.includes('note') ||
+    n.includes('finding') ||
+    n.includes('cause') ||
+    n.includes('fix')
+  ) {
+    base = 'No issues noted';
+  } else if (n.includes('channel')) {
+    base = '#incident-response';
+  } else if (n.includes('version')) {
+    base = '1.0.0';
+  } else if (n.includes('team')) {
+    base = 'platform-eng';
+  }
 
   const min = field.kind === 'string' ? (field.min ?? 0) : 0;
   return base.length >= min ? base : base.padEnd(min, '-');
@@ -93,7 +119,10 @@ function coercePayload(
       const raw = num[f.name] ?? '';
       out[f.name] = raw === '' ? undefined : Number(raw);
     } else if (f.kind === 'array') {
-      const parts = (text[f.name] ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+      const parts = (text[f.name] ?? '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
       out[f.name] = f.itemKind === 'number' ? parts.map(Number) : parts;
     } else {
       out[f.name] = text[f.name] ?? '';
@@ -105,7 +134,15 @@ function coercePayload(
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function DynamicForm() {
-  const { definition, snapshot, availableActions, dispatch, lastError } = useRunner();
+  const {
+    definition,
+    snapshot,
+    availableActions,
+    dispatch,
+    lastError,
+    isPreviewing,
+    previewVersion,
+  } = useRunner();
 
   const [selectedAction, setSelectedAction] = useState<string>(
     () => availableActions[Math.floor(Math.random() * availableActions.length)] ?? '',
@@ -149,7 +186,9 @@ export function DynamicForm() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!selectedAction) {return;}
+    if (!selectedAction) {
+      return;
+    }
     setSubmitting(true);
     try {
       const payload = coercePayload(fields, textValues, boolValues, numValues);
@@ -169,12 +208,18 @@ export function DynamicForm() {
 
   if (availableActions.length === 0) {
     return (
-      <div className="p-4 text-center text-sm text-muted-foreground">No actions available</div>
+      <div className="text-muted-foreground p-4 text-center text-sm">No actions available</div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3 overflow-y-auto border-b border-border p-4">
+    <form onSubmit={handleSubmit} className="border-border space-y-3 overflow-y-auto border-b p-4">
+      {isPreviewing && (
+        <p className="rounded bg-amber-100 px-2.5 py-1.5 text-[11px] text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+          Viewing v{previewVersion} — dispatching will branch from here and discard later steps.
+        </p>
+      )}
+
       {/* Action selector */}
       <div className="space-y-1.5">
         <Label>Action</Label>
@@ -197,7 +242,7 @@ export function DynamicForm() {
         <div key={field.name} className="space-y-1.5">
           <Label>
             {field.label}
-            {!field.optional && <span className="ml-0.5 text-destructive">*</span>}
+            {!field.optional && <span className="text-destructive ml-0.5">*</span>}
           </Label>
 
           {field.kind === 'boolean' && (
@@ -205,13 +250,11 @@ export function DynamicForm() {
               <Checkbox
                 id={`f-${field.name}`}
                 checked={boolValues[field.name] ?? false}
-                onCheckedChange={(v) =>
-                  setBoolValues((p) => ({ ...p, [field.name]: !!v }))
-                }
+                onCheckedChange={(v) => setBoolValues((p) => ({ ...p, [field.name]: !!v }))}
               />
               <label
                 htmlFor={`f-${field.name}`}
-                className="text-xs text-foreground cursor-pointer select-none"
+                className="text-foreground cursor-pointer text-xs select-none"
               >
                 {field.label}
               </label>
@@ -254,7 +297,7 @@ export function DynamicForm() {
                 placeholder="comma-separated values"
                 className="h-8 text-xs"
               />
-              <p className="text-xs text-muted-foreground">Separate items with commas</p>
+              <p className="text-muted-foreground text-xs">Separate items with commas</p>
             </div>
           )}
 
@@ -272,17 +315,12 @@ export function DynamicForm() {
 
       {/* Guard failure hint */}
       {lastError && (
-        <p className="rounded-md bg-destructive/10 border border-destructive/20 px-2 py-1.5 text-xs text-destructive">
+        <p className="bg-destructive/10 border-destructive/20 text-destructive rounded-md border px-2 py-1.5 text-xs">
           {lastError}
         </p>
       )}
 
-      <Button
-        type="submit"
-        size="sm"
-        disabled={submitting || !selectedAction}
-        className="w-full"
-      >
+      <Button type="submit" size="sm" disabled={submitting || !selectedAction} className="w-full">
         {submitting ? 'Dispatching…' : `Dispatch ${selectedAction}`}
       </Button>
     </form>

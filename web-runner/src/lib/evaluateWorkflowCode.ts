@@ -5,6 +5,7 @@ import type { WorkflowDefinition, DispatchResult, InstanceSnapshot } from 'flowy
 type AnyInstance = {
   dispatch(action: string, payload: unknown): Promise<DispatchResult>;
   getSnapshot(): InstanceSnapshot;
+  rewind(version: number): InstanceSnapshot;
   injectGuard(name: string, fn: () => boolean | Promise<boolean>): unknown;
 };
 
@@ -16,11 +17,23 @@ type RunWorkflow = {
 type UserExports = { workflow: unknown; instance: unknown };
 
 export type EvalResult =
-  | { ok: true; workflow: RunWorkflow; definition: WorkflowDefinition; makeInstance: () => AnyInstance }
+  | {
+      ok: true;
+      workflow: RunWorkflow;
+      definition: WorkflowDefinition;
+      makeInstance: () => AnyInstance;
+    }
   | { ok: false; error: string };
 
-const FN_PARAMS = ['createWorkflow', 'createDynamicWorkflow', 'Guard', 'z', 'StateKind', 'StateStatus'] as const;
-const FN_ARGS   = [createWorkflow,   createDynamicWorkflow,   Guard,   z,   StateKind,   StateStatus  ] as const;
+const FN_PARAMS = [
+  'createWorkflow',
+  'createDynamicWorkflow',
+  'Guard',
+  'z',
+  'StateKind',
+  'StateStatus',
+] as const;
+const FN_ARGS = [createWorkflow, createDynamicWorkflow, Guard, z, StateKind, StateStatus] as const;
 
 /**
  * Strip TypeScript-only syntax so the output can be passed to `new Function()`.
@@ -50,10 +63,10 @@ function runUserCode(js: string): UserExports {
   const fn = new Function(
     ...FN_PARAMS,
     `${js}\n` +
-    `return {\n` +
-    `  workflow: typeof workflow !== 'undefined' ? workflow : null,\n` +
-    `  instance: typeof instance !== 'undefined' ? instance : null,\n` +
-    `};\n`,
+      `return {\n` +
+      `  workflow: typeof workflow !== 'undefined' ? workflow : null,\n` +
+      `  instance: typeof instance !== 'undefined' ? instance : null,\n` +
+      `};\n`,
   );
   return fn(...FN_ARGS) as UserExports;
 }
@@ -69,7 +82,11 @@ function runUserCode(js: string): UserExports {
  * @param wf - Compiled workflow (used for the no-context fallback).
  * @param hasUserInstance - Whether the user defined `const instance = ...`.
  */
-function buildMakeInstance(js: string, wf: RunWorkflow, hasUserInstance: boolean): () => AnyInstance {
+function buildMakeInstance(
+  js: string,
+  wf: RunWorkflow,
+  hasUserInstance: boolean,
+): () => AnyInstance {
   if (!hasUserInstance) {
     return () => wf.createInstance(`run-${Date.now()}`);
   }
@@ -93,7 +110,10 @@ export async function evaluateWorkflowCode(tsCode: string): Promise<EvalResult> 
     const { workflow: rawWorkflow, instance: rawInstance } = runUserCode(js);
 
     if (!rawWorkflow || typeof rawWorkflow !== 'object') {
-      return { ok: false, error: 'Define "const workflow = createWorkflow(...).build();" in the editor.' };
+      return {
+        ok: false,
+        error: 'Define "const workflow = createWorkflow(...).build();" in the editor.',
+      };
     }
 
     const wf = rawWorkflow as RunWorkflow;

@@ -19,22 +19,31 @@ function hasPayload(payload: unknown): boolean {
 interface RowProps {
   entry: HistoryEntry;
   version: number;
-  /** The current (head) version — the head row cannot be rewound to. */
-  isHead: boolean;
 }
 
-function HistoryRow({ entry, version, isHead }: RowProps) {
-  const { rewindTo } = useRunner();
+function HistoryRow({ entry, version }: RowProps) {
+  const { rewindTo, scrubTo, previewVersion, headVersion } = useRunner();
   const [expanded, setExpanded] = useState(false);
   const showPayload = hasPayload(entry.payload);
+  const isActive = previewVersion === version;
+  const isHead = version === headVersion;
 
   return (
-    <li className="group px-4 py-2 text-xs">
+    <li
+      onClick={() => scrubTo(isHead ? null : version)}
+      className={`group cursor-pointer px-4 py-2 text-xs transition-colors ${
+        isActive ? 'bg-blue-50 dark:bg-blue-950/40' : 'hover:bg-muted/50'
+      }`}
+      title={isHead ? 'Latest step' : `Preview v${version}`}
+    >
       <div className="flex items-baseline gap-1.5">
         {showPayload ? (
           <button
             type="button"
-            onClick={() => setExpanded((v) => !v)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setExpanded((v) => !v);
+            }}
             className="text-muted-foreground/60 hover:text-foreground -ml-1 shrink-0 self-center"
             title={expanded ? 'Hide payload' : 'Show payload'}
           >
@@ -51,9 +60,12 @@ function HistoryRow({ entry, version, isHead }: RowProps) {
         {!isHead && (
           <button
             type="button"
-            onClick={() => void rewindTo(version)}
+            onClick={(e) => {
+              e.stopPropagation();
+              void rewindTo(version);
+            }}
             className="text-muted-foreground/50 hover:text-foreground shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
-            title={`Rewind run to v${version}`}
+            title={`Rewind run to v${version} (discards later steps)`}
           >
             <Undo2 className="h-3 w-3" />
           </button>
@@ -110,7 +122,7 @@ export function HistoryPanel() {
       <ul className="divide-border divide-y">
         {entries.map((entry, i) => {
           const version = total - i;
-          return <HistoryRow key={version} entry={entry} version={version} isHead={i === 0} />;
+          return <HistoryRow key={version} entry={entry} version={version} />;
         })}
       </ul>
     </ScrollArea>

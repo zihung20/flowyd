@@ -12,6 +12,18 @@ export interface RunnerContextValue {
    * branch off and dispatch different actions from an earlier point.
    */
   rewindTo: (version: number) => Promise<void>;
+  /**
+   * Move the scrub playhead for non-destructive time-travel. Pass a past version
+   * to preview it read-only (the live run is untouched), or `null` to return to
+   * the live head. `snapshot` reflects the playhead position.
+   */
+  scrubTo: (version: number | null) => void;
+  /** Current scrub position — `null` when following the live head. */
+  previewVersion: number | null;
+  /** The live instance's current version (the rightmost point on the timeline). */
+  headVersion: number;
+  /** True while `snapshot` is a past version rather than the live head. */
+  isPreviewing: boolean;
   lastError: string | null;
   reset: () => void;
 }
