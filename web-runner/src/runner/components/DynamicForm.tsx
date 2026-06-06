@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { describeSchema } from '../../lib/zod-introspect';
 import type { FieldDescriptor } from '../../lib/zod-introspect';
 import { useRunner } from '../context';
@@ -131,7 +131,11 @@ function coercePayload(
   return out;
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+function randomItem<T>(arr: T[]): T | undefined {
+  if (arr.length === 0) return undefined;
+  const idx = Math.floor(Math.random() * arr.length);
+  return arr[idx];
+}
 
 export function DynamicForm() {
   const {
@@ -145,7 +149,7 @@ export function DynamicForm() {
   } = useRunner();
 
   const [selectedAction, setSelectedAction] = useState<string>(
-    () => availableActions[Math.floor(Math.random() * availableActions.length)] ?? '',
+    () => randomItem(availableActions) ?? '',
   );
   const [textValues, setTextValues] = useState<Record<string, string>>(
     () => defaultsFor(selectedAction).text,
@@ -170,18 +174,21 @@ export function DynamicForm() {
     setNumValues(num);
   }
 
-  // When the available set changes (after a dispatch, or while scrubbing) and the
-  // current pick is no longer valid, switch to a valid one — adjusted during
-  // render rather than in an effect (https://react.dev/learn/you-might-not-need-an-effect).
-  const [trackedActions, setTrackedActions] = useState(availableActions);
-  if (trackedActions !== availableActions) {
-    setTrackedActions(availableActions);
-    if (availableActions.length > 0 && !availableActions.includes(selectedAction)) {
-      const next = availableActions[0] ?? '';
-      setSelectedAction(next);
-      applyDefaults(next);
+  useEffect(() => {
+    applyDefaults(selectedAction);
+  }, []);
+
+  // Keep the current selection while it stays valid — only switch (and reseed
+  // defaults) when it leaves the available set. This avoids re-picking an action
+  // on every render, which made the form flicker while scrubbing the timeline.
+  useEffect(() => {
+    if (availableActions.length === 0 || availableActions.includes(selectedAction)) {
+      return;
     }
-  }
+    const next = randomItem(availableActions) ?? '';
+    setSelectedAction(next);
+    applyDefaults(next);
+  }, [availableActions]);
 
   function handleActionChange(action: string) {
     setSelectedAction(action);
