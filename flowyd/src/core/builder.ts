@@ -10,17 +10,14 @@ import type {
   AnyState,
   StateHooks,
   HookFn,
+  JoinMode,
 } from '../types/index.js';
-import type { JoinMode } from '../types/state.js';
 import { StateKind } from '../types/index.js';
 import { parseDuration } from './utils.js';
 import { StateRegistry } from './registry.js';
 import { Workflow } from './workflow.js';
 import { FnGuard } from '../guards/index.js';
-import { StepState } from '../states/step-state.js';
-import { ForkState } from '../states/fork-state.js';
-import { JoinState } from '../states/join-state.js';
-import { WaitState } from '../states/wait-state.js';
+import { StepState, ForkState, JoinState, WaitState } from '../states/index.js';
 
 /**
  * Argument to {@link WorkflowBuilder.addTransition}: a directed edge triggered
