@@ -43,7 +43,8 @@ cd ../web-runner && pnpm dev   # → http://localhost:5173
 ```sh
 # Install and build everything
 cd flowyd && pnpm install && pnpm build
+cd ../docs        && pnpm install   # standalone VitePress site — pnpm dev / pnpm build
 cd ../web-runner  && pnpm install
 ```
 
-See [Contributing](./flowyd/docs/dev/contributing.md) for the full development guide.
+See [Contributing](./docs/dev/contributing.md) for the full development guide.

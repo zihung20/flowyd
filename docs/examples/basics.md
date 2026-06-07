@@ -16,7 +16,7 @@ import { createWorkflow } from 'flowyd';
 import { MermaidExporter } from 'flowyd/visualization';
 ```
 
-<<< ../../examples/01-document-approval-basics.ts#example
+<<< ../../flowyd/examples/01-document-approval-basics.ts#example
 
 ## What to notice
 

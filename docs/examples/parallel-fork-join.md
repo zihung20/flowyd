@@ -16,7 +16,7 @@ import { createWorkflow, Guard, StateStatus } from 'flowyd';
 import { MermaidExporter } from 'flowyd/visualization';
 ```
 
-<<< ../../examples/03-parallel-fork-join.ts#example
+<<< ../../flowyd/examples/03-parallel-fork-join.ts#example
 
 ## What to notice
 

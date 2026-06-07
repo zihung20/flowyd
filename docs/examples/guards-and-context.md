@@ -15,7 +15,7 @@ import { z } from 'zod';
 import { createWorkflow, Guard } from 'flowyd';
 ```
 
-<<< ../../examples/02-guards-and-context.ts#example
+<<< ../../flowyd/examples/02-guards-and-context.ts#example
 
 ## What to notice
 

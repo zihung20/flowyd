@@ -31,7 +31,7 @@ const TARGETS: readonly MapTarget[] = [
   { label: 'CLAUDE.md §2', path: resolve(FLOWYD_ROOT, '..', 'CLAUDE.md'), exhaustive: false },
   {
     label: 'docs/dev/architecture.md',
-    path: join(FLOWYD_ROOT, 'docs/dev/architecture.md'),
+    path: resolve(FLOWYD_ROOT, '..', 'docs/dev/architecture.md'),
     exhaustive: true,
   },
 ];

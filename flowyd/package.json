@@ -47,11 +47,7 @@
     "format:check": "prettier --check .",
     "lint": "eslint src tests",
     "lint:fix": "eslint src tests --fix",
-    "check:filemap": "node scripts/check-file-map.ts",
-    "docs:diagrams": "tsx scripts/gen-example-diagrams.ts",
-    "docs:dev": "pnpm docs:diagrams && vitepress dev docs --port 6060",
-    "docs:build": "pnpm docs:diagrams && vitepress build docs",
-    "docs:preview": "vitepress preview docs --port 6060"
+    "check:filemap": "node scripts/check-file-map.ts"
   },
   "engines": {
     "node": ">=24"
@@ -63,22 +59,14 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@braintree/sanitize-url": "^7.1.2",
     "@types/node": "^24.0.0",
     "@typescript-eslint/eslint-plugin": "^8.60.0",
     "@typescript-eslint/parser": "^8.60.0",
-    "cytoscape": "^3.34.0",
-    "cytoscape-cose-bilkent": "^4.1.0",
-    "dayjs": "^1.11.21",
-    "debug": "^4.4.3",
     "eslint": "^8.57.0",
-    "mermaid": "^11.15.0",
     "prettier": "^3.8.3",
     "tsdown": "^0.22.1",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
-    "vitepress": "^1.6.4",
-    "vitepress-plugin-mermaid": "^2.0.17",
     "vitest": "^3.2.6",
     "zod": "^3.23.8"
   }

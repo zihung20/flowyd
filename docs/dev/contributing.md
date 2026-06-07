@@ -57,8 +57,13 @@ pnpm test:integration
 pnpm test:e2e
 pnpm test:watch     # Vitest watch mode
 pnpm build          # production build → dist/
-pnpm docs:dev       # VitePress dev server
-pnpm docs:build     # VitePress production build
+```
+
+The documentation site is a separate package in `../docs/` (run from there):
+
+```sh
+pnpm dev            # VitePress dev server
+pnpm build          # VitePress production build
 ```
 
 ## Before opening a PR

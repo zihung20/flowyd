@@ -74,6 +74,7 @@ jobs:
           cache: pnpm
           cache-dependency-path: |
             flowyd/pnpm-lock.yaml
+            docs/pnpm-lock.yaml
             web-runner/pnpm-lock.yaml
 
       - name: Install flowyd dependencies
@@ -84,9 +85,13 @@ jobs:
         working-directory: flowyd
         run: pnpm build
 
+      - name: Install docs dependencies
+        working-directory: docs
+        run: pnpm install --frozen-lockfile
+
       - name: Build docs
-        working-directory: flowyd
-        run: pnpm docs:build
+        working-directory: docs
+        run: pnpm build
 
       - name: Install web-runner dependencies
         working-directory: web-runner
@@ -97,11 +102,11 @@ jobs:
         run: pnpm build:pages
 
       - name: Copy playground into docs
-        run: cp -r web-runner/dist flowyd/docs/.vitepress/dist/playground
+        run: cp -r web-runner/dist docs/.vitepress/dist/playground
 
       - uses: actions/upload-pages-artifact@v5
         with:
-          path: flowyd/docs/.vitepress/dist
+          path: docs/.vitepress/dist
 
       - name: Deploy to GitHub Pages
         id: deployment

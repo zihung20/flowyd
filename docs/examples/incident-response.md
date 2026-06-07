@@ -23,7 +23,7 @@ import {
 import { JsonGraphExporter } from 'flowyd/visualization';
 ```
 
-<<< ../../examples/06-incident-response.ts#example
+<<< ../../flowyd/examples/06-incident-response.ts#example
 
 ## What to notice
 

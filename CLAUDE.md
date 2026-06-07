@@ -11,7 +11,7 @@ This file is the authoritative reference for every agent and developer working i
 **Companion apps (not in this directory):**
 
 - `../web-runner/` — React SPA (Vite + Tailwind + @xyflow/react) that visualises and drives workflows in the browser. Always run `pnpm build` in this directory before starting the web runner.
-- `docs/` — VitePress documentation site (Diátaxis structure). Run with `pnpm docs:dev`.
+- `../docs/` — standalone VitePress documentation site (`flowyd-docs` package, Diátaxis structure). It consumes this library via `file:../flowyd` and reads the example sources here directly. From that directory: `pnpm install`, then `pnpm dev` (or `pnpm build`). Doc-only dependencies (vitepress, mermaid, etc.) live there, not in this library.
 
 ---
 
@@ -62,7 +62,7 @@ src/
 - `"."` → `dist/index.js` — core library
 - `"./visualization"` → `dist/visualization/index.js` — visualization (tree-shakeable)
 
-> This file map and the one in `docs/dev/architecture.md` are machine-checked against `src/` by `pnpm check:filemap` (`scripts/check-file-map.ts`, run directly via Node 24 type-stripping). It fails CI if a map names a `.ts` file that no longer exists, or if a new source file is missing from the architecture map. Run `node scripts/check-file-map.ts --print` to dump the canonical tree.
+> This file map and the one in `../docs/dev/architecture.md` (now in the standalone docs package) are machine-checked against `src/` by `pnpm check:filemap` (`scripts/check-file-map.ts`, run directly via Node 24 type-stripping). It fails CI if a map names a `.ts` file that no longer exists, or if a new source file is missing from the architecture map. Run `node scripts/check-file-map.ts --print` to dump the canonical tree.
 
 ---
 
@@ -313,3 +313,6 @@ After every code change:
 
 ### [builder import cleanup] (2026-06-07)
 - `core/builder.ts` now imports every dependency through its layer barrel for consistency: `JoinMode` was being pulled directly from `../types/state.js` (folded into the existing `../types/index.js` `import type {…}` block, which already re-exports it), and the four state classes (`StepState`/`ForkState`/`JoinState`/`WaitState`) were each imported from their own `../states/*-state.js` file (collapsed into one `../states/index.js` barrel import, matching how `FnGuard` already came from `../guards/index.js`). Pure consistency, no behavior/API change. Full `lint && check:filemap && typecheck && test && build` gate clean; 272 tests pass.
+
+### [docs extracted to standalone package] (2026-06-07)
+- Moved the VitePress site out of `flowyd/docs/` into a new sibling package `../docs/` (`flowyd-docs`, private), peer to `web-runner/`, so doc-only deps stop polluting the library. Removed 8 devDeps from `flowyd/package.json` (`@braintree/sanitize-url`, `cytoscape`, `cytoscape-cose-bilkent`, `dayjs`, `debug`, `mermaid`, `vitepress`, `vitepress-plugin-mermaid` — 209 packages pruned) and the four `docs:*` scripts; they now live in `docs/package.json`, which depends on `flowyd` via `file:../flowyd`. `gen-example-diagrams.ts` moved to `docs/scripts/` with imports repointed to `../../flowyd/src/visualization/index.js` + `../../flowyd/examples/*.js` (stays on library *source*, so `docs:diagrams` needs no prior build) and output to `../examples/diagrams`. The seven `<<<` example includes in `docs/examples/*.md` now read `../../flowyd/examples/NN-*.ts#example`. **Examples stay in `flowyd/`** — they import library source and are part of its `tsconfig` `include`. `check-file-map.ts` repointed its `architecture.md` target to `resolve(FLOWYD_ROOT, '..', 'docs/dev/architecture.md')`; VitePress ignore section removed from `flowyd/.gitignore` (now in `docs/.gitignore`). CI `deploy-docs` job builds/uploads from `docs/` instead of `flowyd/docs/`. Verified: docs `pnpm install && pnpm build` clean (7 diagrams generated, cross-folder includes resolve); flowyd `lint && check:filemap && typecheck && test && build` clean, 272 tests pass.

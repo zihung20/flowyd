@@ -22,7 +22,7 @@ import {
 import { MermaidExporter, JsonGraphExporter } from 'flowyd/visualization';
 ```
 
-<<< ../../examples/05-loan-origination.ts#example
+<<< ../../flowyd/examples/05-loan-origination.ts#example
 
 ## What to notice
 

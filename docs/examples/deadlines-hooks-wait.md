@@ -15,7 +15,7 @@ import { z } from 'zod';
 import { createWorkflow, type HookContext } from 'flowyd';
 ```
 
-<<< ../../examples/04-deadlines-hooks-wait.ts#example
+<<< ../../flowyd/examples/04-deadlines-hooks-wait.ts#example
 
 ## What to notice
 

@@ -1,10 +1,10 @@
 /**
  * Generates a Mermaid diagram partial for each example page from the example's
  * own exported workflow — the single source of truth. Run by `pnpm docs:diagrams`
- * (which `docs:dev` / `docs:build` invoke first), so the rendered diagrams can
+ * (which `pnpm dev` / `pnpm build` invoke first), so the rendered diagrams can
  * never drift from the code in `examples/`.
  *
- * Output: `docs/examples/diagrams/<slug>.md`, each a fenced ```mermaid block the
+ * Output: `examples/diagrams/<slug>.md`, each a fenced ```mermaid block the
  * matching page includes with `<!--@include: ./diagrams/<slug>.md-->`.
  *
  * Run directly with:  tsx scripts/gen-example-diagrams.ts
@@ -14,15 +14,15 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { MermaidExporter } from '../src/visualization/index.js';
+import { MermaidExporter } from '../../flowyd/src/visualization/index.js';
 
-import { approval } from '../examples/01-document-approval-basics.js';
-import { reimbursement } from '../examples/02-guards-and-context.js';
-import { peerReview } from '../examples/03-parallel-fork-join.js';
-import { ticket } from '../examples/04-deadlines-hooks-wait.js';
-import { loan } from '../examples/05-loan-origination.js';
-import { incident } from '../examples/06-incident-response.js';
-import { onboardingWorkflow } from '../examples/07-dynamic-workflow.js';
+import { approval } from '../../flowyd/examples/01-document-approval-basics.js';
+import { reimbursement } from '../../flowyd/examples/02-guards-and-context.js';
+import { peerReview } from '../../flowyd/examples/03-parallel-fork-join.js';
+import { ticket } from '../../flowyd/examples/04-deadlines-hooks-wait.js';
+import { loan } from '../../flowyd/examples/05-loan-origination.js';
+import { incident } from '../../flowyd/examples/06-incident-response.js';
+import { onboardingWorkflow } from '../../flowyd/examples/07-dynamic-workflow.js';
 
 // Page slug → the workflow whose diagram that page shows.
 const diagrams = [
@@ -36,7 +36,7 @@ const diagrams = [
 ];
 
 const here = dirname(fileURLToPath(import.meta.url));
-const outDir = join(here, '../docs/examples/diagrams');
+const outDir = join(here, '../examples/diagrams');
 mkdirSync(outDir, { recursive: true });
 
 for (const { slug, def } of diagrams) {
@@ -50,4 +50,4 @@ ${mermaid}
   writeFileSync(join(outDir, `${slug}.md`), md);
 }
 
-console.log(`Generated ${diagrams.length} diagram partials in docs/examples/diagrams/`);
+console.log(`Generated ${diagrams.length} diagram partials in examples/diagrams/`);

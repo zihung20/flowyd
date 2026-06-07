@@ -18,7 +18,7 @@ import { createDynamicWorkflow } from 'flowyd';
 import { MermaidExporter } from 'flowyd/visualization';
 ```
 
-<<< ../../examples/07-dynamic-workflow.ts#example
+<<< ../../flowyd/examples/07-dynamic-workflow.ts#example
 
 ## What to notice
 

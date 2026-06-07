@@ -1,0 +1,8 @@
+node_modules/
+
+# VitePress
+.vitepress/cache/
+.vitepress/dist/
+
+# OS artefacts
+.DS_Store
