@@ -92,9 +92,11 @@ describe('WaitState SOP — vendor onboarding', () => {
     await inst.dispatch('SUBMIT', {});
     inst.resolveWait('kyc-check');
     const history = inst.getSnapshot().history;
-    const resolveEntry = history.find((e) => e.action.startsWith('__resolve_wait'));
+    const resolveEntry = history.find((e) => e.kind === 'resolve-wait');
     expect(resolveEntry).toBeDefined();
-    expect(resolveEntry?.action).toBe('__resolve_wait:kyc-check');
+    if (resolveEntry?.kind === 'resolve-wait') {
+      expect(resolveEntry.stateId).toBe('kyc-check');
+    }
   });
 
   it('stamps the resolve history entry with an injected now', async () => {
@@ -103,7 +105,7 @@ describe('WaitState SOP — vendor onboarding', () => {
     const at = new Date('2026-06-06T08:30:00.000Z');
     inst.resolveWait('kyc-check', { now: at });
     const snap = inst.getSnapshot();
-    const resolveEntry = snap.history.find((e) => e.action.startsWith('__resolve_wait'));
+    const resolveEntry = snap.history.find((e) => e.kind === 'resolve-wait');
     expect(resolveEntry?.at).toBe('2026-06-06T08:30:00.000Z');
     expect(snap.updatedAt).toBe('2026-06-06T08:30:00.000Z');
   });

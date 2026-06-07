@@ -48,8 +48,20 @@
  */
 
 import { z } from 'zod';
-import { createWorkflow, Guard } from '../src/index.js';
+import { createWorkflow, Guard, type HistoryEntry } from '../src/index.js';
 import { MermaidExporter, JsonGraphExporter } from '../src/visualization/index.js';
+
+/** One-line label for an audit-trail entry, narrowing on its discriminated kind. */
+function historyLabel(h: HistoryEntry): string {
+  switch (h.kind) {
+    case 'action':
+      return h.action;
+    case 'timeout':
+      return `${h.from}→${h.to} (deadline)`;
+    case 'resolve-wait':
+      return `resolve:${h.stateId}`;
+  }
+}
 
 // ─── Domain types (roles come in via JWT/session in a real system) ─────────────
 
@@ -381,7 +393,7 @@ async function runDisruptionSop() {
   console.log(`  Terminal    : ${inst.isTerminal()}`);
   console.log(`  Version     : ${snap.version}`);
   console.log(`  Steps taken : ${snap.history.length}`);
-  console.log(`  Actions     : ${snap.history.map((h) => h.action).join(' → ')}`);
+  console.log(`  Actions     : ${snap.history.map(historyLabel).join(' → ')}`);
 
   // ── Guard block demo ─────────────────────────────────────────────────────────
   console.log('\n=== Guard demo: station master cannot verify an incident ===\n');

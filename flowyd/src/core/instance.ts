@@ -294,8 +294,8 @@ export class WorkflowInstance<
 
     const ctx = this.snapshot.context;
     const historyEntry: HistoryEntry<TContext, TStates> = {
-      action: `__resolve_wait:${stateId}`,
-      payload: null,
+      kind: 'resolve-wait',
+      stateId,
       exitedStates: [],
       enteredStates: [stateId],
       at: now.toISOString(),
@@ -526,7 +526,7 @@ export class WorkflowInstance<
       for (const id of entry.exitedStates) {
         stateStatuses.set(id, StateStatus.Completed);
       }
-      const isResolvingWait = entry.action.startsWith('__resolve_wait:');
+      const isResolvingWait = entry.kind === 'resolve-wait';
       for (const id of entry.enteredStates) {
         const state = this.definition.states.get(id);
         const isEnteringWait = !isResolvingWait && state?.kind === StateKind.Wait;

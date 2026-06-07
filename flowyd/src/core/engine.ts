@@ -133,6 +133,7 @@ export class WorkflowEngine {
 
     // HistoryEntry.action is string; TAction extends string so this assignment is valid.
     const historyEntry: HistoryEntry<TContext, TStates> = {
+      kind: 'action',
       action,
       payload,
       exitedStates: result.exitedStates,
@@ -168,8 +169,10 @@ export class WorkflowEngine {
    * `active` or `waiting` (a timed edge is how a `WaitState` times out).
    *
    * The resulting history entry is stamped with `at` (the logical due time, not
-   * wall-clock) and a synthetic action `__timeout:<from>-><to>` so the audit
-   * trail distinguishes deadline firings from human actions.
+   * wall-clock) and recorded as `kind: 'timeout'` carrying `from`/`to`, so the
+   * audit trail distinguishes deadline firings from human actions without any
+   * magic-string parsing. (The returned `DispatchResult.action` still echoes a
+   * synthetic `__timeout:<from>-><to>` label for blocked-result diagnostics.)
    *
    * @param definition      - The immutable compiled workflow graph.
    * @param instanceState   - Read-only view of the current instance state.
@@ -235,8 +238,9 @@ export class WorkflowEngine {
     );
 
     const historyEntry: HistoryEntry<TContext, TStates> = {
-      action,
-      payload: null,
+      kind: 'timeout',
+      from: transition.from,
+      to: transition.to,
       exitedStates: result.exitedStates,
       enteredStates: result.enteredStates,
       at,

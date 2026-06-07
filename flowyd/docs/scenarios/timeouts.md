@@ -37,7 +37,7 @@ For "an action **or** a deadline to the same place", just declare two transition
 .addTransition({ from: 'pending-approval', to: 'escalated', after: '48h' })
 ```
 
-The audit history records which path fired: a real action (`ESCALATE`) vs. a deadline (`__timeout:pending-approval->escalated`).
+The audit history records which path fired, discriminated by `kind`: a real action (`{ kind: 'action', action: 'ESCALATE' }`) vs. a deadline (`{ kind: 'timeout', from: 'pending-approval', to: 'escalated' }`).
 
 ## The host owns the clock
 

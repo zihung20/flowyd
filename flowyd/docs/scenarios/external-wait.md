@@ -77,7 +77,7 @@ inst.resolveWait(
 
 - Promotes the named state from `waiting` → `active`
 - Increments `snapshot.version`
-- Appends a `__resolve_wait:<stateId>` entry to the audit history
+- Appends a `{ kind: 'resolve-wait', stateId }` entry to the audit history
 - `options.now` stamps the history entry (defaults to `new Date()`; pass it for deterministic replay/testing)
 
 To record what the external process returned, put it in the payload of the action you dispatch next to leave the wait state — that payload is recorded in the audit history.

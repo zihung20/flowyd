@@ -1,13 +1,7 @@
 import { createWorkflow, createDynamicWorkflow, Guard, StateKind, StateStatus } from 'flowyd';
 import { z } from 'zod';
-import type { WorkflowDefinition, DispatchResult, InstanceSnapshot } from 'flowyd';
-
-type AnyInstance = {
-  dispatch(action: string, payload: unknown): Promise<DispatchResult>;
-  getSnapshot(): InstanceSnapshot;
-  rewind(version: number): InstanceSnapshot;
-  injectGuard(name: string, fn: () => boolean | Promise<boolean>): unknown;
-};
+import type { WorkflowDefinition } from 'flowyd';
+import type { AnyInstance } from './types';
 
 type RunWorkflow = {
   getDefinition(): WorkflowDefinition;

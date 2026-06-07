@@ -34,7 +34,9 @@
       "Bash(pnpm tsc *)",
       "Bash(xargs ls -la)",
       "Bash(pnpm tsx *)",
-      "Bash(npm view *)"
+      "Bash(npm view *)",
+      "Read(//Users/zihung20/Desktop/flowyd/dist/visualization/**)",
+      "Read(//Users/zihung20/Desktop/flowyd/dist/core/**)"
     ]
   }
 }

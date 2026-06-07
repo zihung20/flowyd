@@ -33,8 +33,20 @@
  */
 
 import { z } from 'zod';
-import { createWorkflow } from '../src/index.js';
+import { createWorkflow, type HistoryEntry } from '../src/index.js';
 import { MermaidExporter } from '../src/visualization/index.js';
+
+/** One-line label for an audit-trail entry, narrowing on its discriminated kind. */
+function historyLabel(h: HistoryEntry): string {
+  switch (h.kind) {
+    case 'action':
+      return h.action;
+    case 'timeout':
+      return `${h.from}→${h.to} (deadline)`;
+    case 'resolve-wait':
+      return `resolve:${h.stateId}`;
+  }
+}
 
 // ─── Schema definitions ───────────────────────────────────────────────────────
 
@@ -214,7 +226,7 @@ async function runStationOpening() {
     const entered = entry.enteredStates.join(', ') || '—';
     const exited = entry.exitedStates.join(', ') || '—';
     console.log(
-      `  [v${String(finalSnap.history.indexOf(entry) + 1).padStart(2, '0')}] ${entry.action.padEnd(26)} exited: ${exited.padEnd(20)} entered: ${entered}`,
+      `  [v${String(finalSnap.history.indexOf(entry) + 1).padStart(2, '0')}] ${historyLabel(entry).padEnd(26)} exited: ${exited.padEnd(20)} entered: ${entered}`,
     );
   }
   console.log(`\n  Total history entries : ${finalSnap.history.length}`);

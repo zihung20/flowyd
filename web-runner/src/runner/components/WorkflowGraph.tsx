@@ -6,6 +6,7 @@ import type { JsonGraphNode, JsonGraphEdge } from 'flowyd/visualization';
 import { FlowNode } from '../../components/FlowNode';
 import type { FlowNodeData } from '../../components/FlowNode';
 import { buildFlowEdge } from '../../lib/flowEdgeStyles';
+import { formatDuration } from '../../lib/formatDuration';
 import type { JsonGraph } from 'flowyd/visualization';
 import { useRunner } from '../context';
 import { useTheme } from '../../context/ThemeContext';
@@ -130,7 +131,9 @@ function toFlowEdges(graph: JsonGraph, dark: boolean, cache: Map<string, EdgeCac
   return graph.edges.map((e) => {
     const active = statusById.get(e.from) === 'active';
     const dashed = e.hasGuard ?? false;
-    const sig = `${e.from}|${e.to}|${e.kind}|${e.action ?? ''}|${active}|${dashed}|${dark}`;
+    const timed = e.after !== undefined;
+    const label = timed ? `after ${formatDuration(e.after as number)}` : (e.action ?? '');
+    const sig = `${e.from}|${e.to}|${e.kind}|${label}|${active}|${dashed}|${timed}|${dark}`;
     const hit = cache.get(e.id);
     if (hit && hit.sig === sig) {
       return hit.edge;
@@ -141,9 +144,10 @@ function toFlowEdges(graph: JsonGraph, dark: boolean, cache: Map<string, EdgeCac
         from: e.from,
         to: e.to,
         kind: e.kind as 'fork-target' | 'join-requires' | 'transition',
-        label: e.action ?? '',
+        label,
         active,
         ...(dashed ? { dashed: true } : {}),
+        ...(timed ? { timed: true } : {}),
       },
       dark,
     );

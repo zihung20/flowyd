@@ -1,9 +1,22 @@
 import { useEffect, useState } from 'react';
 import { Pause, Play, Radio, SkipBack, SkipForward } from 'lucide-react';
+import type { HistoryEntry } from 'flowyd';
 import { useRunner } from '../context';
 import { Button } from '@/components/ui/button';
 
 const FRAME_MS = 850;
+
+/** Short caption for a history entry, narrowing on its discriminated kind. */
+function entryLabel(entry: HistoryEntry): string {
+  switch (entry.kind) {
+    case 'action':
+      return entry.action;
+    case 'timeout':
+      return 'deadline';
+    case 'resolve-wait':
+      return `resolve ${entry.stateId}`;
+  }
+}
 
 /** Video-style scrubber: drag, step, or play through past versions of the run. */
 export function TimelineBar() {
@@ -54,10 +67,9 @@ export function TimelineBar() {
   const atStart = position <= 0;
   const atLive = position >= headVersion;
 
+  const lastEntry = snapshot.history[snapshot.history.length - 1];
   const frameLabel =
-    position === 0
-      ? 'initial'
-      : (snapshot.history[snapshot.history.length - 1]?.action ?? `v${position}`);
+    position === 0 ? 'initial' : lastEntry ? entryLabel(lastEntry) : `v${position}`;
 
   return (
     <div className="border-border bg-background flex items-center gap-3 border-t px-4 py-2.5">

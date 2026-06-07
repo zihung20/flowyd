@@ -24,7 +24,7 @@ The compiler catches every typo in a state ID, every wrong action name, and ever
 
 ## `web-runner/` — the browser UI
 
-A React SPA (Vite + Tailwind + shadcn/ui + React Flow) that visualises and drives workflows in the browser. Not published to npm — used for local development and demonstration. The run panel shows each dispatched action's payload in an expandable history, and a video-style timeline scrubber lets you drag a playhead (or press Play) to time-travel through every version of a run; dispatching from a past step branches the run from there.
+A React SPA (Vite + Tailwind + shadcn/ui + React Flow) that visualises and drives workflows in the browser. Not published to npm — used for local development and demonstration. The run panel shows each dispatched action's payload in an expandable history, and a video-style timeline scrubber lets you drag a playhead (or press Play) to time-travel through every version of a run; dispatching from a past step branches the run from there. Time-triggered transitions (deadlines) render as amber dashed `after <duration>` edges; when a deadline is armed a "Skip ahead" clock control jumps the run to that instant and fires it, and the firing shows up in history as a `deadline` event. The Purchase Order example carries a 48h escalation SLA to demonstrate it.
 
 UI components are provided by **shadcn/ui** — see `web-runner/components.json` for configuration. Add new components with `pnpm dlx shadcn@latest add <component>` inside `web-runner/`. Iconography is **lucide-react** throughout — no emoji or Unicode-glyph icons; reach for a lucide icon component instead.
 

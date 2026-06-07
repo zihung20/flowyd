@@ -1,9 +1,11 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
-import type { DispatchResult, InstanceSnapshot, WorkflowDefinition } from 'flowyd';
+import type { InstanceSnapshot, WorkflowDefinition } from 'flowyd';
 import { RunnerContext } from './context';
+import type { AnyInstance } from '../lib/types';
 import { WorkflowGraph } from './components/WorkflowGraph';
 import { DynamicForm } from './components/DynamicForm';
 import { HistoryPanel } from './components/HistoryPanel';
+import { ClockControl } from './components/ClockControl';
 import { TimelineBar } from './components/TimelineBar';
 import { RunnerToolbar } from './RunnerToolbar';
 
@@ -25,14 +27,6 @@ function formatDispatchError(err: unknown): string {
   }
   return err instanceof Error ? err.message : String(err);
 }
-
-type AnyInstance = {
-  dispatch(action: string, payload: unknown): Promise<DispatchResult>;
-  getSnapshot(): InstanceSnapshot;
-  /** Pure read — returns a detached snapshot for any past version without mutating the instance. */
-  rewind(version: number): InstanceSnapshot;
-  injectGuard(name: string, fn: () => boolean | Promise<boolean>): unknown;
-};
 
 interface Props {
   title: string;
@@ -77,24 +71,38 @@ export function SingleRunner({ title, subtitle, definition, makeInstance }: Prop
   }, [previewVersion, liveSnapshot]);
 
   // Stable identity per version so the dispatch form doesn't re-fire on every scrub tick.
+  // Timed transitions (deadlines) carry no `on` action — they fire from the clock,
+  // not the form — so they're excluded here.
   const availableActions = useMemo(
     () =>
       definition.transitions
-        .filter((t) => snapshot.stateStatuses[t.from] === 'active')
-        .map((t) => t.on)
+        .filter((t) => t.on !== undefined && snapshot.stateStatuses[t.from] === 'active')
+        .map((t) => t.on as string)
         .filter((v, i, a) => a.indexOf(v) === i),
     [definition, snapshot],
   );
 
   // Moving the live run to a past version: rebuild from the factory (re-injecting
-  // guards) and replay its recorded actions, since rewind() itself can't mutate.
+  // guards) and replay its recorded entries, since rewind() itself can't mutate.
+  // Each entry is replayed at its recorded logical time so deadlines re-fire
+  // deterministically; timeout entries are clock events, replayed by advancing
+  // time to their instant rather than dispatching an action.
   const replayInto = useCallback(
     async (version: number): Promise<string | null> => {
       const history = instRef.current.getSnapshot().history.slice(0, version);
       const fresh = makeInstance();
       let divergedAt: string | null = null;
       for (const entry of history) {
-        const result = await fresh.dispatch(entry.action, entry.payload);
+        const at = new Date(entry.at);
+        if (entry.kind === 'timeout') {
+          await fresh.tick(at);
+          continue;
+        }
+        // The runner only ever dispatches actions, so resolve-wait entries never occur here.
+        if (entry.kind !== 'action') {
+          continue;
+        }
+        const result = await fresh.dispatch(entry.action, entry.payload, { now: at });
         if (!result.success) {
           divergedAt = `Rewind diverged at ${entry.action}: ${result.reason}`;
           break;
@@ -152,6 +160,24 @@ export function SingleRunner({ title, subtitle, definition, makeInstance }: Prop
     [replayInto],
   );
 
+  // ISO instant of the live run's soonest pending deadline (null when none is
+  // armed). A pure read of the live instance, recomputed each render — and every
+  // mutation (dispatch/tick/reset) re-renders via setLiveSnapshot, so it stays fresh.
+  // eslint-disable-next-line react-hooks/refs -- pure read; reactivity comes from the liveSnapshot state updates
+  const nextDueAt: string | null = instRef.current.getNextDueAt();
+
+  // Push the clock to the next deadline so its timed transition fires
+  const advanceClock = useCallback(async () => {
+    const due = instRef.current.getNextDueAt();
+    if (due === null) {
+      return;
+    }
+    await instRef.current.tick(new Date(due));
+    setPreviewVersion(null);
+    setLiveSnapshot(instRef.current.getSnapshot());
+    setLastError(null);
+  }, []);
+
   const reset = useCallback(() => {
     instRef.current = makeInstance();
     setPreviewVersion(null);
@@ -171,6 +197,8 @@ export function SingleRunner({ title, subtitle, definition, makeInstance }: Prop
         previewVersion,
         headVersion,
         isPreviewing,
+        nextDueAt,
+        advanceClock,
         lastError,
         reset,
       }}
@@ -189,6 +217,7 @@ export function SingleRunner({ title, subtitle, definition, makeInstance }: Prop
         </div>
 
         <div className="border-border bg-background flex w-72 shrink-0 flex-col overflow-hidden border-l">
+          <ClockControl />
           <DynamicForm />
           <HistoryPanel />
         </div>

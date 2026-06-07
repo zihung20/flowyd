@@ -87,24 +87,29 @@ inst.injectGuard('isManager', myGuardFn);
 
 ## Audit history
 
-`snapshot.history` is an append-only array:
+`snapshot.history` is an append-only array. `HistoryEntry` is a **discriminated union** on `kind` — narrow on it to read the per-kind fields, no magic strings to parse:
 
 ```ts
-interface HistoryEntry {
-  action: string; // action name, or '__resolve_wait:<stateId>' for resolveWait calls
-  payload: unknown; // the Zod-validated payload dispatched with the action
+// shared by every entry
+interface BaseHistoryEntry {
   enteredStates: string[];
   exitedStates: string[];
   context?: unknown; // instance context in effect at this transition (used by rewind)
   at: string; // ISO 8601 timestamp
 }
+
+type HistoryEntry =
+  | (BaseHistoryEntry & { kind: 'action'; action: string; payload: unknown })
+  | (BaseHistoryEntry & { kind: 'timeout'; from: string; to: string }) // a deadline fired
+  | (BaseHistoryEntry & { kind: 'resolve-wait'; stateId: string }); // a WaitState was resolved
 ```
 
-Query it directly to produce an audit trail:
+Query it directly to produce an audit trail, narrowing on `kind` for the label:
 
 ```ts
 const trail = inst.getSnapshot().history.map((e) => ({
-  action: e.action,
+  what:
+    e.kind === 'action' ? e.action : e.kind === 'timeout' ? `${e.from}→${e.to}` : `resolve ${e.stateId}`,
   at: e.at,
   from: e.exitedStates,
   to: e.enteredStates,

@@ -125,7 +125,10 @@ describe('Invariant: history accuracy', () => {
     await inst.dispatch('NEXT', {});
     const after = Date.now();
     const entry = inst.getSnapshot().history[0];
-    expect(entry?.action).toBe('NEXT');
+    expect(entry?.kind).toBe('action');
+    if (entry?.kind === 'action') {
+      expect(entry.action).toBe('NEXT');
+    }
     const ts = new Date(entry?.at ?? '').getTime();
     expect(ts).toBeGreaterThanOrEqual(before);
     expect(ts).toBeLessThanOrEqual(after);

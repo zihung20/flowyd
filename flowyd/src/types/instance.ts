@@ -29,17 +29,14 @@ export interface ReadonlyInstanceState<TStates extends string = string> {
 }
 
 /**
- * A single entry in the immutable audit trail of a `WorkflowInstance`.
+ * Fields shared by every audit-trail entry, regardless of what produced the
+ * transition. Each concrete entry adds a `kind` discriminant and its own data.
  *
  * @template TContext - The instance context type, matching the parent
  *                      `InstanceSnapshot`. Defaults to `unknown` for
  *                      type-erased storage (engine, persistence layer).
  */
-export interface HistoryEntry<TContext = unknown, TStates extends string = string> {
-  /** The action name that triggered this transition. */
-  readonly action: string;
-  /** The Zod-validated payload that was dispatched with the action. */
-  readonly payload: unknown;
+interface BaseHistoryEntry<TContext = unknown, TStates extends string = string> {
   /** State IDs that were completed by this transition. */
   readonly exitedStates: readonly TStates[];
   /** State IDs that became active, waiting, or were auto-activated as a result. */
@@ -52,6 +49,58 @@ export interface HistoryEntry<TContext = unknown, TStates extends string = strin
   /** ISO-8601 timestamp of when this transition was applied. */
   readonly at: string;
 }
+
+/**
+ * Audit-trail entry for a human-dispatched action — the result of
+ * `WorkflowInstance.dispatch()`.
+ */
+export interface ActionHistoryEntry<TContext = unknown, TStates extends string = string>
+  extends BaseHistoryEntry<TContext, TStates> {
+  readonly kind: 'action';
+  /** The action name that triggered this transition. */
+  readonly action: string;
+  /** The Zod-validated payload that was dispatched with the action. */
+  readonly payload: unknown;
+}
+
+/**
+ * Audit-trail entry for a time-triggered transition (deadline) that fired via
+ * `WorkflowInstance.tick()` or the auto-advance at the start of `dispatch()`.
+ */
+export interface TimeoutHistoryEntry<TContext = unknown, TStates extends string = string>
+  extends BaseHistoryEntry<TContext, TStates> {
+  readonly kind: 'timeout';
+  /** The state the elapsed deadline fired from. */
+  readonly from: TStates;
+  /** The state the deadline transitioned to. */
+  readonly to: TStates;
+}
+
+/**
+ * Audit-trail entry for an external `WaitState` resolution via
+ * `WorkflowInstance.resolveWait()`.
+ */
+export interface ResolveWaitHistoryEntry<TContext = unknown, TStates extends string = string>
+  extends BaseHistoryEntry<TContext, TStates> {
+  readonly kind: 'resolve-wait';
+  /** The `WaitState` that was promoted from `waiting` to `active`. */
+  readonly stateId: TStates;
+}
+
+/**
+ * A single entry in the immutable audit trail of a `WorkflowInstance`,
+ * discriminated by `kind`: an `'action'` dispatch, a `'timeout'` deadline
+ * firing, or a `'resolve-wait'` external resolution. Narrow on `kind` to read
+ * the per-kind fields — there are no magic-string action conventions to parse.
+ *
+ * @template TContext - The instance context type, matching the parent
+ *                      `InstanceSnapshot`. Defaults to `unknown` for
+ *                      type-erased storage (engine, persistence layer).
+ */
+export type HistoryEntry<TContext = unknown, TStates extends string = string> =
+  | ActionHistoryEntry<TContext, TStates>
+  | TimeoutHistoryEntry<TContext, TStates>
+  | ResolveWaitHistoryEntry<TContext, TStates>;
 
 /**
  * A plain, JSON-serialisable representation of all runtime state for a

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { HistoryEntry } from 'flowyd';
-import { ChevronDown, ChevronRight, Undo2 } from 'lucide-react';
+import { AlarmClock, ChevronDown, ChevronRight, Undo2 } from 'lucide-react';
 import { useRunner } from '../context';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -24,7 +24,8 @@ interface RowProps {
 function HistoryRow({ entry, version }: RowProps) {
   const { rewindTo, scrubTo, previewVersion, headVersion } = useRunner();
   const [expanded, setExpanded] = useState(false);
-  const showPayload = hasPayload(entry.payload);
+  // Only human-dispatched actions carry a payload to disclose.
+  const showPayload = entry.kind === 'action' && hasPayload(entry.payload);
   const isActive = previewVersion === version;
   const isHead = version === headVersion;
 
@@ -53,7 +54,20 @@ function HistoryRow({ entry, version }: RowProps) {
           <span className="w-2 shrink-0" />
         )}
 
-        <span className="text-foreground font-semibold">{entry.action}</span>
+        {entry.kind === 'action' && (
+          <span className="text-foreground font-semibold">{entry.action}</span>
+        )}
+        {entry.kind === 'timeout' && (
+          <span className="flex items-center gap-1 font-semibold text-amber-700 dark:text-amber-400">
+            <AlarmClock className="h-3 w-3" />
+            deadline
+          </span>
+        )}
+        {entry.kind === 'resolve-wait' && (
+          <span className="font-semibold text-sky-700 dark:text-sky-400">
+            resolve {entry.stateId}
+          </span>
+        )}
 
         <span className="text-muted-foreground/50 ml-auto shrink-0 text-[10px]">v{version}</span>
 
@@ -92,7 +106,7 @@ function HistoryRow({ entry, version }: RowProps) {
         </div>
       )}
 
-      {showPayload && expanded && (
+      {entry.kind === 'action' && showPayload && expanded && (
         <pre className="bg-muted/60 text-muted-foreground mt-1.5 ml-3.5 overflow-x-auto rounded p-2 font-mono text-[10px] leading-relaxed">
           {JSON.stringify(entry.payload, null, 2)}
         </pre>

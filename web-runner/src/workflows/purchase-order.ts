@@ -41,10 +41,11 @@ export const purchaseOrderWorkflow = createWorkflow({
   .addStep('under-review', { label: 'Under Review' })
   .addStep('approved', { label: 'Approved' })
   .addStep('rejected', { label: 'Rejected' })
+  .addStep('escalated', { label: 'Escalated' })
   .addStep('fulfilled', { label: 'Fulfilled' })
 
   .setInitial('draft')
-  .setTerminal(['fulfilled', 'rejected'])
+  .setTerminal(['fulfilled', 'rejected', 'escalated'])
 
   .addTransition({ from: 'draft', to: 'submitted', on: 'SUBMIT' })
   .addTransition({ from: 'submitted', to: 'under-review', on: 'REVIEW' })
@@ -55,6 +56,7 @@ export const purchaseOrderWorkflow = createWorkflow({
     guard: (ctx) => ctx.payload.approvedBy.trim().length > 0,
   })
   .addTransition({ from: 'under-review', to: 'rejected', on: 'REJECT' })
+  .addTransition({ from: 'under-review', to: 'escalated', after: '48s' })
   .addTransition({ from: 'approved', to: 'fulfilled', on: 'FULFILL' })
 
   .build();

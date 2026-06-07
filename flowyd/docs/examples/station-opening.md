@@ -194,6 +194,8 @@ async function runStationOpening() {
   // ── Audit trail ──────────────────────────────────────────────────────────
   const finalSnap = restored.getSnapshot();
   for (const entry of finalSnap.history) {
+    // history is discriminated on `kind`; this checklist only records actions
+    if (entry.kind !== 'action') continue;
     console.log(`${entry.action}: exited=${entry.exitedStates}, entered=${entry.enteredStates}`);
   }
   // UNLOCK_PREMISES:       exited=closed,              entered=premises-unlocked

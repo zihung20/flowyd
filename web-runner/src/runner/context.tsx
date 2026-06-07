@@ -16,6 +16,10 @@ export interface RunnerContextValue {
   headVersion: number;
   /** True while `snapshot` is a past version rather than the live head. */
   isPreviewing: boolean;
+  /** ISO instant of the live run's soonest armed deadline, or `null` when none is pending. */
+  nextDueAt: string | null;
+  /** Push the clock to the next deadline so its timed transition fires. */
+  advanceClock: () => Promise<void>;
   lastError: string | null;
   reset: () => void;
 }

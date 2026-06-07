@@ -58,7 +58,11 @@ describe('time-triggered transitions (timeouts)', () => {
 
     await inst.tick(new Date(enteredAt + 50 * HOUR)); // late sweep
     const entry = inst.getSnapshot().history.at(-1)!;
-    expect(entry.action).toBe('__timeout:pending-approval->escalated');
+    expect(entry.kind).toBe('timeout');
+    if (entry.kind === 'timeout') {
+      expect(entry.from).toBe('pending-approval');
+      expect(entry.to).toBe('escalated');
+    }
     expect(entry.exitedStates).toEqual(['pending-approval']);
     expect(entry.enteredStates).toEqual(['escalated']);
     // Stamped with dueAt (48h), not the wall-clock sweep time (50h).

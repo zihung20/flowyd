@@ -93,7 +93,7 @@ async function run() {
 
   console.log(restored.getCurrentStates()); // ['approved']
   console.log(restored.isTerminal()); // true
-  console.log(restored.getSnapshot().history.map((h) => h.action));
+  console.log(restored.getSnapshot().history.map((h) => (h.kind === 'action' ? h.action : h.kind)));
   // ['SUBMIT', 'APPROVE']
 }
 

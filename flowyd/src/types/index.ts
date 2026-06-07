@@ -21,6 +21,9 @@ export type {
 export type {
   ReadonlyInstanceState,
   HistoryEntry,
+  ActionHistoryEntry,
+  TimeoutHistoryEntry,
+  ResolveWaitHistoryEntry,
   InstanceSnapshot,
   TransitionSuccess,
   TransitionBlocked,

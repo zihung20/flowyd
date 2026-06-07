@@ -274,7 +274,10 @@ describe('Engine — history', () => {
     const inst = wf.createInstance('h-003');
     await inst.dispatch('GO', { note: 'hello' });
     const entry = inst.getSnapshot().history[0];
-    expect(entry?.action).toBe('GO');
-    expect(entry?.payload).toMatchObject({ note: 'hello' });
+    expect(entry?.kind).toBe('action');
+    if (entry?.kind === 'action') {
+      expect(entry.action).toBe('GO');
+      expect(entry.payload).toMatchObject({ note: 'hello' });
+    }
   });
 });

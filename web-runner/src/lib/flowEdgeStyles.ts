@@ -11,6 +11,8 @@ export interface EdgeSpec {
   /** Highlight as the live path (source state active) — a static colour, not animation. */
   active?: boolean;
   dashed?: boolean | undefined;
+  /** A deadline edge (fires from the clock, not an action) — drawn amber + dashed. */
+  timed?: boolean | undefined;
 }
 
 /**
@@ -50,6 +52,19 @@ export function buildFlowEdge(spec: EdgeSpec, dark: boolean): Edge {
       label: 'requires',
       animated: false,
       style: { strokeDasharray: '5 3', stroke: '#0ea5e9', strokeWidth: 1.5 },
+      ...sharedLabel,
+    };
+  }
+
+  // Deadline edge — amber and dashed, distinct from action transitions.
+  if (spec.timed) {
+    return {
+      id: spec.id,
+      source: spec.from,
+      target: spec.to,
+      label: spec.label,
+      animated: false,
+      style: { strokeDasharray: '5 3', stroke: '#d97706', strokeWidth: 1.5 },
       ...sharedLabel,
     };
   }

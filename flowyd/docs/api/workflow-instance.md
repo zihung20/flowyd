@@ -104,7 +104,7 @@ tick(now: Date): Promise<number>
 Advances every **time-triggered transition** (deadline) that is due as of `now`, and returns how many fired. The engine has no clock of its own — the host supplies `now` and decides when to call this (a sweep, a catch-up after downtime, a test).
 
 - Fires to a fixed point, so a sweep after long downtime catches up through chained deadlines in due-time order.
-- Each firing is stamped with its **logical** due time (not the wall-clock sweep time), so cascades and the audit trail are reproducible. They appear in history as `__timeout:<from>-><to>`.
+- Each firing is stamped with its **logical** due time (not the wall-clock sweep time), so cascades and the audit trail are reproducible. They appear in history as `{ kind: 'timeout', from, to }` entries.
 - A guard on a timed edge that blocks is retried on the next `tick`, not consumed.
 
 ```ts
@@ -129,7 +129,7 @@ resolveWait(
 ): void
 ```
 
-Promotes a `WaitState` from `waiting` → `active`. Call from your service layer when the external process completes. Increments `snapshot.version` and appends a `__resolve_wait:<stateId>` history entry. To record what the external process returned, put it in the payload of the action you dispatch next to leave the wait state — it lands in the audit history there. `options.now` stamps the history entry (defaults to `new Date()`; pass it for deterministic replay/testing).
+Promotes a `WaitState` from `waiting` → `active`. Call from your service layer when the external process completes. Increments `snapshot.version` and appends a `{ kind: 'resolve-wait', stateId }` history entry. To record what the external process returned, put it in the payload of the action you dispatch next to leave the wait state — it lands in the audit history there. `options.now` stamps the history entry (defaults to `new Date()`; pass it for deterministic replay/testing).
 
 **Throws** if `stateId` is not a `WaitState` or is not currently `waiting`.
 
