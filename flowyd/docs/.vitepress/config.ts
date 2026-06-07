@@ -1,12 +1,26 @@
 import { defineConfig } from 'vitepress';
+import { withMermaid } from 'vitepress-plugin-mermaid';
 
-export default defineConfig({
+export default withMermaid(
+  defineConfig({
   title: 'flowyd',
   description: 'Strongly-typed SOP state machines for TypeScript',
   base: '/flowyd/',
-
+  cleanUrls: true,
+  // Generated diagram partials are included into example pages, not built as their own pages.
+  srcExclude: ['**/diagrams/*.md'],
+  // `withMermaid` adds Mermaid's CommonJS deps (dayjs, cytoscape, etc.) to
+  // optimizeDeps.include, but pnpm doesn't hoist those transitive deps where Vite
+  // can resolve them — so `docs:dev` failed with "does not provide an export named
+  // 'default'". The fix is installing them as direct devDependencies (see
+  // package.json); this block only reinforces the SSR/pre-bundle handling.
+  vite: {
+    optimizeDeps: { include: ['mermaid', 'dayjs'] },
+    ssr: { noExternal: ['mermaid'] },
+  },
   themeConfig: {
     logo: '/logo.svg',
+    outline: { level: [2, 3], label: 'On this page' },
     nav: [
       {
         text: 'User Guide',
@@ -36,10 +50,13 @@ export default defineConfig({
           text: 'Examples',
           items: [
             { text: 'Overview', link: '/examples/' },
-            { text: 'Purchase Order Approval', link: '/examples/approval-flow' },
-            { text: 'Engineer Pre-Departure Checklist', link: '/examples/parallel-inspection' },
-            { text: 'OCC Service Disruption SOP', link: '/examples/disruption-sop' },
-            { text: 'Station Opening Checklist', link: '/examples/station-opening' },
+            { text: '01 · Document Approval (Basics)', link: '/examples/basics' },
+            { text: '02 · Guards & Context', link: '/examples/guards-and-context' },
+            { text: '03 · Parallel Work (Fork/Join)', link: '/examples/parallel-fork-join' },
+            { text: '04 · Deadlines, Hooks & Waiting', link: '/examples/deadlines-hooks-wait' },
+            { text: '05 · Loan Origination', link: '/examples/loan-origination' },
+            { text: '06 · Incident Response', link: '/examples/incident-response' },
+            { text: '07 · Dynamic Workflow', link: '/examples/dynamic-workflow' },
           ],
         },
       ],
@@ -64,7 +81,7 @@ export default defineConfig({
           items: [
             { text: 'Overview', link: '/api/' },
             { text: 'WorkflowBuilder', link: '/api/workflow-builder' },
-            { text: 'WorkflowInstance & DispatchResult', link: '/api/workflow-instance' },
+            { text: 'WorkflowInstance', link: '/api/workflow-instance' },
             { text: 'State Types', link: '/api/state-types' },
             { text: 'Guards', link: '/api/guards' },
             { text: 'Visualization', link: '/api/visualization' },
@@ -95,4 +112,5 @@ export default defineConfig({
       provider: 'local',
     },
   },
-});
+  }),
+);

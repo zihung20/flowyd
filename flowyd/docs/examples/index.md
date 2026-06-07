@@ -1,28 +1,27 @@
 # Examples
 
-Each example is a complete, runnable TypeScript file demonstrating a different combination of workflow features. All code is copy-pasteable.
+A guided ladder from the smallest possible workflow to full, real-world ones. Each page renders a complete, runnable script (the code is imported directly from `flowyd/examples/`, so it never drifts from what actually runs). Read them in order — every example assumes the ones before it.
 
-| Example                                                   | Key features                                                                         |
-| --------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| [Purchase Order Approval](./approval-flow)                | Linear flow, typed Zod payloads, named guards, `getSnapshot` / `restoreInstance`     |
-| [Engineer Pre-Departure Checklist](./parallel-inspection) | `ForkState`, `JoinState mode:'all'`, inline guard with Zod literal                   |
-| [OCC Service Disruption SOP](./disruption-sop)            | Multi-role named guards, fork + join + wait state combined, `JsonGraphExporter`      |
-| [Station Opening Checklist](./station-opening)            | Sequential flow, `canExecute` for UI affordances, snapshot hand-off / crash recovery |
+| # | Example | Tier | Key features |
+|---|---------|------|--------------|
+| 01 | [Document Approval (Basics)](./basics) | Basics | Actions, steps, the graph, dispatch, blocked results, Mermaid |
+| 02 | [Guards & Context](./guards-and-context) | Feature | Typed context, every guard flavour, routing by guard, `canExecute` |
+| 03 | [Parallel Work (Fork/Join)](./parallel-fork-join) | Feature | Fork/join, join modes (`all`/`any`/quorum), auto-complete |
+| 04 | [Deadlines, Hooks & Waiting](./deadlines-hooks-wait) | Feature | `after` deadlines, `tick`/`getNextDueAt`, hooks, wait states |
+| 05 | [Loan Origination](./loan-origination) | Full | Everything together, service-style: snapshot/restore, `rewind`, exporters |
+| 06 | [Incident Response](./incident-response) | Full | Role guards, SLAs (incl. a deadline from a *waiting* state), dashboards |
+| 07 | [Dynamic Workflow](./dynamic-workflow) | Full | `createDynamicWorkflow`: compiling workflows from runtime config |
 
-## How to run an example locally
+## Running the examples
 
-Three of these examples ship as standalone runnable files in `flowyd/examples/`:
+The code on each page is ready to paste into a project that has flowyd installed (`pnpm add flowyd zod`).
 
-| Example                          | File                                          |
-| -------------------------------- | --------------------------------------------- |
-| Engineer Pre-Departure Checklist | `examples/engineer-predeparture-checklist.ts` |
-| OCC Service Disruption SOP       | `examples/occ-disruption-sop.ts`              |
-| Station Opening Checklist        | `examples/station-opening-checklist.ts`       |
+To run the examples themselves, get them from the [GitHub repository](https://github.com/zihung20/flowyd/tree/main/examples):
 
 ```sh
-cd flowyd
-pnpm build
-npx tsx examples/occ-disruption-sop.ts
+git clone https://github.com/zihung20/flowyd.git
+cd flowyd && pnpm install
+npx tsx examples/01-document-approval-basics.ts
 ```
 
-The **Purchase Order Approval** example is the canonical introductory walkthrough — its full source is inline on [its page](./approval-flow) and in the [Installation quick start](../guide/installation), so it has no separate file.
+The [`examples/` directory](https://github.com/zihung20/flowyd/tree/main/examples) also has a README with a full feature-coverage map.

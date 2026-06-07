@@ -1,12 +1,28 @@
-# WorkflowInstance & DispatchResult
+# WorkflowInstance
 
 `WorkflowInstance<TActions, TContext, TStates>` is the mutable runtime object for a single workflow run. Create it via `workflow.createInstance(id)` or `workflow.restoreInstance(snapshot)`.
+
+This page has two parts: the [**methods**](#methods) you call on an instance (what to pass in, and what each returns), and [**`DispatchResult`**](#dispatchresult) — the value every `dispatch` hands back.
 
 ```ts
 import type { WorkflowInstance, InstanceSnapshot, DispatchResult } from 'flowyd';
 ```
 
-## WorkflowInstance methods
+## Methods
+
+Jump to a method by purpose:
+
+| Group | Methods |
+| ----- | ------- |
+| **Run actions** | [`dispatch`](#dispatch-action-payload-options) · [`canExecute`](#canexecute-action-payload) · [`getAvailableTransitions`](#getavailabletransitions) |
+| **Inspect state** | [`getCurrentStates`](#getcurrentstates) · [`getStateStatus`](#getstatestatus-stateid) · [`isTerminal`](#isterminal) |
+| **Context** | [`getContext` / `setContext`](#getcontext-setcontext-data) |
+| **Guards** | [`injectGuard`](#injectguard-name-fn) |
+| **Deadlines (time)** | [`tick`](#tick-now) · [`getNextDueAt`](#getnextdueat) |
+| **Wait states** | [`resolveWait`](#resolvewait-stateid-options) |
+| **Persistence & history** | [`getSnapshot`](#getsnapshot) · [`rewind`](#rewind-version) |
+
+Each method below shows its signature (what to pass in) and what it returns or throws. Guards, deadlines, and context are covered in depth in the [Scenarios](../scenarios/).
 
 ### `dispatch(action, payload, options?)`
 
@@ -152,7 +168,7 @@ Returns an independent, deep-cloned `InstanceSnapshot` reconstructed as of any p
 
 **Throws** if `version` is out of range for this instance's history.
 
-## DispatchResult
+## DispatchResult — what `dispatch` returns {#dispatchresult}
 
 `dispatch` returns a discriminated union on the `success` field:
 

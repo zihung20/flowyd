@@ -119,7 +119,20 @@ On entry its status becomes `waiting` (not `active`). The workflow is paused. Re
 
 **Use when:** the workflow must wait for an external system — webhook, background job, human action in another system — before continuing.
 
-## StateKind enum
+## Advanced: inspecting a compiled workflow
+
+> **Most users can skip this section.** You only need `StateKind` and `AnyState` if you walk a compiled workflow's graph yourself — writing a custom exporter, a graph linter, a dashboard, or similar tooling. If you're just building and running workflows, you'll never handle an `AnyState` value directly. (The built-in [`MermaidExporter` / `JsonGraphExporter`](./visualization) are written exactly this way.)
+
+You meet `AnyState` when you iterate `workflow.getDefinition().states`, which is a `ReadonlyMap<string, AnyState>`:
+
+```ts
+for (const state of workflow.getDefinition().states.values()) {
+  // state: AnyState — narrow on `state.kind` to read kind-specific fields
+  // (targets / requires / externalName)
+}
+```
+
+### StateKind enum
 
 ```ts
 enum StateKind {
@@ -130,15 +143,15 @@ enum StateKind {
 }
 ```
 
-Use `state.kind === StateKind.Fork` to narrow the `AnyState` discriminated union. Do not cast with `state as IForkState`.
+Narrow with `state.kind === StateKind.Fork`. Do not cast with `state as IForkState` — the discriminant makes a cast both unnecessary and unsafe.
 
-## AnyState discriminated union
+### AnyState discriminated union
 
 ```ts
 type AnyState = IStepState | IForkState | IJoinState | IWaitState;
 ```
 
-Narrow via the `kind` property:
+`switch` on `kind` and TypeScript narrows each branch to the matching interface, so the kind-specific fields (`targets`, `requires`, `externalName`) are available with no cast:
 
 ```ts
 function describeState(state: AnyState): string {

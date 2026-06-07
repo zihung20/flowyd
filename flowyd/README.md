@@ -185,13 +185,37 @@ await inst.tick(new Date('2026-06-08T00:00:00Z')); // 48h later → escalated
 
 ---
 
+## Runnable examples
+
+The [`examples/`](./examples) directory is a guided ladder — seven self-contained
+scripts that build from the smallest possible workflow up to full, real-world
+ones, collectively exercising every feature above. Run any of them with `tsx`:
+
+```sh
+npx tsx examples/01-document-approval-basics.ts
+```
+
+| # | File | What it teaches |
+|---|------|-----------------|
+| 01 | `01-document-approval-basics.ts` | The essentials: actions, steps, the graph, dispatching, blocked results |
+| 02 | `02-guards-and-context.ts` | Typed context and every flavour of guard; routing by guard, `canExecute` |
+| 03 | `03-parallel-fork-join.ts` | Fork/join, join modes (`all`/`any`/quorum), the two-state auto-complete pattern |
+| 04 | `04-deadlines-hooks-wait.ts` | Deadlines (`tick`/`getNextDueAt`), `onEnter`/`onExit` hooks, wait states |
+| 05 | `05-loan-origination.ts` | Everything together, service-style: snapshot/restore, `rewind`, both exporters |
+| 06 | `06-incident-response.ts` | Role guards, SLAs (incl. a deadline from a *waiting* state), persistence, dashboards |
+| 07 | `07-dynamic-workflow.ts` | `createDynamicWorkflow`: compiling workflows from runtime config |
+
+See [`examples/README.md`](./examples/README.md) for a full feature-coverage map.
+
+---
+
 ## Documentation
 
 | Section                                                                | What's there                                  |
 | ---------------------------------------------------------------------- | --------------------------------------------- |
 | [Introduction & type safety](https://zihung20.github.io/flowyd/guide/) | What it is, compile-time guarantees in detail |
 | [Core Concepts](https://zihung20.github.io/flowyd/guide/concepts)      | States, transitions, guards, snapshots        |
-| [Examples](https://zihung20.github.io/flowyd/examples/)                | Four complete runnable workflows              |
+| [Examples](https://zihung20.github.io/flowyd/examples/)                | Seven runnable examples, basics → full        |
 | [Scenarios](https://zihung20.github.io/flowyd/scenarios/)              | Task-based guides ("I want to…")              |
 | [API Reference](https://zihung20.github.io/flowyd/api/)                | Complete method reference                     |
 | [Developer Guide](https://zihung20.github.io/flowyd/dev/)              | Architecture, contributing, design decisions  |
