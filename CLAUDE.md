@@ -232,13 +232,16 @@ Private/internal methods only need TSDoc when their purpose is genuinely non-obv
 
 ---
 
-### Vitest workspace — three named projects
+### Vitest projects — named test projects
+
+Defined inline via `test.projects` in `vitest.config.ts` (there is no separate `vitest.workspace.ts` — that file form is deprecated in Vitest 3.2 and removed in Vitest 4).
 
 | Project | Glob | Purpose |
 |---|---|---|
 | `unit` | `src/**/*.test.ts` | Co-located unit tests |
 | `integration` | `tests/integration/**/*.test.ts` | Multi-component flows |
 | `e2e` | `tests/e2e/**/*.test.ts` | Full workflow invariants |
+| `perf` | `tests/perf/**/*.test.ts` | Performance regression checks |
 
 `tests/helpers.ts` — shared `makeCtx` fixture used by unit tests in `src/guards/`.
 
@@ -304,6 +307,9 @@ After every code change:
 - **Examples — 7-tier learning ladder:** `examples/01-document-approval-basics` → `02-guards-and-context` → `03-parallel-fork-join` → `04-deadlines-hooks-wait` → `05-loan-origination` (flagship) → `06-incident-response` (deadline from a `waiting` state) → `07-dynamic-workflow`; collectively exercise every public API (index in `examples/README.md`). API-honesty notes: dynamic payloads are `unknown` so only `{}` is statically safe; `restoreInstance` after `JSON.parse` needs `Parameters<typeof wf.restoreInstance>[0]`. All seven typecheck under strict config and run via `npx tsx`.
 - **Docs (Diátaxis VitePress):** pages import the example `// #region example` source via `<<< ../../examples/NN-*.ts#example` so they can't drift (VitePress's region regex needs the name on the `#endregion` line too). Seven example pages mirror the ladder; each shows an **auto-generated** Mermaid diagram first (`<!--@include: ./diagrams/<slug>.md-->`) produced by `scripts/gen-example-diagrams.ts` (`pnpm docs:diagrams`, invoked by `docs:dev`/`docs:build`) from each example's exported workflow; demo runs sit behind an `import.meta.url` guard outside the region so importing is side-effect-free. `vitepress-plugin-mermaid` via `withMermaid(...)` with `srcExclude: ['**/diagrams/*.md']`; the five Mermaid CJS transitive deps (`dayjs`, `cytoscape`, `cytoscape-cose-bilkent`, `@braintree/sanitize-url`, `debug`) are direct devDeps so pnpm resolves them for Vite pre-bundling. `scripts/check-file-map.ts` (`pnpm check:filemap`) verifies both file maps against `src/`. Iconography is lucide-only.
 - **web-runner v2.x:** React SPA (Vite + Tailwind + shadcn/ui + @xyflow/react). Landing/Examples/Visual Designer (Monaco↔React Flow bidirectional sync)/Playground; shared `SiteNav`. `TimelineBar` scrubber time-travels non-destructively via pure `rewind()`; dispatching while scrubbed branches the run. Deadlines surfaced (no library change): both `AnyInstance` shapes gained `tick`/`getNextDueAt`/`dispatch(..., { now? })`; `ClockControl` (lucide `AlarmClock`/`FastForward`) shows the soonest armed deadline + "Skip ahead"; timed graph edges render amber+dashed `after <duration>`; `HistoryPanel` narrows on `entry.kind`. Purchase Order example gained an `escalated` step + 48h SLA.
+
+### [vitest 3 upgrade] (2026-06-07)
+- Bumped `vitest` `^1.6.0 → ^3.2.6` (dev-only). Migrated the four named test projects (`unit`/`integration`/`e2e`/`perf`) from the standalone `vitest.workspace.ts` (deprecated in 3.2, removed in 4.x) into `test.projects` inside `vitest.config.ts`; deleted `vitest.workspace.ts`. Coverage (`v8`) and `globals` stay at the root `test` config. No source or public-API change. Updated CLAUDE.md §3 "Vitest projects" section to drop the workspace-file reference and list the `perf` project. **Note:** stopped at vitest 3, not the Dependabot PR #2 target of 4.1.0 — vitest 4 requires vite `^6`, but `vitepress@1.6.4` pins vite 5, so 4.x would force a vitepress 2.x (beta) upgrade. Vitest 3 supports vite `^5 || ^6` and coexists cleanly (vite 5 for docs, its own vite 6). Full `lint && check:filemap && typecheck && test && build` gate clean; 272 tests pass, zero peer warnings.
 
 ### [builder import cleanup] (2026-06-07)
 - `core/builder.ts` now imports every dependency through its layer barrel for consistency: `JoinMode` was being pulled directly from `../types/state.js` (folded into the existing `../types/index.js` `import type {…}` block, which already re-exports it), and the four state classes (`StepState`/`ForkState`/`JoinState`/`WaitState`) were each imported from their own `../states/*-state.js` file (collapsed into one `../states/index.js` barrel import, matching how `FnGuard` already came from `../guards/index.js`). Pure consistency, no behavior/API change. Full `lint && check:filemap && typecheck && test && build` gate clean; 272 tests pass.
