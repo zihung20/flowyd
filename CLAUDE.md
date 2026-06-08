@@ -70,7 +70,7 @@ src/
 
 ### Backward compatibility
 
-**This package has not been published to npm. Backward compatibility is not a concern.** Breaking changes to public APIs, snapshot formats, and type signatures are acceptable. Do not add compatibility shims, migration code, or deprecation warnings — just make the change.
+**This package IS published to npm (`flowyd@0.2.0`, latest), but has no production consumers yet — so backward compatibility is still not a concern.** Breaking changes to public APIs, snapshot formats, and type signatures are acceptable. Do not add compatibility shims, migration code, or deprecation warnings — just make the change. (Do not describe flowyd as "unpublished" or "not yet on npm" anywhere — it is live; it simply has no users yet.)
 
 ---
 
@@ -297,6 +297,10 @@ After every code change:
 ---
 
 ## 5. Project Version History
+
+### [Repo presentation & onboarding] (2026-06-08)
+
+Documentation/marketing pass for adoption — no source, no API, no behaviour change. **Root `README.md`** rewritten as a product hook: badges (CI / MIT / Types / Zod / pre-release), a GitHub-native ` ```mermaid ` state diagram (the "Look"), a why-flowyd bullet list, a monorepo package table linking each sub-README, a quick start, and an honest **Status & roadmap** note. Badges include a live npm-version badge (`flowyd` IS published — `flowyd@0.2.0`, latest; it simply has no consumers yet). **`flowyd/README.md`** gained the same badge row + an embedded Mermaid diagram of the quick example; install is the normal `pnpm add flowyd zod`. Created the missing **`web-runner/README.md`** (pages, run instructions, stack, lucide/pnpm conventions). Added the "make contributing feel safe" set: `.github/ISSUE_TEMPLATE/{bug_report,feature_request,config}.yml`, `.github/PULL_REQUEST_TEMPLATE.md`, a short root **`CONTRIBUTING.md`** (links to `docs/dev/contributing.md`). **Docs trim pass** (VitePress site): `docs/index.md` hero tagline + all 7 feature-card descriptions cut to one punchy line each; `docs/guide/index.md` intro prose tightened (code blocks kept); `docs/guide/concepts.md` gained a plain-language "The idea in one minute" mental-model lead (checklist-that-knows-the-rules) before the graph terminology. No `src/` or file-map changes.
 
 ### [v0.1.0–v0.30 + tooling, docs split & vitest 4] Cumulative history (merged 2026-06-07)
 

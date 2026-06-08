@@ -4,14 +4,18 @@ Use `ForkState` to split a workflow into concurrent branches, and `JoinState` to
 
 ## The pattern
 
-```
-start ──START──▶ fork ⑂
-                  /     \
-              legal   finance
-                  \     /
-               join ⑁ (all)
-                   │ FINALIZE
-               approved ✓
+```mermaid
+stateDiagram-v2
+    state fork <<fork>>
+    state join <<join>>
+    [*] --> start
+    start --> fork : START
+    fork --> legal
+    fork --> finance
+    legal --> join : LEGAL_DONE
+    finance --> join : FINANCE_DONE
+    join --> approved : FINALIZE
+    approved --> [*]
 ```
 
 The fork fires the moment `START` is dispatched — no extra action is needed. Both `legal` and `finance` become `active` in the same engine tick. The join activates automatically once both have `completed`.
@@ -88,16 +92,20 @@ console.log(inst.isTerminal()); // true
 
 Forks and joins can chain. A join can target another fork, which activates in the same fixed-point loop iteration:
 
-```ts
-start ──GO──▶ fork-1 ⑂
-               /       \
-             a           b
-               \       /
-             join-1 ⑁ (all)    ←── activates in the same tick as the last branch
-                │
-             fork-2 ⑂           ←── also fires in that same tick
-               /       \
-             c           d
+```mermaid
+stateDiagram-v2
+    state fork1 <<fork>>
+    state join1 <<join>>
+    state fork2 <<fork>>
+    [*] --> start
+    start --> fork1 : GO
+    fork1 --> a
+    fork1 --> b
+    a --> join1
+    b --> join1
+    join1 --> fork2
+    fork2 --> c
+    fork2 --> d
 ```
 
-A single `GO` dispatch resolves the entire chain. See [Fixed-Point Engine](../dev/engine) for the mechanism.
+A single `GO` dispatch resolves the entire chain: the moment the last branch (`a`/`b`) completes, `join1` activates **and** `fork2` fires in that same engine tick — no extra dispatch between them. See [Fixed-Point Engine](../dev/engine) for the mechanism.

@@ -1,0 +1,39 @@
+name: Bug report
+description: Something in flowyd behaves differently than documented.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a report. A small reproduction is worth a thousand words — the closer you get to a runnable snippet, the faster this gets fixed.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect, and what did you get instead?
+      placeholder: I expected the transition to be blocked, but it fired.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: The smallest workflow definition + dispatch sequence that shows the problem. A failing test is ideal.
+      render: ts
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: flowyd version / commit
+      description: Package version, or the commit SHA you built from (it's pre-release).
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      description: Node version, TypeScript version, OS.
+      placeholder: Node 24.0.0, TypeScript 5.6, macOS 15
+    validations:
+      required: true

@@ -2,15 +2,7 @@
 
 `flowyd` is organized into four strict layers. **Imports flow in one direction only — downward.** No layer may import from a layer above it.
 
-```
-visualization/
-    ↓ (may import from)
-core/
-    ↓
-states/   guards/
-    ↓
-types/
-```
+<!--@include: ./diagrams/layers.md-->
 
 ## The four layers
 

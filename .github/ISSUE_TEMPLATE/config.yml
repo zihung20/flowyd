@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://zihung20.github.io/flowyd/guide/
+    about: The guide, core concepts, examples, and full API reference.
+  - name: Live playground
+    url: https://zihung20.github.io/flowyd/playground/
+    about: Try a workflow in the browser before filing — it may already be answered there.

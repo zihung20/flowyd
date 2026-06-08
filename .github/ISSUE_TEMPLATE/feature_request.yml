@@ -1,0 +1,30 @@
+name: Feature request / idea
+description: Suggest a capability, an API, or a docs improvement.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ideas are welcome — including "I read the docs and got stuck here." No idea is too small.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: Describe the use case first, not the solution. What were you doing when you reached for something that wasn't there?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help?
+      description: A rough API sketch, a docs change, or just a direction. Pseudocode is fine.
+      render: ts
+    validations:
+      required: false
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What have you tried instead?
+      description: Any workarounds, or related tools that do this well.
+    validations:
+      required: false

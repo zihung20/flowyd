@@ -4,17 +4,15 @@
 
 It is designed for Standard Operating Procedures (SOPs) — real-world processes where the sequence matters, roles matter, and every step must be auditable.
 
-**[Full documentation →](https://zihung20.github.io/flowyd/)**
+**[Try it in the playground →](https://zihung20.github.io/flowyd/playground/)**  ·  **[Install →](./installation)**
 
 ## The selling point: compile-time safety on everything
 
-Most workflow libraries let you write strings wherever you please. A typo in a state ID silently creates dead code. A wrong action name fails at runtime. A mismatched payload produces a confusing error in production.
-
-`flowyd` catches all of these at compile time.
+Most workflow libraries take strings everywhere — so a typo in a state ID becomes silent dead code, a wrong action name fails at runtime, and a mismatched payload blows up in production. `flowyd` catches all three at compile time.
 
 ### State IDs accumulate as you register them
 
-Each `addStep`, `addFork`, `addJoin`, or `addWait` call widens the `TStates` union by one literal. Every subsequent call — `setInitial`, `setTerminal`, `addTransition`, `addFork.targets`, `addJoin.requires` — is constrained to exactly that accumulated set.
+Each `addStep` / `addFork` / `addJoin` / `addWait` call adds its ID to the `TStates` union. Everything downstream — `setInitial`, `setTerminal`, `addTransition`, fork `targets`, join `requires` — is then constrained to exactly that set.
 
 ```ts
 const wf = createWorkflow({ name: 'approval' })
@@ -30,7 +28,7 @@ IDEs autocomplete state IDs throughout the entire chain. No typos make it to run
 
 ### Action names are locked at dispatch
 
-`defineAction` registers each action and binds a Zod schema to its payload. The `TActions` generic accumulates across calls, so `dispatch` only accepts action names you defined.
+`defineAction` registers an action and binds a Zod schema to its payload. `dispatch` only accepts names you defined.
 
 ```ts
 const wf = createWorkflow({ name: 'approval' })
@@ -49,7 +47,7 @@ await inst.dispatch('APPROV', { approverId: 'x' });
 
 ### Payload shapes are checked twice — at compile time and at runtime
 
-The payload type is inferred from the Zod schema. Pass the wrong shape and TypeScript rejects it before the file even compiles. If somehow a wrong shape reaches `dispatch` at runtime (e.g. from an untyped API boundary), Zod throws immediately before any state changes.
+The payload type comes from the Zod schema. Pass the wrong shape and TypeScript rejects it. If a wrong shape slips through at runtime (say, from an untyped API boundary), Zod throws before any state changes.
 
 ```ts
 await inst.dispatch('APPROVE', { approver: 'x' });

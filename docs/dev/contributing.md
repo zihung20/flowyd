@@ -139,15 +139,7 @@ Every exported symbol needs a TSDoc block with a one-sentence description, `@par
 
 Imports flow downward only:
 
-```
-visualization/
-    ↓
-core/
-    ↓
-states/   guards/
-    ↓
-types/
-```
+<!--@include: ./diagrams/layers.md-->
 
 `core/` must not import from `visualization/`. `states/` must not import from `core/`. `types/` must not import from any other layer. Treat a violation as a build error even when the compiler does not catch it.
 

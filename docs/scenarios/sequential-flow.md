@@ -4,8 +4,12 @@ The minimal pattern: a straight line of steps, each waiting for a specific actio
 
 ## The pattern
 
-```
-s1 ──ACTION_A──▶ s2 ──ACTION_B──▶ s3 ✓
+```mermaid
+stateDiagram-v2
+    [*] --> s1
+    s1 --> s2 : ACTION_A
+    s2 --> s3 : ACTION_B
+    s3 --> [*]
 ```
 
 ## Code

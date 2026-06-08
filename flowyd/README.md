@@ -1,11 +1,29 @@
 # flowyd
 
+[![CI](https://github.com/zihung20/flowyd/actions/workflows/ci.yml/badge.svg)](https://github.com/zihung20/flowyd/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/zihung20/flowyd/blob/main/LICENSE)
+[![Types: included](https://img.shields.io/badge/Types-included-3178c6.svg?logo=typescript&logoColor=white)](#)
+[![Validation: Zod](https://img.shields.io/badge/Validation-Zod-1a5fb4.svg)](https://zod.dev)
+[![npm](https://img.shields.io/npm/v/flowyd.svg?logo=npm)](https://www.npmjs.com/package/flowyd)
+
 Strongly-typed SOP state machines for TypeScript.
 
 Build Standard Operating Procedures as typed workflow state machines. The compiler catches every typo in a state ID, every wrong action name, and every mismatched payload shape — before your code runs.
 
 **[Full documentation →](https://zihung20.github.io/flowyd/guide/)**
 **[Playground →](https://zihung20.github.io/flowyd/playground/)**
+
+A workflow definition is also a diagram — this one is the [quick example](#quick-example) below, exported with the built-in `MermaidExporter`:
+
+```mermaid
+stateDiagram-v2
+    [*] --> draft
+    draft --> pending_approval : SUBMIT
+    pending_approval --> approved : APPROVE [isManager]
+    pending_approval --> rejected : REJECT
+    approved --> [*]
+    rejected --> [*]
+```
 
 ---
 
@@ -187,7 +205,7 @@ await inst.tick(new Date('2026-06-08T00:00:00Z')); // 48h later → escalated
 
 ## Runnable examples
 
-The [`examples/`](./examples) directory is a guided ladder — seven self-contained
+The [`examples/`](https://github.com/zihung20/flowyd/tree/main/flowyd/examples) directory is a guided ladder — seven self-contained
 scripts that build from the smallest possible workflow up to full, real-world
 ones, collectively exercising every feature above. Run any of them with `tsx`:
 
@@ -205,7 +223,7 @@ npx tsx examples/01-document-approval-basics.ts
 | 06 | `06-incident-response.ts` | Role guards, SLAs (incl. a deadline from a *waiting* state), persistence, dashboards |
 | 07 | `07-dynamic-workflow.ts` | `createDynamicWorkflow`: compiling workflows from runtime config |
 
-See [`examples/README.md`](./examples/README.md) for a full feature-coverage map.
+See [`examples/README.md`](https://github.com/zihung20/flowyd/blob/main/flowyd/examples/README.md) for a full feature-coverage map.
 
 ---
 

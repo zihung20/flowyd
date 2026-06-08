@@ -27,16 +27,20 @@ This is a **fixed-point iteration** (also called Kleene iteration). The loop ter
 
 Consider this graph:
 
-```
-start ──GO──▶ fork-1 ⑂
-               /       \
-             a           b
-               \       /
-             join-1 ⑁ (all)
-                │
-             fork-2 ⑂ ← automatically entered when join-1 activates
-               /       \
-             c           d
+```mermaid
+stateDiagram-v2
+    state fork1 <<fork>>
+    state join1 <<join>>
+    state fork2 <<fork>>
+    [*] --> start
+    start --> fork1 : GO
+    fork1 --> a
+    fork1 --> b
+    a --> join1
+    b --> join1
+    join1 --> fork2
+    fork2 --> c
+    fork2 --> d
 ```
 
 Without the fixed-point loop, activating `join-1` would require the caller to dispatch a second action to enter `fork-2`. With the loop, a single `GO` dispatch resolves the entire chain — `fork-1` fires, `a` and `b` activate, then on later dispatches `join-1` fires and immediately `fork-2` fires, all within a single `dispatch` call.

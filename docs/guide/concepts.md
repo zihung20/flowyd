@@ -1,5 +1,21 @@
 # Core Concepts
 
+## The idea in one minute
+
+Think of a workflow as a **checklist that knows the rules** — which step comes next, who's allowed to advance it, and what has to be true first. flowyd turns that checklist into code you can't typo your way out of.
+
+In flowyd's words:
+
+- a **state** is a step (`draft`, `pending-approval`, `approved`);
+- a **transition** is an allowed move between two steps (`draft → pending-approval`);
+- you make a move by dispatching an **action** (`SUBMIT`), optionally gated by a **guard** (a rule like "must be a manager");
+- the **engine** checks the rules and advances the graph;
+- the result is a **snapshot** — a plain JSON object you store wherever you like and reload later to pick up exactly where you left off.
+
+That's the whole model. The rest of this page is the detail behind each word.
+
+---
+
 A workflow is a directed graph of **states** connected by **transitions**. The **engine** advances the graph when you dispatch an **action**. The result is a **snapshot** — a plain JSON object you can store anywhere.
 
 ## States
@@ -10,8 +26,10 @@ Every node in the graph is a state. There are four kinds.
 
 A `StepState` is `active` when entered and waits for a dispatch to advance it. Most workflow steps are `StepState`.
 
-```
-draft ──SUBMIT──▶ review ──APPROVE──▶ approved
+```mermaid
+stateDiagram-v2
+    draft --> review : SUBMIT
+    review --> approved : APPROVE
 ```
 
 ```ts
@@ -26,10 +44,14 @@ draft ──SUBMIT──▶ review ──APPROVE──▶ approved
 
 A `ForkState` is a routing node. The moment it is entered, it immediately activates all its `targets` and marks itself `completed`. It is never left in the `active` status — it is transient by design.
 
-```
-                 ┌──▶ legal-review
-briefed ──▶ fork ┤
-                 └──▶ finance-review
+```mermaid
+stateDiagram-v2
+    state fork <<fork>>
+    state "legal-review" as legal
+    state "finance-review" as finance
+    briefed --> fork
+    fork --> legal
+    fork --> finance
 ```
 
 ```ts
@@ -42,10 +64,14 @@ briefed ──▶ fork ┤
 
 A `JoinState` activates automatically when its `requires` threshold is satisfied. No extra dispatch is needed.
 
-```
-legal-review  ──┐
-                ├──▶ join (mode: 'all') ──FINALIZE──▶ approved
-finance-review ──┘
+```mermaid
+stateDiagram-v2
+    state join <<join>>
+    state "legal-review" as legal
+    state "finance-review" as finance
+    legal --> join
+    finance --> join
+    join --> approved : FINALIZE
 ```
 
 ```ts
@@ -67,9 +93,13 @@ finance-review ──┘
 
 A `WaitState` enters `waiting` status (not `active`) when reached. The workflow is paused. Your service layer drives the external process, then calls `inst.resolveWait(stateId)` to unblock it.
 
-```
-order-placed ──SUBMIT──▶ payment-processing ⤴ ──PAYMENT_OK──▶ confirmed
-                         (waiting for Stripe webhook)
+```mermaid
+stateDiagram-v2
+    state "order-placed" as order
+    state "payment-processing" as pay
+    order --> pay : SUBMIT
+    pay --> confirmed : PAYMENT_OK
+    note right of pay : waiting (Stripe webhook)
 ```
 
 ```ts
