@@ -16,10 +16,10 @@ export function SiteNav({ right }: SiteNavProps) {
   const { pathname } = useLocation();
 
   return (
-    <header className="z-10 flex h-11 shrink-0 items-center gap-1 border-b border-border bg-background px-4">
+    <header className="border-border bg-background z-10 flex h-11 shrink-0 items-center gap-1 border-b px-4">
       <Link
         to="/"
-        className="mr-2 text-sm font-bold text-foreground transition-opacity hover:opacity-70"
+        className="text-foreground mr-2 text-sm font-bold transition-opacity hover:opacity-70"
       >
         flowyd
       </Link>
@@ -33,7 +33,7 @@ export function SiteNav({ right }: SiteNavProps) {
             className={[
               'rounded px-2.5 py-1 text-sm transition-colors',
               active
-                ? 'font-semibold text-foreground'
+                ? 'text-foreground font-semibold'
                 : 'text-muted-foreground hover:text-foreground',
             ].join(' ')}
           >

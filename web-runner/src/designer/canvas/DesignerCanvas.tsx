@@ -22,7 +22,9 @@ const POSITIONS_KEY = 'flowyd-positions';
 function loadSavedPositions(): Map<string, { x: number; y: number }> {
   try {
     const raw = localStorage.getItem(POSITIONS_KEY);
-    if (raw) {return new Map(JSON.parse(raw) as [string, { x: number; y: number }][]);}
+    if (raw) {
+      return new Map(JSON.parse(raw) as [string, { x: number; y: number }][]);
+    }
   } catch {
     /* ignore */
   }
@@ -66,8 +68,7 @@ function wfToRfNodes(
   return wf.nodes.map((n, i) => ({
     id: n.id,
     type: 'flowNode',
-    position:
-      existingPositions.get(n.id) ??
+    position: existingPositions.get(n.id) ??
       savedPositions.get(n.id) ?? { x: 80 + (i % 4) * 220, y: 80 + Math.floor(i / 4) * 140 },
     data: designerNodeToFlowData(n) as unknown as Record<string, unknown>,
   }));
@@ -130,7 +131,9 @@ export function DesignerCanvas({
   // Sync from workflow prop whenever the structure changes
   useEffect(() => {
     const key = wfStructureKey(workflow, theme === 'dark');
-    if (key === prevKeyRef.current) {return;}
+    if (key === prevKeyRef.current) {
+      return;
+    }
     prevKeyRef.current = key;
 
     setRfNodes((prev) => {
@@ -207,7 +210,9 @@ export function DesignerCanvas({
     (connection: Connection) => {
       const from = connection.source;
       const to = connection.target;
-      if (!from || !to) {return;}
+      if (!from || !to) {
+        return;
+      }
       const sourceNode = workflow.nodes.find((n) => n.id === from);
       const targetNode = workflow.nodes.find((n) => n.id === to);
 
@@ -263,7 +268,7 @@ export function DesignerCanvas({
   );
 
   return (
-    <div className="relative h-full w-full bg-background">
+    <div className="bg-background relative h-full w-full">
       <DesignerToolbar onAddNode={handleAddNode} />
       <ReactFlow
         nodes={rfNodes}
@@ -292,8 +297,8 @@ export function DesignerCanvas({
 
       {workflow.nodes.length === 0 && (
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2">
-          <p className="text-sm font-medium text-muted-foreground">Start building</p>
-          <p className="text-xs text-muted-foreground/60">Use the toolbar above to add states</p>
+          <p className="text-muted-foreground text-sm font-medium">Start building</p>
+          <p className="text-muted-foreground/60 text-xs">Use the toolbar above to add states</p>
         </div>
       )}
     </div>

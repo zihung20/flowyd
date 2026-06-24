@@ -89,7 +89,7 @@ export default function ExamplesPage() {
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background font-sans">
+    <div className="bg-background flex h-screen flex-col overflow-hidden font-sans">
       <SiteNav />
 
       {/* Example tab bar */}
@@ -110,7 +110,7 @@ export default function ExamplesPage() {
               {ex.tags.map((t) => (
                 <Badge
                   key={t}
-                  className="rounded bg-slate-700 px-1.5 py-px text-[10px] border-none text-slate-300 hover:bg-slate-600"
+                  className="rounded border-none bg-slate-700 px-1.5 py-px text-[10px] text-slate-300 hover:bg-slate-600"
                 >
                   {t}
                 </Badge>

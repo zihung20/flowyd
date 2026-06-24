@@ -15,25 +15,39 @@ import type { DesignerWorkflow, DesignerNode, DesignerEdge } from '../types';
  */
 function topoSort(nodes: DesignerNode[], edges: DesignerEdge[]): DesignerNode[] {
   const deps = new Map<string, Set<string>>();
-  for (const node of nodes) {deps.set(node.id, new Set());}
+  for (const node of nodes) {
+    deps.set(node.id, new Set());
+  }
 
   for (const edge of edges) {
-    if (edge.kind === 'fork-target') {deps.get(edge.fromNodeId)?.add(edge.toNodeId);}
-    if (edge.kind === 'join-requires') {deps.get(edge.toNodeId)?.add(edge.fromNodeId);}
+    if (edge.kind === 'fork-target') {
+      deps.get(edge.fromNodeId)?.add(edge.toNodeId);
+    }
+    if (edge.kind === 'join-requires') {
+      deps.get(edge.toNodeId)?.add(edge.fromNodeId);
+    }
   }
 
   const sorted: DesignerNode[] = [];
   const visited = new Set<string>();
 
   function visit(id: string): void {
-    if (visited.has(id)) {return;}
+    if (visited.has(id)) {
+      return;
+    }
     visited.add(id);
-    for (const dep of deps.get(id) ?? []) {visit(dep);}
+    for (const dep of deps.get(id) ?? []) {
+      visit(dep);
+    }
     const node = nodes.find((n) => n.id === id);
-    if (node) {sorted.push(node);}
+    if (node) {
+      sorted.push(node);
+    }
   }
 
-  for (const node of nodes) {visit(node.id);}
+  for (const node of nodes) {
+    visit(node.id);
+  }
   return sorted;
 }
 
@@ -100,7 +114,9 @@ export function generateCode(wf: DesignerWorkflow): string {
     lines.push(`const ${action}Schema = ${expr};`);
   }
 
-  if (actionNames.length > 0 || ctxExpr) {lines.push(``);}
+  if (actionNames.length > 0 || ctxExpr) {
+    lines.push(``);
+  }
 
   lines.push(`const workflow = createWorkflow({ name: ${JSON.stringify(name)} })`);
 
@@ -153,7 +169,9 @@ export function generateCode(wf: DesignerWorkflow): string {
   }
 
   for (const edge of transitionEdges) {
-    if (!edge.actionName.trim()) {continue;}
+    if (!edge.actionName.trim()) {
+      continue;
+    }
     const hasGuard = edge.guardBody.trim() !== '';
     if (hasGuard) {
       lines.push(

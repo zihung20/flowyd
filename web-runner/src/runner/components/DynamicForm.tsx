@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { describeSchema } from '../../lib/zod-introspect';
 import type { FieldDescriptor } from '../../lib/zod-introspect';
 import { useRunner } from '../context';
@@ -132,7 +132,9 @@ function coercePayload(
 }
 
 function randomItem<T>(arr: T[]): T | undefined {
-  if (arr.length === 0) return undefined;
+  if (arr.length === 0) {
+    return undefined;
+  }
   const idx = Math.floor(Math.random() * arr.length);
   return arr[idx];
 }
@@ -174,21 +176,20 @@ export function DynamicForm() {
     setNumValues(num);
   }
 
-  useEffect(() => {
-    applyDefaults(selectedAction);
-  }, []);
-
   // Keep the current selection while it stays valid — only switch (and reseed
-  // defaults) when it leaves the available set. This avoids re-picking an action
-  // on every render, which made the form flicker while scrubbing the timeline.
-  useEffect(() => {
-    if (availableActions.length === 0 || availableActions.includes(selectedAction)) {
-      return;
+  // defaults) when it leaves the available set. Adjusting state during render
+  // (rather than in an effect) applies the change before paint without
+  // cascading re-renders, and keeps the form stable while scrubbing the
+  // timeline. Initial defaults are seeded by the useState initializers above.
+  const [trackedActions, setTrackedActions] = useState(availableActions);
+  if (availableActions !== trackedActions) {
+    setTrackedActions(availableActions);
+    if (availableActions.length > 0 && !availableActions.includes(selectedAction)) {
+      const next = randomItem(availableActions) ?? '';
+      setSelectedAction(next);
+      applyDefaults(next);
     }
-    const next = randomItem(availableActions) ?? '';
-    setSelectedAction(next);
-    applyDefaults(next);
-  }, [availableActions]);
+  }
 
   function handleActionChange(action: string) {
     setSelectedAction(action);

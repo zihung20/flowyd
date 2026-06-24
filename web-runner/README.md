@@ -8,12 +8,12 @@ This package is **not published** — it's a development and demonstration tool.
 
 ## What's in it
 
-| Page | What it does |
-|---|---|
-| **Home** | Landing page introducing flowyd. |
-| **Examples** | A gallery of pre-built workflows (purchase order, incident response, release pipeline, pre-departure checklist — see [`src/workflows/`](./src/workflows/)) you can open and run. |
-| **Visual Designer** | A two-way editor: write a workflow in Monaco on one side, see it as a live React Flow graph on the other. Edits sync both directions. |
-| **Playground** | Run any workflow interactively — dispatch actions, inspect state, and time-travel. |
+| Page                | What it does                                                                                                                                                                     |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Home**            | Landing page introducing flowyd.                                                                                                                                                 |
+| **Examples**        | A gallery of pre-built workflows (purchase order, incident response, release pipeline, pre-departure checklist — see [`src/workflows/`](./src/workflows/)) you can open and run. |
+| **Visual Designer** | A two-way editor: write a workflow in Monaco on one side, see it as a live React Flow graph on the other. Edits sync both directions.                                            |
+| **Playground**      | Run any workflow interactively — dispatch actions, inspect state, and time-travel.                                                                                               |
 
 **Running a workflow** shows each dispatched action's payload in an expandable history. A video-style timeline scrubber lets you drag a playhead (or press Play) to move through every version of a run; dispatching from a past step branches the run from there — all driven by the library's pure `rewind()`, so nothing is mutated.
 
@@ -33,13 +33,13 @@ cd ../flowyd && pnpm install && pnpm build
 cd ../web-runner && pnpm install && pnpm dev   # → http://localhost:5173
 ```
 
-| Script | Purpose |
-|---|---|
-| `pnpm dev` | Bundle the library's types, then start Vite on :5173. |
-| `pnpm build` | Type-check and build for production. |
-| `pnpm build:pages` | Production build under the `/flowyd/playground/` base path (used by CI to deploy the playground to GitHub Pages). |
-| `pnpm preview` | Preview a production build locally. |
-| `pnpm lint` / `pnpm format` | ESLint / Prettier. |
+| Script                      | Purpose                                                                                                           |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `pnpm dev`                  | Bundle the library's types, then start Vite on :5173.                                                             |
+| `pnpm build`                | Type-check and build for production.                                                                              |
+| `pnpm build:pages`          | Production build under the `/flowyd/playground/` base path (used by CI to deploy the playground to GitHub Pages). |
+| `pnpm preview`              | Preview a production build locally.                                                                               |
+| `pnpm lint` / `pnpm format` | ESLint / Prettier.                                                                                                |
 
 > The library is consumed as compiled output, not source. After changing anything in `flowyd/`, re-run `pnpm build` there (or `pnpm dev` for watch mode) so the web-runner picks it up.
 
