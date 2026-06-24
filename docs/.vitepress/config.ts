@@ -5,6 +5,9 @@ export default withMermaid(
   defineConfig({
   title: 'flowyd',
   description: 'Strongly-typed SOP state machines for TypeScript',
+  head: [
+    ['meta', { name: 'google-site-verification', content: 'RMk-txaZr_tYD6l3zxvw2QtOe-DrkOQoUrV-FfU22Eg' }]
+  ],
   base: '/flowyd/',
   cleanUrls: true,
   // Generated diagram partials are included into example pages, not built as their own pages.
