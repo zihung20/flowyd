@@ -41,7 +41,7 @@ function kindSuffix(kind: StateKind): string {
     case StateKind.Step:
       return '';
     case StateKind.Wait:
-      return ' ⤴';
+      return ' (wait)';
   }
 }
 

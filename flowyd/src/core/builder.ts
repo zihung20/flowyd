@@ -405,6 +405,7 @@ export class WorkflowBuilder<
     const reachable = new Set<string>();
     const stack = [this.initialStateId];
     while (stack.length > 0) {
+      // Non-null: the `stack.length > 0` loop guard guarantees pop() returns an element.
       const id = stack.pop()!;
       if (reachable.has(id)) {
         continue;
