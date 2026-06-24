@@ -538,6 +538,8 @@ export class WorkflowInstance<
       (id) => stateStatuses.get(id) === StateStatus.Active,
     );
 
+    // Non-null: the earlier guards leave `version` in [1, current-1], and history
+    // length equals the current version, so `version - 1` is always a valid index.
     const entry = this.snapshot.history[version - 1]!;
     // Context at version N is what was in effect when dispatch N fired, recorded in history[N-1].context.
     const contextAtN = entry.context ?? this.snapshot.context;
