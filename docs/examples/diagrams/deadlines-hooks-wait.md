@@ -4,7 +4,7 @@
 stateDiagram-v2
   triage : Triage
   in_progress : In Progress
-  state "Awaiting Vendor ⤴ [vendor-support]" as awaiting_vendor
+  state "Awaiting Vendor (wait) [vendor-support]" as awaiting_vendor
   escalated : Escalated
   resolved : Resolved
 

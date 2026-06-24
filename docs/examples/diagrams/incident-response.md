@@ -14,7 +14,7 @@ stateDiagram-v2
   state respond <<fork>>
   state response_ready <<join>>
   mitigating : Mitigating
-  state "Awaiting Vendor ⤴ [vendor-escalation]" as awaiting_vendor
+  state "Awaiting Vendor (wait) [vendor-escalation]" as awaiting_vendor
   monitoring : Monitoring
   resolved : Resolved
 

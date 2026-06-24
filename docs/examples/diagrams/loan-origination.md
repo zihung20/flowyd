@@ -11,7 +11,7 @@ stateDiagram-v2
   fraud_check : Fraud Check
   state run_checks <<fork>>
   state checks_complete <<join>>
-  state "Underwriting ⤴ [manual-underwriting]" as underwriting
+  state "Underwriting (wait) [manual-underwriting]" as underwriting
   approved : Approved
   declined : Declined
   withdrawn : Withdrawn
