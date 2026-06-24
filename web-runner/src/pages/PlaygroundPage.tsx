@@ -47,7 +47,9 @@ export default function PlaygroundPage() {
 
   function handleChange(newCode: string) {
     localStorage.setItem(STORAGE_KEY, newCode);
-    if (debounceRef.current) { clearTimeout(debounceRef.current); }
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
     debounceRef.current = setTimeout(() => evaluate(newCode), 600);
   }
 
@@ -57,12 +59,16 @@ export default function PlaygroundPage() {
   }, [initialCode]);
 
   function startDrag(e: React.MouseEvent) {
-    if (panelState !== 'split') { return; }
+    if (panelState !== 'split') {
+      return;
+    }
     e.preventDefault();
 
     function onMove(ev: MouseEvent) {
       const c = containerRef.current;
-      if (!c) { return; }
+      if (!c) {
+        return;
+      }
       const rect = c.getBoundingClientRect();
       const raw = ((ev.clientX - rect.left) / rect.width) * 100;
       setSplitPct(Math.min(85, Math.max(15, raw)));
@@ -84,7 +90,11 @@ export default function PlaygroundPage() {
     <ToggleGroup
       type="single"
       value={panelState}
-      onValueChange={(v) => { if (v) { setPanelState(v as PanelState); } }}
+      onValueChange={(v) => {
+        if (v) {
+          setPanelState(v as PanelState);
+        }
+      }}
       variant="outline"
       size="sm"
     >
@@ -97,7 +107,7 @@ export default function PlaygroundPage() {
   );
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background font-sans">
+    <div className="bg-background flex h-screen flex-col overflow-hidden font-sans">
       <SiteNav right={layoutToggle} />
 
       <div ref={containerRef} className="flex min-h-0 flex-1">
@@ -118,12 +128,15 @@ export default function PlaygroundPage() {
         {/* Drag handle — only visible in split mode */}
         {showCode && showRunner && (
           <div
-            className="group relative z-10 w-1.5 shrink-0 cursor-col-resize bg-border transition-colors hover:bg-blue-400/50"
+            className="group bg-border relative z-10 w-1.5 shrink-0 cursor-col-resize transition-colors hover:bg-blue-400/50"
             onMouseDown={startDrag}
           >
-            <div className="pointer-events-none absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col gap-[3px]">
+            <div className="pointer-events-none absolute top-1/2 left-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col gap-[3px]">
               {Array.from({ length: 4 }).map((_, i) => (
-                <span key={i} className="block h-[3px] w-[3px] rounded-full bg-muted-foreground/40 group-hover:bg-blue-500/70" />
+                <span
+                  key={i}
+                  className="bg-muted-foreground/40 block h-[3px] w-[3px] rounded-full group-hover:bg-blue-500/70"
+                />
               ))}
             </div>
           </div>
@@ -133,12 +146,12 @@ export default function PlaygroundPage() {
         {showRunner && (
           <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
             {evalResult === null && (
-              <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+              <div className="text-muted-foreground flex flex-1 items-center justify-center text-sm">
                 Evaluating…
               </div>
             )}
             {evalResult !== null && !evalResult.ok && (
-              <div className="m-4 rounded-md bg-destructive/10 border border-destructive/20 p-3 font-mono text-xs text-destructive">
+              <div className="bg-destructive/10 border-destructive/20 text-destructive m-4 rounded-md border p-3 font-mono text-xs">
                 {evalResult.error}
               </div>
             )}

@@ -16,7 +16,9 @@ export function SchemaEditor({ id, value, onChange }: Props) {
   const monacoInstance = useMonaco();
 
   useEffect(() => {
-    if (monacoInstance) {setupMonacoTypes(monacoInstance);}
+    if (monacoInstance) {
+      setupMonacoTypes(monacoInstance);
+    }
   }, [monacoInstance]);
 
   function handleBeforeMount(monaco: Monaco) {

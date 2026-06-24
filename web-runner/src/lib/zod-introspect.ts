@@ -6,7 +6,13 @@ export type FieldDescriptor =
   | { kind: 'number'; name: string; label: string; optional: boolean; min?: number; max?: number }
   | { kind: 'boolean'; name: string; label: string; optional: boolean }
   | { kind: 'enum'; name: string; label: string; optional: boolean; options: string[] }
-  | { kind: 'array'; name: string; label: string; optional: boolean; itemKind: 'string' | 'number' | 'unknown' }
+  | {
+      kind: 'array';
+      name: string;
+      label: string;
+      optional: boolean;
+      itemKind: 'string' | 'number' | 'unknown';
+    }
   | { kind: 'unknown'; name: string; label: string; optional: boolean };
 
 /**
@@ -46,14 +52,18 @@ function walk(schema: ZodTypeAny, key: string, optional: boolean): FieldDescript
       return walk((schema._def as { innerType: ZodTypeAny }).innerType, key, optional);
 
     case ZodFirstPartyTypeKind.ZodString: {
-      if (!key) {return [];}
+      if (!key) {
+        return [];
+      }
       const checks = (schema._def as { checks: { kind: string; value?: number }[] }).checks;
       const min = checks.find((c) => c.kind === 'min')?.value;
       return [{ kind: 'string', name: key, label, optional, ...(min !== undefined && { min }) }];
     }
 
     case ZodFirstPartyTypeKind.ZodNumber: {
-      if (!key) {return [];}
+      if (!key) {
+        return [];
+      }
       const checks = (schema._def as { checks: { kind: string; value?: number }[] }).checks;
       const min = checks.find((c) => c.kind === 'min')?.value;
       const max = checks.find((c) => c.kind === 'max')?.value;
@@ -91,9 +101,11 @@ function walk(schema: ZodTypeAny, key: string, optional: boolean): FieldDescript
       const element = (schema._def as { type: ZodTypeAny }).type;
       const elementType = element._def.typeName as ZodFirstPartyTypeKind;
       const itemKind =
-        elementType === ZodFirstPartyTypeKind.ZodString ? 'string'
-        : elementType === ZodFirstPartyTypeKind.ZodNumber ? 'number'
-        : 'unknown';
+        elementType === ZodFirstPartyTypeKind.ZodString
+          ? 'string'
+          : elementType === ZodFirstPartyTypeKind.ZodNumber
+            ? 'number'
+            : 'unknown';
       return key ? [{ kind: 'array', name: key, label, optional, itemKind }] : [];
     }
 
