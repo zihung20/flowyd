@@ -1,29 +1,14 @@
 /**
- * Type-safe wrapper around `Object.entries` for records with a known key union.
- *
- * `Object.entries` always returns `[string, V][]`; this function narrows the key
- * to `K` in one audited place so call sites remain cast-free. The cast is safe
- * because TypeScript's structural type system cannot express "closed" object types —
- * any `Record<K, V>` we construct exclusively from registered keys satisfies the
- * invariant at runtime.
- *
- * @param obj - A record whose keys are the literal union `K`.
- * @returns An array of `[K, V]` tuples — identical to `Object.entries` at runtime.
+ * `Object.entries` always returns `[string, V][]`; this narrows the key to `K` in one
+ * audited place so call sites stay cast-free. Safe because any `Record<K, V>` we construct
+ * exclusively from registered keys satisfies the invariant at runtime — TypeScript's
+ * structural types just can't express a "closed" object type.
  */
 export function typedEntries<K extends string, V>(obj: Readonly<Record<K, V>>): [K, V][] {
   return Object.entries(obj) as [K, V][];
 }
 
-/**
- * Type-safe wrapper around `Object.fromEntries` for iterables with a known key union.
- *
- * `Object.fromEntries` always returns `Record<string, V>`; this function narrows the
- * key to `K` in one audited place so call sites remain cast-free. The cast is safe
- * for the same reason as `typedEntries` — TypeScript has no "closed" object type.
- *
- * @param entries - An iterable of `[K, V]` pairs (e.g. a `Map<K, V>`).
- * @returns A `Record<K, V>` — identical to `Object.fromEntries` at runtime.
- */
+/** Same cast-safety rationale as `typedEntries`, for the `Object.fromEntries` direction. */
 export function typedFromEntries<K extends string, V>(
   entries: Iterable<readonly [K, V]>,
 ): Record<K, V> {
@@ -67,17 +52,12 @@ const DURATION_PATTERN = new RegExp(
 );
 
 /**
- * Normalises a duration to a positive integer number of base units (ms).
+ * Accepts a raw millisecond count or a unit-suffixed string — `'500ms'`, `'90s'`, `'15m'`,
+ * `'48h'`, `'7d'`, `'2w'` (decimals allowed, e.g. `'1.5h'`). Used by `addTransition` to
+ * store time-triggered transitions as millisecond deltas in `TransitionDefinition.after`.
  *
- * Accepts either a raw millisecond count or a unit-suffixed string:
- * `'500ms'`, `'90s'`, `'15m'`, `'48h'`, `'7d'`, `'2w'` (decimals allowed,
- * e.g. `'1.5h'`). Used by `addTransition` to store time-triggered transitions
- * as millisecond deltas in `TransitionDefinition.after`.
- *
- * @param input - A positive millisecond number, or a `<number><unit>` string.
- * @returns The duration in milliseconds, rounded to the nearest integer.
- * @throws {Error} If the value is not positive, or the string is malformed or
- *                 uses an unrecognised unit.
+ * @throws {Error} If the value is not positive, or the string is malformed or uses an
+ *                 unrecognised unit.
  */
 export function parseDuration(input: string | number): number {
   if (typeof input === 'number') {
@@ -110,9 +90,6 @@ export function parseDuration(input: string | number): number {
  * Renders a millisecond duration back into the most compact whole-unit string
  * (e.g. `3_600_000` → `'1h'`). Used by visualisation exporters to label
  * time-triggered transitions.
- *
- * @param ms - A positive millisecond count.
- * @returns A human-readable duration string.
  */
 export function formatDuration(ms: number): string {
   // Largest unit first; return the first whose size divides evenly.

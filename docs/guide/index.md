@@ -24,7 +24,7 @@ const wf = createWorkflow({ name: 'approval' })
 // to parameter of type '"draft" | "review" | "approved" | "rejected"'
 ```
 
-IDEs autocomplete state IDs throughout the entire chain. No typos make it to runtime.
+IDEs autocomplete state IDs throughout the chain.
 
 ### Action names are locked at dispatch
 
@@ -47,7 +47,7 @@ await inst.dispatch('APPROV', { approverId: 'x' });
 
 ### Payload shapes are checked twice — at compile time and at runtime
 
-The payload type comes from the Zod schema. Pass the wrong shape and TypeScript rejects it. If a wrong shape slips through at runtime (say, from an untyped API boundary), Zod throws before any state changes.
+The payload type comes from the Zod schema. TypeScript rejects the wrong shape; if one slips through at runtime (an untyped API boundary), Zod throws before any state changes.
 
 ```ts
 await inst.dispatch('APPROVE', { approver: 'x' });
@@ -58,7 +58,7 @@ await inst.dispatch('APPROVE', { approver: 'x' });
 
 ### Fork targets and join requires are autocompleted
 
-`addFork` and `addJoin` constrain their `targets` and `requires` arrays to states already accumulated in `TStates`. Register branch states before the fork that targets them:
+`addFork` and `addJoin` constrain `targets`/`requires` to states already in `TStates` — register branch states before the fork that targets them:
 
 ```ts
 createWorkflow({ name: 'proc' })

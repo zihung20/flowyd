@@ -4,17 +4,9 @@ import { WorkflowInstance } from './instance.js';
 import { typedFromEntries } from './utils.js';
 
 /**
- * An immutable, compiled workflow definition that acts as a factory for
- * `WorkflowInstance` objects.
- *
- * A single `Workflow` can power any number of independent concurrent
- * instances — one per SOP run, ticket, order, or approval request. The
- * definition itself is never mutated after `WorkflowBuilder.build()` returns.
- *
- * @template TActions - Map of action names to their validated payload types.
- *                      Inferred automatically from `WorkflowBuilder.defineAction()` calls.
- * @template TContext - Type of the instance context declared via
- *                      `WorkflowBuilder.setContext()`. Defaults to `unknown`.
+ * Immutable, compiled workflow definition that acts as a factory for `WorkflowInstance`
+ * objects. A single `Workflow` can power any number of independent concurrent instances;
+ * the definition itself is never mutated after `WorkflowBuilder.build()` returns.
  */
 export class Workflow<
   TActions extends ActionPayloadMap,
@@ -25,22 +17,11 @@ export class Workflow<
   constructor(private readonly definition: WorkflowDefinition<TContext, TStates>) {}
 
   /**
-   * Creates a fresh `WorkflowInstance` with the initial state active and no
-   * history.
-   *
-   * @param instanceId - A caller-supplied unique identifier for this run
-   *                     (e.g. a UUID, database primary key, or order number).
-   *                     Used in snapshots and history entries for correlation.
-   * @param context    - Initial context for this instance. **Required** when
-   *                     `setContext()` was called on the builder (`TContext` is
-   *                     concrete); omitted when no context schema was declared
-   *                     (`TContext` is `unknown`).
-   * @param now        - Creation time, recorded as `createdAt`/`updatedAt` and
-   *                     used as the entry time of the initial state (so a
-   *                     deadline on it counts from here). Defaults to
-   *                     `new Date()`; pass it explicitly for deterministic
-   *                     replay or testing.
-   * @returns A new `WorkflowInstance<TActions, TContext>` ready for guard injection and dispatch.
+   * Creates a fresh `WorkflowInstance` with the initial state active and no history.
+   * `context` is required when `setContext()` was called on the builder. `now` defaults
+   * to `new Date()` and is used as the initial state's entry time (so a deadline on it
+   * counts from here) — pass it explicitly for deterministic replay or testing.
+   * @throws {ZodError} if `context` fails the builder's `contextSchema`.
    */
   createInstance(
     instanceId: string,
@@ -87,15 +68,9 @@ export class Workflow<
   }
 
   /**
-   * Reconstructs a `WorkflowInstance` from a previously persisted snapshot.
+   * Reconstructs a `WorkflowInstance` from a snapshot produced by `instance.getSnapshot()`.
+   * Guard injections are NOT restored — call `instance.injectGuard()` again after restoration.
    *
-   * The snapshot must have been produced by `instance.getSnapshot()` on an
-   * instance of the same workflow definition (matched by `workflowName`).
-   * Guard injections are NOT restored — the service layer must call
-   * `instance.injectGuard()` again after restoration.
-   *
-   * @param snapshot - The JSON object retrieved from your persistence layer.
-   * @returns A `WorkflowInstance<TActions, TContext>` in the exact state captured by the snapshot.
    * @throws {Error} If the snapshot's `workflowName` does not match this definition.
    */
   restoreInstance(
@@ -113,13 +88,7 @@ export class Workflow<
     );
   }
 
-  /**
-   * Returns the underlying definition for use by visualisation exporters.
-   *
-   * @returns The compiled `WorkflowDefinition<TContext, string>` — type-erased
-   *          to `string` for `TStates` because the visualisation layer operates
-   *          on plain state ID strings and does not need the literal union.
-   */
+  /** Returns the underlying definition for use by visualisation exporters. */
   getDefinition() {
     return this.definition;
   }

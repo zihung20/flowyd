@@ -20,18 +20,11 @@ import { FnGuard } from '../guards/index.js';
 import { StepState, ForkState, JoinState, WaitState } from '../states/index.js';
 
 /**
- * Argument to {@link WorkflowBuilder.addTransition}: a directed edge triggered
- * by **exactly one** of an action (`on`) or a deadline (`after`).
- *
- * The two members are mutually exclusive — each forbids the other's key via
- * `?: never` — so supplying both, or neither, is a compile-time error. On an
- * action edge the guard's `ctx.payload` is typed as `TActions[K]`; a deadline
- * carries no payload, so its guard payload is `unknown`.
- *
- * @template TActions - Accumulated map of action names → payload types.
- * @template TStates  - Union of registered state IDs.
- * @template TContext - Instance context type.
- * @template K        - The specific action name (action edges only).
+ * Argument to {@link WorkflowBuilder.addTransition}: a directed edge triggered by exactly
+ * one of an action (`on`) or a deadline (`after`) — each forbids the other's key via
+ * `?: never`, so supplying both or neither is a compile-time error. On an action edge the
+ * guard's `ctx.payload` is typed as `TActions[K]`; a deadline carries no payload, so its
+ * guard payload is `unknown`.
  */
 type TransitionInput<
   TActions extends ActionPayloadMap,
@@ -78,24 +71,15 @@ type TransitionInput<
  *
  * 1. `createWorkflow({ name })` — start the builder.
  * 2. `defineAction()` — register each action and its Zod payload schema.
- * 3. `addStep()` / `addFork()` / `addJoin()` / `addWait()` — register states (branches before forks/joins).
+ * 3. `addStep()` / `addFork()` / `addJoin()` / `addWait()` — register states (branches
+ *    before forks/joins).
  * 4. `setInitial()` / `setTerminal()` — declare entry and exit points.
  * 5. `addTransition()` — wire states together with named, optionally-guarded arcs.
  * 6. `build()` — validate and compile into an immutable `Workflow`.
  *
- * `defineAction()` and the four state-registration methods return the same
- * builder instance under a widened type — `TActions` and `TStates` accumulate
- * correctly without allocating a new object.
- * `setInitial`, `setTerminal`, and `addTransition` return `this`.
- *
- * @template TActions  - Accumulated map of action names → payload types.
- *                       Starts as `Record<never, never>` and grows with each
- *                       `defineAction()` call.
- * @template TStates   - Union of registered state IDs. Starts as `never` and
- *                       widens with each `addStep`/`addFork`/`addJoin`/`addWait`
- *                       call. Constrains all state-ID arguments throughout the chain.
- * @template TContext  - Type of the instance context declared via `setContext()`.
- *                       Defaults to `unknown` until `setContext` is called.
+ * `defineAction()` and the four state-registration methods return the same builder
+ * instance under a widened type — `TActions` and `TStates` accumulate correctly without
+ * allocating a new object. `setInitial`, `setTerminal`, and `addTransition` return `this`.
  */
 export class WorkflowBuilder<
   TActions extends ActionPayloadMap = Record<never, never>,
@@ -112,11 +96,8 @@ export class WorkflowBuilder<
   private contextSchema: ZodSchema<unknown> | undefined = undefined;
 
   /**
-   * Creates a new `WorkflowBuilder`. Prefer the {@link createWorkflow} factory
-   * which starts with `TStates = never` and accumulates state IDs via the
-   * `addStep` / `addFork` / `addJoin` / `addWait` call chain.
+   * Prefer the {@link createWorkflow} factory over calling this directly.
    *
-   * @param config.name - Workflow name. Must be non-empty.
    * @throws {Error} If `name` is empty.
    */
   constructor(config: { name: string }) {
@@ -127,32 +108,24 @@ export class WorkflowBuilder<
   }
 
   /**
-   * Declares the shape of the instance context, widening `TContext` from
-   * `unknown` to the inferred type `C`.
-   *
-   * The schema is stored on the workflow definition and used to validate
-   * context values at `createInstance` and `instance.setContext()` time.
-   * It also types `ctx.context` in inline guards on `addTransition`.
-   *
-   * The initial context value is provided per-instance at `createInstance` time,
-   * not here — different instances of the same workflow may start with different
-   * context values.
+   * Declares the shape of the instance context, widening `TContext` from `unknown` to the
+   * inferred type `C`. Also types `ctx.context` in inline guards on `addTransition`. The
+   * initial context value is supplied per-instance at `createInstance` time, not here —
+   * different instances of the same workflow may start with different context values.
    *
    * ```ts
    * const wf = createWorkflow({ name: 'approval' })
    *   .setContext(z.object({ score: z.number(), isDutyManager: z.boolean() }))
    *   .addTransition({
-   *     from: 'review', to: 'approved', on: 'APPROVE',
+   *     from: 'review',
+   *     to: 'approved',
+   *     on: 'APPROVE',
    *     guard: (ctx) => ctx.context.isDutyManager && ctx.context.score >= 80,
    *   })
    *   .build();
    *
    * const instance = wf.createInstance('req-001', { score: 92, isDutyManager: true });
    * ```
-   *
-   * @param schema - Zod schema describing the context shape. Stored for runtime
-   *                 validation and used to infer `C`.
-   * @returns The same builder with `TContext` set to `C`.
    */
   setContext<C>(schema: ZodSchema<C>): WorkflowBuilder<TActions, TStates, C> {
     this.contextSchema = schema;
@@ -161,17 +134,9 @@ export class WorkflowBuilder<
   }
 
   /**
-   * Registers a named action and its Zod payload schema.
-   *
-   * This call accumulates the `TActions` generic — the returned builder has
-   * a more specific type that includes the new action, enabling fully typed
-   * `dispatch` and `canExecute` calls on the resulting instance.
-   *
-   * Must be called before any `addTransition` that uses this action name.
-   *
-   * @param name   - The action identifier (e.g. `'APPROVE'`, `'SUBMIT'`).
-   * @param schema - Zod schema for the payload. Validated at `dispatch` time.
-   * @returns The same builder with `TActions` extended to include the new action.
+   * Accumulates the `TActions` generic — the returned builder has a more specific type
+   * that includes the new action, enabling fully typed `dispatch`/`canExecute` on the
+   * resulting instance. Must be called before any `addTransition` using this action name.
    */
   defineAction<K extends string, T>(
     name: K,
@@ -196,20 +161,12 @@ export class WorkflowBuilder<
   }
 
   /**
-   * Creates and registers a `StepState` — the fundamental SOP milestone that
-   * waits for an explicit dispatched action before advancing.
+   * Widens `TStates` to include `K`, making `id` a valid target in subsequent
+   * `setInitial`/`setTerminal`/`addTransition`/`addFork.targets`/`addJoin.requires` calls.
+   * Fork-target steps with no outgoing transitions auto-complete on entry — no extra
+   * option needed.
    *
-   * Widens the `TStates` generic to include `K`, making `id` available as a
-   * valid target in subsequent `setInitial`, `setTerminal`, `addTransition`,
-   * `addFork.targets`, and `addJoin.requires` calls.
-   *
-   * Fork-target steps with no outgoing transitions are automatically completed
-   * on entry (inferred at `build()` time) — no extra option needed.
-   *
-   * @param id      - Unique state identifier. Becomes part of `TStates` after this call.
-   * @param options - Optional display label and lifecycle hooks.
-   * @returns The same builder with `TStates` widened to `TStates | K`.
-   * @throws {Error} If a state with the same `id` is already registered.
+   * @throws {Error} If `id` is empty or already registered.
    */
   addStep<K extends string>(
     id: K,
@@ -225,18 +182,10 @@ export class WorkflowBuilder<
   }
 
   /**
-   * Creates and registers a `ForkState` that atomically activates one or more
-   * downstream states in parallel when entered.
+   * `targets` is constrained to `TStates` — register all branch states before calling
+   * `addFork`, or the reference is a compile-time error.
    *
-   * `targets` is constrained to `TStates` (states already registered via
-   * `addStep`/`addFork`/`addJoin`/`addWait`). Register all branch states before
-   * calling `addFork` — unregistered IDs are compile-time errors.
-   *
-   * @param id      - Unique state identifier for the fork node.
-   * @param options - `targets`: non-empty array of already-registered state IDs to activate in parallel.
-   *                  `label`: optional display label. `onEnter`/`onExit`: optional lifecycle hooks.
-   * @returns The same builder with `TStates` widened to `TStates | K`.
-   * @throws {Error} If `targets` is empty or if the `id` is already registered.
+   * @throws {Error} If `id` is empty or already registered, or if `targets` is empty.
    */
   addFork<K extends string>(
     id: K,
@@ -253,19 +202,10 @@ export class WorkflowBuilder<
   }
 
   /**
-   * Creates and registers a `JoinState` — a synchronisation barrier that
-   * becomes `active` automatically once the completion threshold is met.
+   * `requires` is constrained to `TStates` — register all prerequisite states before
+   * calling `addJoin`, or the reference is a compile-time error.
    *
-   * `requires` is constrained to `TStates` (states already registered via
-   * `addStep`/`addFork`/`addJoin`/`addWait`). Register all prerequisite states
-   * before calling `addJoin` — unregistered IDs are compile-time errors.
-   *
-   * @param id      - Unique state identifier for the join node.
-   * @param options - `requires`: non-empty array of already-registered prerequisite state IDs.
-   *                  `mode`:    `'all'` (default) | `'any'` | a quorum number.
-   *                  `label`:   optional display label. `onEnter`/`onExit`: optional lifecycle hooks.
-   * @returns The same builder with `TStates` widened to `TStates | K`.
-   * @throws {Error} If `requires` is empty or if the `id` is already registered.
+   * @throws {Error} If `id` is empty or already registered, or if `requires` is empty.
    */
   addJoin<K extends string>(
     id: K,
@@ -282,16 +222,7 @@ export class WorkflowBuilder<
     return this as WorkflowBuilder<TActions, TStates | K, TContext>;
   }
 
-  /**
-   * Creates and registers a `WaitState` that pauses the parent workflow until
-   * an external signal arrives via `instance.resolveWait(stateId)`.
-   *
-   * @param id      - Unique state identifier for the wait node.
-   * @param options - `externalName`: name of the external process being waited on.
-   *                  `label`:        optional display label. `onEnter`/`onExit`: optional lifecycle hooks.
-   * @returns The same builder with `TStates` widened to `TStates | K`.
-   * @throws {Error} If a state with the same `id` is already registered.
-   */
+  /** @throws {Error} If `id` is empty or already registered. */
   addWait<K extends string>(
     id: K,
     options: {
@@ -306,12 +237,7 @@ export class WorkflowBuilder<
     return this as WorkflowBuilder<TActions, TStates | K, TContext>;
   }
 
-  /**
-   * Declares the single state that will be `active` when a new instance is created.
-   *
-   * @param stateId - Must be a declared state ID (`TStates`).
-   * @throws {Error} If called more than once.
-   */
+  /** @throws {Error} If called more than once. */
   setInitial(stateId: TStates): this {
     if (this.initialStateId !== null) {
       throw new Error(`Initial state is already set to "${this.initialStateId}"`);
@@ -320,42 +246,28 @@ export class WorkflowBuilder<
     return this;
   }
 
-  /**
-   * Declares one or more terminal states. Once any terminal state becomes
-   * `active`, the instance rejects further `dispatch` calls.
-   *
-   * @param stateIds - IDs of all terminal states (`TStates`). At least one required.
-   */
+  /** Once any terminal state becomes `active`, the instance rejects further `dispatch` calls. */
   setTerminal(stateIds: ReadonlyArray<TStates>): this {
     this.terminalStateIds = [...stateIds];
     return this;
   }
 
   /**
-   * Adds a directed transition arc to the workflow graph, triggered by **either**
-   * an action **or** a deadline — exactly one of `on` / `after`.
+   * Adds a directed arc, triggered by exactly one of `on` / `after` — enforced at compile
+   * time by {@link TransitionInput}.
    *
-   * **Action-triggered** (`on`): fires when the matching action is dispatched
-   * and `from` is `active`. `on` is constrained to `keyof TActions` and `ctx.payload`
-   * is typed as `TActions[K]` in an inline `guard`.
+   * **Action-triggered** (`on`): fires when the matching action is dispatched and `from`
+   * is `active`.
    *
-   * **Time-triggered** (`after`): a deadline. The clock is anchored to `from`,
-   * starting when it is entered; once `after` elapses the edge fires
-   * automatically, moving exactly `from → to` (never broadcasting to other
-   * active states). `after` accepts a millisecond number or a duration string
-   * (`'48h'`, `'7d'`, …). Firing is driven by `WorkflowInstance.tick(now)` and
-   * at the start of every `dispatch`; the host owns the clock — see
-   * `getNextDueAt()`. For "action OR deadline to the same target", declare two
-   * transitions sharing a `to`.
+   * **Time-triggered** (`after`): a deadline anchored to `from`'s entry time; once elapsed
+   * the edge fires automatically, moving exactly `from → to` (never broadcasting to other
+   * active states). Accepts a millisecond number or a duration string (`'48h'`, `'7d'`, …).
+   * Firing is driven by `WorkflowInstance.tick(now)` and at the start of every `dispatch` —
+   * the host owns the clock (see `getNextDueAt()`). For "action OR deadline to the same
+   * target", declare two transitions sharing a `to`.
    *
-   * The trigger is an action (`on`) or a deadline (`after`) — see
-   * {@link TransitionInput}, which makes "exactly one" a compile-time guarantee.
-   * `from`/`to` are constrained to `TStates`, preventing state-ID typos. The
-   * `guard` accepts a raw `(ctx) => boolean | Promise<boolean>` (wrapped in
-   * `FnGuard` internally) or any `IGuard`; on a timed edge it is re-evaluated on
-   * each tick until it passes or `from` exits.
-   *
-   * @param transition - `from`, `to`, and exactly one of `on` / `after`.
+   * `guard` accepts a raw `(ctx) => boolean | Promise<boolean>` or any `IGuard`; on a timed
+   * edge it is re-evaluated on each tick until it passes or `from` exits.
    */
   addTransition<K extends keyof TActions & string>(
     transition: TransitionInput<TActions, TStates, TContext, K>,
@@ -394,14 +306,13 @@ export class WorkflowBuilder<
    * Runs graph-level reachability and dead-end checks after structural validation.
    * Collects all violations and throws a single combined error.
    *
-   * @param states - The registered state map (already structurally validated).
    * @throws {Error} If any graph invariant is violated.
    */
   private validateGraph(states: ReadonlyMap<string, AnyState>): void {
     const errors: string[] = [];
 
-    // DFS reachability from the initial state.
-    // Edges: transitions (from→to), fork fan-out (fork→target), join activation (requires→join).
+    // DFS reachability from the initial state. Edges: transitions (from→to), fork fan-out
+    // (fork→target), join activation (requires→join).
     const reachable = new Set<string>();
     const stack = [this.initialStateId];
     while (stack.length > 0) {
@@ -462,27 +373,15 @@ export class WorkflowBuilder<
   /**
    * Validates the workflow structure and returns an immutable `Workflow` instance.
    *
-   * Structural checks:
-   * - `name` must be non-empty (checked in constructor)
-   * - Exactly one initial state must be declared
-   * - At least one terminal state must be declared
-   * - The initial state must be registered
-   * - All terminal state IDs must be registered
-   * - All transition `from`/`to` IDs must be registered
-   * - All transition `on` action names must have registered schemas
-   * - `ForkState.targets` must all be registered states
-   * - `JoinState.requires` must all be registered states
+   * Structural checks: exactly one initial state, at least one terminal state, all
+   * referenced state IDs registered, all `on` action names schema-registered.
    *
-   * Graph-level checks (run after all structural checks pass):
-   * - Every registered state must be reachable from the initial state
-   * - At least one terminal state must be reachable (workflow can terminate)
-   * - Non-terminal `WaitState` and `JoinState` nodes must have at least one
-   *   outgoing transition (otherwise the workflow is permanently stuck once
-   *   that state is entered)
+   * Graph checks (after structural checks pass): every state reachable from the initial
+   * state, at least one terminal state reachable, and non-terminal `WaitState`/`JoinState`
+   * nodes have an outgoing transition (otherwise the workflow gets permanently stuck there).
    *
-   * @returns A compiled `Workflow<TActions, TContext>` ready to create instances.
-   * @throws {Error} If any structural or graph invariant is violated. The message
-   *                 lists all violations found in one pass.
+   * @throws {Error} If any structural or graph invariant is violated — the message lists
+   *                 all violations found in one pass.
    */
   build(): Workflow<TActions, TContext, TStates> {
     if (!this.initialStateId) {
@@ -568,11 +467,9 @@ export class WorkflowBuilder<
 }
 
 /**
- * Creates a new {@link WorkflowBuilder} with `TStates` starting as `never`.
- *
- * Each call to `addStep`, `addFork`, `addJoin`, or `addWait` widens `TStates`
- * by one literal, so all subsequent calls are constrained to the growing set
- * of registered IDs — no upfront array needed.
+ * Starts a new workflow definition, with `TStates` beginning as `never`. Each call to
+ * `addStep`, `addFork`, `addJoin`, or `addWait` widens `TStates` by one literal, so all
+ * subsequent calls are constrained to the growing set of registered IDs.
  *
  * ```ts
  * const wf = createWorkflow({ name: 'po' })
@@ -587,8 +484,6 @@ export class WorkflowBuilder<
  * For workflows whose state IDs are only known at runtime, use
  * {@link createDynamicWorkflow} instead.
  *
- * @param config.name - Workflow name. Must be non-empty.
- * @returns A `WorkflowBuilder` with `TStates = never`, ready to accumulate state IDs.
  * @throws {Error} If `name` is empty.
  */
 export function createWorkflow(config: {
@@ -609,13 +504,13 @@ export function createWorkflow(config: {
  * ```ts
  * const builder = createDynamicWorkflow({ name: 'dynamic-linear' });
  * builder.defineAction('NEXT', z.object({}));
- * for (const id of fetchedIds) { builder.addStep(id); }
+ * for (const id of fetchedIds) {
+ *   builder.addStep(id);
+ * }
  * builder.setInitial(fetchedIds[0]).setTerminal([fetchedIds.at(-1)]);
  * const wf = builder.build();
  * ```
  *
- * @param config.name - Workflow name. Must be non-empty.
- * @returns A `WorkflowBuilder` with `TStates = string` and `TActions = Record<string, unknown>`.
  * @throws {Error} If `name` is empty.
  */
 export function createDynamicWorkflow(config: {

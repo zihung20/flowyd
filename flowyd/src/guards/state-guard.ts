@@ -1,22 +1,10 @@
 import type { IGuard, GuardContext } from '../types/index.js';
 
 /**
- * A guard that passes when a specific state in the workflow has reached
- * `completed` status at the time of evaluation.
- *
- * Use this to enforce prerequisites directly in the guard layer rather than
- * relying solely on `JoinState` topology. For example, preventing an APPROVE
- * action unless a required review step has already been completed:
- *
- * ```ts
- * Guard.stateCompleted('security-review')
- * ```
+ * Passes when `stateId` has reached `completed` status — enforces a prerequisite in
+ * the guard layer rather than relying solely on `JoinState` topology.
  */
 export class StateCompletedGuard implements IGuard<unknown> {
-  /**
-   * @param stateId - ID of the state that must be in `completed` status
-   *                  for this guard to pass.
-   */
   constructor(private readonly stateId: string) {}
 
   evaluate(ctx: GuardContext<unknown>): Promise<boolean> {
@@ -25,14 +13,10 @@ export class StateCompletedGuard implements IGuard<unknown> {
 }
 
 /**
- * A guard that passes when a specific state is currently `active`.
- *
- * Less commonly needed than `StateCompletedGuard`, but useful for workflows
- * where one branch needs to confirm that a parallel branch is still in
- * progress before taking an action.
+ * Passes when `stateId` is currently `active` — e.g. to confirm a parallel branch is
+ * still in progress.
  */
 export class StateActiveGuard implements IGuard<unknown> {
-  /** @param stateId - ID of the state that must be `active` for this guard to pass. */
   constructor(private readonly stateId: string) {}
 
   evaluate(ctx: GuardContext<unknown>): Promise<boolean> {

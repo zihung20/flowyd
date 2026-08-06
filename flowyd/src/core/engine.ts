@@ -12,16 +12,9 @@ import { StateKind, StateStatus } from '../types/index.js';
 import type { GuardRegistry } from './registry.js';
 import { typedEntries, typedFromEntries } from './utils.js';
 
-/**
- * Intermediate, mutable state map computed during a single engine evaluation.
- * Never exposed outside this module.
- */
+/** Never exposed outside this module. */
 type MutableStatusMap<TStates extends string = string> = Map<TStates, StateStatus>;
 
-/**
- * Result of a single engine evaluation cycle, before it is committed to the
- * instance.
- */
 interface EvaluationResult<TStates extends string = string> {
   readonly newStatuses: MutableStatusMap<TStates>;
   readonly enteredStates: TStates[];
@@ -39,26 +32,12 @@ interface EvaluationResult<TStates extends string = string> {
  */
 export class WorkflowEngine {
   /**
-   * Evaluates a dispatched action against the current instance state.
+   * Evaluates a dispatched action against the current instance state and returns the
+   * resulting `DispatchResult` — never mutates its inputs. `at` is supplied by the caller
+   * (the engine never reads a clock) so dispatch stays pure and deterministic.
    *
-   * `TContext` is inferred from `currentSnapshot`, `TStates` from `definition`,
-   * and `TAction` from `action` so the returned `DispatchResult` is fully typed
-   * at the call site — no cast required in `WorkflowInstance.dispatch`.
-   *
-   * @param definition      - The immutable compiled workflow graph.
-   * @param instanceState   - Read-only view of the current instance state.
-   * @param guardRegistry   - The instance's registered guard functions.
-   * @param currentSnapshot - Full snapshot used to produce the updated one on success.
-   * @param action          - The action name being dispatched.
-   * @param payload         - The Zod-validated action payload.
-   * @param context         - The accumulated instance context, passed through to guards.
-   * @param at              - ISO-8601 timestamp to record on the history entry.
-   *                          Supplied by the caller (the engine never reads a
-   *                          clock) so dispatch stays pure and deterministic.
-   * @returns A `DispatchResult<TContext, TStates, TAction>` discriminated union. On success,
-   *          includes the updated snapshot and lists of entered/exited states.
-   * @throws Any error thrown by a guard's `evaluate()` method — guard errors
-   *         are not caught by the engine and propagate directly to the caller.
+   * @throws Any error thrown by a guard's `evaluate()` method — not caught here, propagates
+   *         directly to the caller.
    */
   static async dispatch<TContext, TStates extends string = string, TAction extends string = string>(
     definition: WorkflowDefinition<TContext, TStates>,
@@ -161,28 +140,12 @@ export class WorkflowEngine {
   }
 
   /**
-   * Fires a single **time-triggered** transition, scoped to its `from` state.
+   * Fires a single time-triggered transition, scoped to its `from` state. Unlike `dispatch`,
+   * this advances exactly the one edge whose deadline elapsed — a timeout on one branch can
+   * never disturb another. `from` may be `active` or `waiting` (a timed edge is how a
+   * `WaitState` times out). Recorded as `kind: 'timeout'`; `DispatchResult.action` still
+   * echoes a synthetic `__timeout:<from>-><to>` label for blocked-result diagnostics.
    *
-   * Unlike `dispatch`, this never resolves an action against every active
-   * source — it advances exactly the one edge whose deadline elapsed, so a
-   * timeout on one branch can never disturb another. The `from` state may be
-   * `active` or `waiting` (a timed edge is how a `WaitState` times out).
-   *
-   * The resulting history entry is stamped with `at` (the logical due time, not
-   * wall-clock) and recorded as `kind: 'timeout'` carrying `from`/`to`, so the
-   * audit trail distinguishes deadline firings from human actions without any
-   * magic-string parsing. (The returned `DispatchResult.action` still echoes a
-   * synthetic `__timeout:<from>-><to>` label for blocked-result diagnostics.)
-   *
-   * @param definition      - The immutable compiled workflow graph.
-   * @param instanceState   - Read-only view of the current instance state.
-   * @param guardRegistry   - The instance's registered guard functions.
-   * @param currentSnapshot - Full snapshot used to produce the updated one on success.
-   * @param transition      - The time-triggered transition to fire.
-   * @param at              - ISO-8601 logical fire time (the edge's `dueAt`).
-   * @param context         - The accumulated instance context, passed to the guard.
-   * @returns A `DispatchResult` — blocked with `guard-failed`/`no-active-source`
-   *          when the edge cannot fire, otherwise the updated snapshot.
    * @throws Any error thrown by the transition's guard.
    */
   static async fireTimed<TContext, TStates extends string = string>(
@@ -205,7 +168,10 @@ export class WorkflowEngine {
       };
     }
 
-    if (!instanceState.isStateActive(transition.from) && !instanceState.isStateWaiting(transition.from)) {
+    if (
+      !instanceState.isStateActive(transition.from) &&
+      !instanceState.isStateWaiting(transition.from)
+    ) {
       return {
         success: false,
         action,
@@ -215,7 +181,12 @@ export class WorkflowEngine {
     }
 
     if (transition.guard) {
-      const guardCtx = WorkflowEngine.buildGuardContext(null, instanceState, guardRegistry, context);
+      const guardCtx = WorkflowEngine.buildGuardContext(
+        null,
+        instanceState,
+        guardRegistry,
+        context,
+      );
       const allowed = await transition.guard.evaluate(guardCtx);
       if (!allowed) {
         return {
@@ -342,7 +313,6 @@ export class WorkflowEngine {
       }
 
       case StateKind.Fork: {
-        // ForkState is transient — complete it immediately and fan out to targets.
         statuses.set(stateId, StateStatus.Completed);
         for (const target of state.targets) {
           // Cast is safe: ForkState.targets are validated at build() to be registered TStates IDs.
@@ -385,13 +355,6 @@ export class WorkflowEngine {
     return completedCount >= join.mode;
   }
 
-  /**
-   * Constructs the `GuardContext` passed to every guard during evaluation.
-   *
-   * Provides the validated payload, the accumulated instance context, the live
-   * instance state view, and the guard resolution function for `InjectedGuard`
-   * lookups.
-   */
   private static buildGuardContext<TStates extends string>(
     payload: unknown,
     instanceState: ReadonlyInstanceState<TStates>,

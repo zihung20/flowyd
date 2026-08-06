@@ -123,7 +123,7 @@ Write a comment only when the _why_ would surprise an informed reader. Never exp
 
 ### TSDoc
 
-Every exported symbol needs a TSDoc block with a one-sentence description, `@param`, `@returns`, and `@throws`.
+Add a TSDoc block only when the name and type don't already say it — skip self-explanatory symbols entirely. Public API entry points keep a one-line description regardless. `@throws` stays mandatory whenever the function throws.
 
 ## Test structure
 

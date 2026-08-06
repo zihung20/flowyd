@@ -1,8 +1,8 @@
 # Fixed-point engine
 
-The engine must handle `ForkState` (which immediately activates multiple states) and `JoinState` (which activates when a threshold of prerequisite states complete). Both of these are "automatic" — they do not require the caller to dispatch an extra action. Yet both can chain: a `ForkState` can target a `JoinState`'s prerequisites, and a `JoinState` can target another `ForkState`.
+`ForkState` (activates multiple states immediately) and `JoinState` (activates when prerequisites complete) are both "automatic" — no extra dispatch needed. They can also chain: a fork can feed a join's prerequisites, and a join can target another fork.
 
-The fixed-point loop is how all of this resolves in a single `dispatch` call.
+The fixed-point loop resolves all of this within a single `dispatch` call.
 
 ## The algorithm
 
@@ -21,7 +21,7 @@ loop:
   if nothing changed in this iteration → break
 ```
 
-This is a **fixed-point iteration** (also called Kleene iteration). The loop terminates when a full pass produces no new state changes. Because states only move forward (`idle → active → completed`) and never backwards, the loop is guaranteed to terminate.
+This is a **fixed-point iteration** (Kleene iteration): it terminates when a full pass produces no new changes. Since states only move forward (`idle → active → completed`), termination is guaranteed.
 
 ## Why it matters
 
@@ -43,7 +43,7 @@ stateDiagram-v2
     fork2 --> d
 ```
 
-Without the fixed-point loop, activating `join-1` would require the caller to dispatch a second action to enter `fork-2`. With the loop, a single `GO` dispatch resolves the entire chain — `fork-1` fires, `a` and `b` activate, then on later dispatches `join-1` fires and immediately `fork-2` fires, all within a single `dispatch` call.
+Without the loop, activating `join-1` would need a second dispatch to enter `fork-2`. With it, a single `GO` resolves the entire chain in one call.
 
 ## Termination proof
 
@@ -51,7 +51,7 @@ The state space is finite. Every state has exactly four statuses: `idle`, `activ
 
 ## Fork atomicity
 
-A `ForkState` is entered and completed in the same iteration of the fixed-point loop — it is never left in `active` status between iterations. This means `getCurrentStates()` will never return a `ForkState` ID. Forks are transient by design: they are routing nodes, not positions.
+A `ForkState` is entered and completed in the same loop iteration — never left `active` between iterations. `getCurrentStates()` will never return a `ForkState` ID; forks are routing nodes, not positions.
 
 ## JoinState activation condition
 
@@ -63,4 +63,4 @@ A `JoinState` activates when:
   - `'any'` → at least one state in `requires` is `completed`
   - `number N` → at least N states in `requires` are `completed`
 
-The check runs after every transition application, including after transitions triggered by fork resolution. This means joins that were not in scope for the original dispatch can still activate if their prerequisites complete as a side effect.
+The check runs after every transition application, including ones triggered by fork resolution — so joins outside the original dispatch's scope can still activate as a side effect.

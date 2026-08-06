@@ -46,20 +46,10 @@ function kindSuffix(kind: StateKind): string {
 }
 
 /**
- * Converts a `WorkflowDefinition` into a Mermaid `stateDiagram-v2` string.
- *
- * When an `InstanceSnapshot` is provided, states are annotated with CSS
- * class names (`active`, `waiting`, `completed`) that can be styled in the
- * rendering environment.
- *
- * The output can be pasted directly into any Mermaid-compatible renderer
- * (GitHub markdown, Mermaid Live Editor, Obsidian, Notion, etc.). No
- * external dependency on the Mermaid library is required.
- *
- * @example
- * ```ts
- * const diagram = MermaidExporter.export(workflow.getDefinition(), instance.getSnapshot());
- * ```
+ * Converts a `WorkflowDefinition` into a Mermaid `stateDiagram-v2` string, ready to paste
+ * into any Mermaid-compatible renderer (GitHub markdown, Mermaid Live Editor, Obsidian,
+ * Notion, etc.) with no dependency on the Mermaid library itself. When `snapshot` is
+ * provided, states are annotated with CSS classes (`active`, `waiting`, `completed`).
  */
 export const MermaidExporter: IExporter<string> = {
   export(definition: WorkflowDefinition, snapshot?: InstanceSnapshot): string {

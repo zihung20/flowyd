@@ -16,15 +16,13 @@ That's the whole model. The rest of this page is the detail behind each word.
 
 ---
 
-A workflow is a directed graph of **states** connected by **transitions**. The **engine** advances the graph when you dispatch an **action**. The result is a **snapshot** — a plain JSON object you can store anywhere.
-
 ## States
 
 Every node in the graph is a state. There are four kinds.
 
 ### StepState — the basic building block
 
-A `StepState` is `active` when entered and waits for a dispatch to advance it. Most workflow steps are `StepState`.
+`active` when entered; waits for a dispatch to advance it. Most workflow steps are `StepState`.
 
 ```mermaid
 stateDiagram-v2
@@ -42,7 +40,7 @@ stateDiagram-v2
 
 ### ForkState — fan out to parallel branches
 
-A `ForkState` is a routing node. The moment it is entered, it immediately activates all its `targets` and marks itself `completed`. It is never left in the `active` status — it is transient by design.
+A routing node. On entry it immediately activates all `targets` and marks itself `completed` — never left `active`, transient by design.
 
 ```mermaid
 stateDiagram-v2
@@ -62,7 +60,7 @@ stateDiagram-v2
 
 ### JoinState — synchronise parallel branches
 
-A `JoinState` activates automatically when its `requires` threshold is satisfied. No extra dispatch is needed.
+Activates automatically when its `requires` threshold is satisfied — no extra dispatch needed.
 
 ```mermaid
 stateDiagram-v2
@@ -91,7 +89,7 @@ stateDiagram-v2
 
 ### WaitState — pause for an external signal
 
-A `WaitState` enters `waiting` status (not `active`) when reached. The workflow is paused. Your service layer drives the external process, then calls `inst.resolveWait(stateId)` to unblock it.
+Enters `waiting` (not `active`) when reached, pausing the workflow. Your service layer drives the external process, then calls `inst.resolveWait(stateId)` to unblock it.
 
 ```mermaid
 stateDiagram-v2

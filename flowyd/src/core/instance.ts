@@ -15,31 +15,18 @@ import { WorkflowEngine } from './engine.js';
 import { typedEntries, typedFromEntries } from './utils.js';
 
 /**
- * Produces `Base` intersected with `{ [extra keys in Given]: never }`.
- * Applied to `dispatch` / `canExecute` so that object literals with unknown
- * properties fail at the call site rather than silently reaching Zod's runtime
- * `.strict()` check.
+ * `Base` intersected with `{ [extra keys in Given]: never }`. Applied to `dispatch` /
+ * `canExecute` so object literals with unknown properties fail at the call site rather
+ * than silently reaching Zod's runtime `.strict()` check.
  */
 type Exact<Base, Given extends Base> = Given & { [K in Exclude<keyof Given, keyof Base>]: never };
 
 /**
- * Mutable runtime state for a single SOP execution.
- *
- * A `WorkflowInstance` is always created from an immutable `Workflow`
- * definition via `workflow.createInstance(id)` or restored from a persisted
- * snapshot via `workflow.restoreInstance(snapshot)`. Each instance is
- * completely independent — concurrent executions of the same workflow
- * definition share no state.
- *
- * After every `dispatch`, call `instance.getSnapshot()` and write the result
- * to your database. To resume, load the JSON and pass it to
- * `workflow.restoreInstance(snapshot)`. Guard injections are not part of the
- * snapshot and must be re-applied after restoration.
- *
- * @template TActions - Map of action names to their validated payload types,
- *                      inferred from `WorkflowBuilder.defineAction()` calls.
- * @template TContext - Type of the instance context declared via
- *                      `WorkflowBuilder.setContext()`. Defaults to `unknown`.
+ * Mutable runtime state for a single SOP execution, created via `workflow.createInstance()`
+ * or `workflow.restoreInstance()`. Each instance is completely independent — concurrent
+ * executions of the same definition share no state. After every `dispatch`, call
+ * `getSnapshot()` and persist the result; guard injections are not part of the snapshot
+ * and must be re-applied after `restoreInstance()`.
  */
 export class WorkflowInstance<
   TActions extends ActionPayloadMap,
@@ -48,22 +35,16 @@ export class WorkflowInstance<
 > {
   private readonly guardRegistry = new GuardRegistry();
 
-  /** @internal Created exclusively by `Workflow._createInstance` and `Workflow._restoreInstance`. */
+  /** @internal Created exclusively by `Workflow.createInstance` and `Workflow.restoreInstance`. */
   constructor(
     private readonly definition: WorkflowDefinition<TContext, TStates>,
     private snapshot: InstanceSnapshot<TContext, TStates>,
   ) {}
 
   /**
-   * Registers a named guard function for use by `Guard.inject('name')`
-   * placeholders declared in the workflow definition.
-   *
-   * Returns `this` for chaining. Calling `injectGuard` with the same name
-   * twice replaces the previous implementation.
-   *
-   * @param name - Must match the name used in `Guard.inject('name')`.
-   * @param fn   - The guard implementation. Annotate `TPayload` to match the
-   *               payload type of the action(s) this guard is attached to.
+   * Registers a named guard for `Guard.inject('name')` placeholders in the workflow
+   * definition. Calling `injectGuard` with the same name twice replaces the previous
+   * implementation.
    */
   injectGuard<TPayload = unknown, TCtx = unknown>(
     name: string,
@@ -75,14 +56,10 @@ export class WorkflowInstance<
   }
 
   /**
-   * Replaces the accumulated instance context and persists it in the snapshot.
-   *
-   * Guards declared on transitions can read this value via `ctx.context`.
-   * The new value is immediately available to the next `dispatch` call and is
-   * included in the snapshot returned by `getSnapshot()`.
-   *
-   * @param data - The new context value. Must conform to `TContext`.
-   * @returns `this` for chaining.
+   * Replaces the accumulated instance context, readable by transition guards via
+   * `ctx.context`. Immediately available to the next `dispatch` and included in
+   * the snapshot returned by `getSnapshot()`.
+   * @throws {ZodError} if `data` fails the builder's `contextSchema`.
    */
   setContext(data: TContext): this {
     // contextSchema is ZodSchema<TContext>, so parse() returns TContext directly.
@@ -92,15 +69,8 @@ export class WorkflowInstance<
   }
 
   /**
-   * Returns the current instance context.
-   *
-   * When `setContext()` was called on the builder, `createInstance()` requires
-   * context to be provided, so this will never be `undefined` in practice for
-   * typed workflows. For workflows with no declared context schema the return
-   * type resolves to `unknown`, which subsumes `undefined`.
-   *
-   * @returns The context passed to `createInstance()` or last set via
-   *          `setContext()`, or `undefined` if neither has been called.
+   * When `setContext()` was called on the builder, `createInstance()` requires context,
+   * so this never returns `undefined` in practice for typed workflows.
    */
   getContext(): TContext | undefined {
     return this.snapshot.context;
@@ -117,12 +87,7 @@ export class WorkflowInstance<
       .map(([id]) => id);
   }
 
-  /**
-   * Returns the `StateStatus` of the given state at the time of this call.
-   *
-   * @param stateId - A state ID registered in the workflow definition.
-   * @throws {Error} If no state with this ID exists in the definition.
-   */
+  /** @throws {Error} If no state with this ID exists in the definition. */
   getStateStatus(stateId: TStates): StateStatus {
     if (!this.definition.states.has(stateId)) {
       throw new Error(`State "${stateId}" is not registered in workflow "${this.definition.name}"`);
@@ -162,12 +127,8 @@ export class WorkflowInstance<
   }
 
   /**
-   * Evaluates whether the given action can fire right now — including guard
-   * evaluation with the provided payload.
-   *
-   * @param action  - The action to test.
-   * @param payload - The payload that would be passed to `dispatch`.
-   * @returns `true` if at least one matching transition passes its guard.
+   * Evaluates whether `action` would fire right now, including guard evaluation, without
+   * dispatching it.
    */
   async canExecute<TAction extends keyof TActions & string, P extends TActions[TAction]>(
     action: TAction,
@@ -178,28 +139,16 @@ export class WorkflowInstance<
   }
 
   /**
-   * Dispatches an action against the current instance state.
+   * Validates `payload`, evaluates all matching transitions and their guards, applies the
+   * resulting state changes atomically, and returns a `DispatchResult`. On success the
+   * internal snapshot is updated — call `getSnapshot()` immediately after to persist it.
+   * `options.now` also fires any overdue deadlines before the action; defaults to
+   * `new Date()`, pass explicitly for deterministic replay or testing.
    *
-   * The engine validates the payload, evaluates all matching transitions and
-   * their guards, applies the resulting state changes atomically, and returns
-   * a `DispatchResult`. On success the internal snapshot is updated —
-   * call `getSnapshot()` immediately after to capture the new state for
-   * persistence.
-   *
-   * @param action  - An action name declared via `WorkflowBuilder.defineAction()`.
-   * @param payload - The typed payload for this action, validated against the
-   *                  action's Zod schema before any guard is evaluated.
-   * @param options.now - The current time, used both to fire any overdue
-   *                  deadlines before the action and to stamp the history entry.
-   *                  Defaults to `new Date()`; pass it explicitly for
-   *                  deterministic replay or testing — the instance is the only
-   *                  clock-reader, the engine is given the time.
-   * @returns A discriminated `DispatchResult` — check `result.success` to
-   *          distinguish a successful transition from a blocked one.
    * @throws {Error}    If the action name has no registered schema.
    * @throws {ZodError} If `payload` fails schema validation.
-   * @throws {Error}    If a named guard referenced by the transition has not
-   *                    been injected via `injectGuard()`.
+   * @throws {Error}    If a named guard referenced by the transition has not been injected
+   *                    via `injectGuard()`.
    */
   async dispatch<TAction extends keyof TActions & string, P extends TActions[TAction]>(
     action: TAction,
@@ -208,8 +157,8 @@ export class WorkflowInstance<
   ): Promise<DispatchResult<TContext, TStates, TAction>>;
 
   /**
-   * @internal Overload used by `canExecute` to perform a dry-run without
-   *           committing state changes.
+   * @internal Overload used by `canExecute` to perform a dry-run without committing
+   * state changes.
    */
   async dispatch<TAction extends keyof TActions & string>(
     action: TAction,
@@ -258,20 +207,11 @@ export class WorkflowInstance<
   }
 
   /**
-   * Signals that an external process has completed, promoting the corresponding
-   * `WaitState` from `waiting` to `active`.
+   * Promotes a `WaitState` from `waiting` to `active`. Afterward, dispatch the action that
+   * transitions out of it (e.g. `instance.dispatch('KYC_PASSED', {})`) — to record what the
+   * external process returned, put it in that follow-up dispatch's payload.
    *
-   * After calling this, dispatch the appropriate action to transition out of
-   * the wait state (e.g. `instance.dispatch('KYC_PASSED', {})`). To record what
-   * the external process returned, put it in that follow-up dispatch's payload —
-   * it lands in the audit history there.
-   *
-   * @param stateId     - ID of the `WaitState` to resolve.
-   * @param options.now - Time to stamp the history entry with. Defaults to
-   *                      `new Date()`; pass it explicitly for deterministic
-   *                      replay or testing.
-   * @throws {Error} If the state is not a `WaitState` or is not currently
-   *                 in `waiting` status.
+   * @throws {Error} If the state is not a `WaitState` or is not currently in `waiting` status.
    */
   resolveWait(stateId: TStates, options: { now?: Date } = {}): void {
     const { now = new Date() } = options;
@@ -312,21 +252,14 @@ export class WorkflowInstance<
   }
 
   /**
-   * Advances all elapsed time-triggered transitions ("deadlines") up to `now`.
+   * Advances all elapsed time-triggered transitions ("deadlines") up to `now`. The engine
+   * never reads a clock — the host supplies `now`, either here or automatically at the
+   * start of every `dispatch` (a scheduler calls this directly for idle instances; see
+   * `getNextDueAt()`). Runs to a fixed point, so it catches up cleanly after downtime:
+   * several chained deadlines all fire in due-time order in one call. Each firing is
+   * stamped with its logical `dueAt`, not wall-clock `now`. A guard that blocks a timed
+   * edge is retried on the next `tick`, not consumed.
    *
-   * The engine never reads a clock — the host supplies `now` and decides when to
-   * call this. There are two ways deadlines advance: automatically at the start
-   * of every `dispatch`, and explicitly via this method (which a host's
-   * scheduler calls for idle instances; see `getNextDueAt()`).
-   *
-   * Firing runs to a fixed point and catches up cleanly after downtime: if the
-   * process was offline past several chained deadlines, one `tick` fires them
-   * all in due-time order. Each firing is stamped with its logical `dueAt` (not
-   * wall-clock `now`), so cascades and the audit trail are independent of when
-   * the sweep actually ran. A guard on a timed edge that blocks is retried on
-   * the next `tick`, not consumed.
-   *
-   * @param now - The current time. Deadlines with `dueAt <= now` fire.
    * @returns The number of time-triggered transitions that fired.
    */
   async tick(now: Date): Promise<number> {
@@ -334,15 +267,10 @@ export class WorkflowInstance<
   }
 
   /**
-   * Returns the earliest moment at which a deadline will fire, across every
-   * currently `active` or `waiting` state, or `null` when none is armed (or the
-   * instance is terminal).
-   *
-   * Persist this as an indexed column so a scheduler can sweep due instances
-   * (`SELECT ... WHERE next_due_at <= now()`) and call `tick(now)` on each —
-   * the library owns no scheduler and no storage.
-   *
-   * @returns An ISO-8601 timestamp, or `null` if no deadline is pending.
+   * Earliest moment at which a deadline will fire, or `null` when none is armed (or the
+   * instance is terminal). Persist this as an indexed column so a scheduler can sweep due
+   * instances (`SELECT ... WHERE next_due_at <= now()`) and call `tick(now)` on each — the
+   * library owns no scheduler and no storage.
    */
   getNextDueAt(): string | null {
     if (this.snapshot.isTerminal) {
@@ -411,7 +339,9 @@ export class WorkflowInstance<
       } else {
         // Guard blocked (or source no longer armed) — skip this edge for the rest
         // of this advancement so we don't spin; it is retried on the next tick.
-        blocked.add(`${chosen.transition.from}->${chosen.transition.to}:${chosen.transition.after}`);
+        blocked.add(
+          `${chosen.transition.from}->${chosen.transition.to}:${chosen.transition.after}`,
+        );
       }
     }
 
@@ -448,37 +378,20 @@ export class WorkflowInstance<
   }
 
   /**
-   * Returns a plain, JSON-serialisable snapshot of the current instance state.
-   *
-   * Safe to `JSON.stringify` and write to any persistence layer. The returned
-   * object is a deep clone — mutations do not affect the live instance.
-   *
-   * @returns An `InstanceSnapshot<TContext>` capturing the full current state.
+   * Plain, JSON-serialisable, deep-cloned snapshot — mutating it does not affect the
+   * live instance.
    */
   getSnapshot(): InstanceSnapshot<TContext, TStates> {
     return structuredClone(this.snapshot);
   }
 
   /**
-   * Returns an independent deep-cloned snapshot of what the instance looked like
-   * at the given version. Mutations to the returned object do not affect the live
-   * instance.
+   * Deep-cloned snapshot of what the instance looked like at `version`, reconstructed by
+   * replaying the `exitedStates`/`enteredStates` deltas from history. Cost is O(version) —
+   * fine for a debugging/audit tool never called in a hot path. `rewind(N).context`
+   * reflects the exact context guards saw when transitioning to version N (from
+   * `history[N-1].context`, or the current context if no dispatch has occurred yet).
    *
-   * Reconstructs state by replaying the `exitedStates`/`enteredStates` deltas
-   * from every history entry up to `version`. Cost is O(version) — acceptable
-   * for a debugging or audit tool that is never called in a hot path.
-   *
-   * **Context accuracy**: each history entry records the context that was active
-   * at the time of the corresponding dispatch, so `rewind(N).context` reflects
-   * the exact context that guards saw when transitioning to version N. For
-   * version 0, context reflects whatever was set before the first dispatch
-   * (captured in `history[0].context`); if no dispatches have occurred yet,
-   * the current context is used.
-   *
-   * @param version - An integer in `[0, currentVersion]`. `0` is the initial
-   *                  state before any dispatches; passing the current version is
-   *                  equivalent to calling `getSnapshot()`.
-   * @returns A complete `InstanceSnapshot<TContext>` for the requested version.
    * @throws {Error} If `version` is outside `[0, currentVersion]`.
    */
   rewind(version: number): InstanceSnapshot<TContext, TStates> {
@@ -493,7 +406,6 @@ export class WorkflowInstance<
       return this.getSnapshot();
     }
 
-    // Build the initial status map: every state idle, initial state active.
     const stateStatuses = new Map<TStates, StateStatus>();
     for (const id of this.definition.states.keys()) {
       stateStatuses.set(id, StateStatus.Idle);
@@ -541,7 +453,8 @@ export class WorkflowInstance<
     // Non-null: the earlier guards leave `version` in [1, current-1], and history
     // length equals the current version, so `version - 1` is always a valid index.
     const entry = this.snapshot.history[version - 1]!;
-    // Context at version N is what was in effect when dispatch N fired, recorded in history[N-1].context.
+    // Context at version N is what was in effect when dispatch N fired, recorded in
+    // history[N-1].context.
     const contextAtN = entry.context ?? this.snapshot.context;
 
     const base: InstanceSnapshot<TContext, TStates> = {
@@ -600,8 +513,9 @@ export class WorkflowInstance<
     const instanceId = this.snapshot.instanceId;
     const workflowName = this.snapshot.workflowName;
 
-    // stateStatuses is Record<TStates, StateStatus> — keyed access returns StateStatus | undefined
-    // under noUncheckedIndexedAccess for dynamic (string) TStates, hence the ?? fallback.
+    // stateStatuses is Record<TStates, StateStatus> — keyed access returns
+    // StateStatus | undefined under noUncheckedIndexedAccess for dynamic (string)
+    // TStates, hence the ?? fallback.
     const getStatus = (id: TStates): StateStatus => statuses[id] ?? StateStatus.Idle;
 
     return {

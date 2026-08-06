@@ -12,7 +12,7 @@
 pnpm add flowyd zod
 ```
 
-`zod` is a required peer dependency. Every action payload type is derived from a Zod schema.
+Every action payload type is derived from a Zod schema, so `zod` is required.
 
 ## TypeScript configuration
 
@@ -38,8 +38,6 @@ import type { WorkflowInstance, InstanceSnapshot, DispatchResult } from 'flowyd'
 // Visualization — tree-shakeable separate entry point
 import { MermaidExporter, JsonGraphExporter } from 'flowyd/visualization';
 ```
-
-The visualization entry point is separate so bundlers can tree-shake it from applications that do not use it.
 
 ## Quick start
 

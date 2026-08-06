@@ -212,15 +212,15 @@ catch { result = defaultValue; }
 
 ---
 
-### TSDoc on every exported symbol
+### Docs earn their place — write for a busy reader, not for coverage
 
-Every exported class, interface, type alias, and function needs a TSDoc block with:
-- One-sentence description (imperative mood)
-- `@param` for every parameter
-- `@returns` describing shape and meaning
-- `@throws` for every error condition callers must handle
+A comment or TSDoc block is a cost: it's one more thing to read and one more thing that goes stale. Add one only when the name and type signature don't already say it. If a reader would understand the symbol just as well without the block, delete the block.
 
-Private/internal methods only need TSDoc when their purpose is genuinely non-obvious.
+- Skip TSDoc entirely on self-explanatory symbols — simple getters, obvious one-line pass-throughs, params whose name and type are the whole story.
+- When a symbol *does* need docs (non-obvious behavior, an invariant, a gotcha), keep it to one line. No restating the name, no filler.
+- `@param`/`@returns` only when they add information beyond the type — never `@param count - the count`.
+- `@throws` stays mandatory whenever the function throws — it's the one tag callers actually need to decide whether to wrap a call in `try/catch`.
+- Public API entry points (`createWorkflow`, `WorkflowEngine.dispatch`, `WorkflowInstance` methods, exporters) always get a one-line description even when "obvious" — that's what shows in IDE hover for library consumers, and it's the first thing a new user reads.
 
 **Inside function bodies:** Only write a comment when the *reason* would surprise an informed reader. Explain why, not what. Obvious syntax gets no comment.
 
@@ -269,7 +269,7 @@ pnpm test:e2e          # e2e only
 | `addState()` | removed; use `addStep`/`addFork`/`addJoin`/`addWait` |
 | `state as IForkState` without a kind guard | use discriminated union narrowing |
 | Non-null assertions without a justifying comment | hides null-safety assumptions |
-| Exported symbol without a TSDoc block | breaks the boundary documentation contract |
+| TSDoc that restates the name/type instead of adding information | padding, not documentation |
 | Inline comment explaining *what* code does | noise; rename the identifier instead |
 
 ---
@@ -297,6 +297,10 @@ After every code change:
 ---
 
 ## 5. Project Version History
+
+### [Docs-are-a-cost trim pass] (2026-08-06)
+
+Reframed §3's TSDoc rule from mandatory-coverage ("every exported symbol needs a full block") to judgment-based ("docs only where the name/type doesn't already say it") — user's premise (Clean Code): heavy documentation is a smell, not a virtue, and a busy reader should find what matters fast. `flowyd/src`: ~18 TSDoc blocks deleted outright (pure padding — `IState`, `ActionPayloadMap`, constructor `@param`-only blocks, `@template` boilerplate), ~55 shrunk to one real line, 2 stale "what"-comments removed; every public API entry point (`createWorkflow`, `WorkflowEngine.dispatch`/`fireTimed`, `WorkflowInstance` methods, both exporters) kept its one-liner per the new rule. All three READMEs cut for scannability (root 733→544 words, `flowyd/README.md` 1483→965, `web-runner/README.md` 479→321) — badges/diagrams/examples/package table untouched. Six `docs/` VitePress pages (`guide/index`, `guide/concepts`, `guide/installation`, `dev/decisions`, `dev/architecture`, `dev/engine`) had throat-clearing intros and restated-the-code-below prose cut; `docs/` build verified clean. A fresh-eyes review (three personas: adopter reading the READMEs, developer hovering the API, lead skimming the docs site) caught two real gaps this pass introduced — `createInstance`/`setContext` and all four `add*` builder methods were missing `@throws` for conditions they've always thrown (`ZodError` on bad context, `Error` on empty state id) — now fixed, plus `CONTRIBUTING.md` and `docs/dev/contributing.md` updated off the old "every symbol needs a full block" text they still preached, and a stale hardcoded `flowyd@0.2.0` in the root README (package is 0.2.1) now reads unversioned. No runtime logic, signatures, or behavior changed anywhere. Gate clean: lint / check:filemap / typecheck / 272 tests / build.
 
 ### [Clean-code audit pass] (2026-06-24)
 

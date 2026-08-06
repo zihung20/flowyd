@@ -39,11 +39,9 @@ This is enforced by keeping visualization as a separate package entry point (`fl
 
 ## Why one-directional imports?
 
-Bidirectional imports create invisible coupling. If `core/engine.ts` imported `MermaidExporter` to generate debug output, a visualization bug could corrupt the engine, and a visualization change would require re-testing the engine. The direction constraint eliminates this class of problem.
+Bidirectional imports create invisible coupling — e.g. if `core/engine.ts` imported `MermaidExporter`, a visualization bug could corrupt the engine. Wanting to import "upward" signals a wrong abstraction boundary: extract the shared concept into `types/` instead.
 
-The rule is also a forcing function for interface design. If you find yourself wanting to import "upward", it is a signal that the abstraction boundary is wrong — the shared concept should be extracted into `types/`, not shared via a cross-layer import.
-
-There are **no exceptions** — every cross-layer dependency goes through a `types/` interface.
+**No exceptions** — every cross-layer dependency goes through a `types/` interface.
 
 ## File map
 

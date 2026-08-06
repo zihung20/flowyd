@@ -35,7 +35,10 @@ export interface JsonGraphNode {
  * the fork/join topology visible to renderers without requiring explicit transitions.
  */
 export interface JsonGraphEdge {
-  /** Auto-generated opaque identifier — do not parse or persist. Treat as stable only within a single export call. */
+  /**
+   * Auto-generated opaque identifier — do not parse or persist. Treat as stable
+   * only within a single export call.
+   */
   id: string;
   from: string;
   to: string;
@@ -51,7 +54,10 @@ export interface JsonGraphEdge {
    * of `action` when this `kind === 'transition'` edge fires on a deadline.
    */
   after?: number;
-  /** `true` when this transition has a guard attached. Only present when `kind === 'transition'`. */
+  /**
+   * `true` when this transition has a guard attached. Only present when
+   * `kind === 'transition'`.
+   */
   hasGuard?: boolean;
 }
 
@@ -78,12 +84,9 @@ export interface JsonGraph {
 }
 
 /**
- * Converts a `WorkflowDefinition` into a plain, JSON-serialisable graph
- * object suitable for any `{ nodes, edges }` renderer.
- *
- * When an `InstanceSnapshot` is provided, each node's `status` field is
- * populated with the live `StateStatus` string, enabling visual overlays
- * without post-processing.
+ * Converts a `WorkflowDefinition` into a plain, JSON-serialisable `{ nodes, edges }` graph.
+ * When `snapshot` is provided, each node's `status` field is populated with the live
+ * `StateStatus` string, enabling visual overlays without post-processing.
  */
 export const JsonGraphExporter: IExporter<JsonGraph> = {
   export(definition: WorkflowDefinition, snapshot?: InstanceSnapshot): JsonGraph {

@@ -8,7 +8,7 @@
 
 **Strongly-typed Standard-Operating-Procedure state machines for TypeScript.**
 
-Describe a real business process as a graph of states and transitions. The compiler catches every typo in a state ID, every wrong action name, and every mismatched payload shape — **before your code runs**. Snapshots are plain JSON, so you own the storage and the library owns nothing.
+Describe a process as states and transitions — the compiler catches typo'd state IDs, action names, and payload shapes before your code runs. Snapshots are plain JSON, so you own storage.
 
 **[Documentation →](https://zihung20.github.io/flowyd/guide/)**  ·  **[Live Playground →](https://zihung20.github.io/flowyd/playground/)**  ·  **[Examples →](https://zihung20.github.io/flowyd/examples/)**
 
@@ -70,18 +70,16 @@ inst.getSnapshot();      // plain JSON — persist it anywhere
 
 ## Why flowyd
 
-- **Compile-time safety on everything** — state IDs, action names, and payload fields are all checked by TypeScript. Typos and wrong shapes never reach runtime.
-- **One source of truth** — payloads are Zod schemas; the same schema drives the TypeScript type *and* the runtime validation. No duplication.
-- **Pure, stateless engine** — `dispatch` takes a snapshot and an action, returns a new snapshot. No I/O, no globals, no hidden clock. Deterministic and trivially testable.
-- **Parallel branches, deadlines, and waits** — fork/join (`all` / `any` / quorum), time-triggered transitions (`after: '48h'`), and external wait states — all without the engine ever touching a database or a timer.
-- **You own persistence** — `getSnapshot()` is plain JSON; `restoreInstance()` rebuilds exact state. Postgres, Redis, a file — the library doesn't care.
-- **Built-in visualization** — export to Mermaid or a JSON graph for React Flow / D3 / Cytoscape (the diagram above came straight from a definition).
+- **Compile-time safety** — IDs, actions, payloads all checked
+- **Zod = single source of truth** — one schema, type + runtime
+- **Pure, stateless engine** — deterministic, no I/O
+- **Fork/join, deadlines, waits** — no engine-owned DB or timer
+- **You own persistence** — plain JSON, any store
+- **Built-in visualization** — Mermaid or JSON graph
 
 ---
 
 ## Repository layout
-
-This is a monorepo of three packages that ship together.
 
 | Package | What it is | Published |
 |---|---|---|
@@ -93,13 +91,11 @@ This is a monorepo of three packages that ship together.
 
 ## Quick start
 
-Install from npm (`zod` is a required peer dependency):
-
 ```sh
 pnpm add flowyd zod
 ```
 
-Then drop in the [`See it`](#see-it) snippet above, or work through the seven guided [examples](./flowyd/examples/) from a clone of this repo:
+Drop in the [`See it`](#see-it) snippet, or clone and run the guided [examples](./flowyd/examples/):
 
 ```sh
 git clone https://github.com/zihung20/flowyd.git
@@ -118,24 +114,16 @@ cd ../web-runner && pnpm install && pnpm dev   # → http://localhost:5173
 cd ../docs       && pnpm install && pnpm dev   # VitePress site
 ```
 
-Every change to the library must pass the full gate before it's done:
+Full gate before any change is done:
 
 ```sh
 cd flowyd && pnpm lint && pnpm check:filemap && pnpm typecheck && pnpm test && pnpm build
 ```
 
-**`pnpm` only** — never `npm` or `yarn`. See **[Contributing](./docs/dev/contributing.md)** for the full guide, and **[`CONTRIBUTING.md`](./CONTRIBUTING.md)** for the short version.
-
----
-
-## Status
-
-flowyd is **published on npm** ([`flowyd@0.2.0`](https://www.npmjs.com/package/flowyd)), feature-complete for its current scope, and fully tested. It's pre-1.0, so the API may still evolve.
-
-Found a bug or have an idea? **[Open an issue](https://github.com/zihung20/flowyd/issues/new/choose)** — there are templates to make it quick.
+**`pnpm` only.** [Contributing guide](./docs/dev/contributing.md) · [short version](./CONTRIBUTING.md).
 
 ---
 
 ## License
 
-[MIT](./LICENSE)
+[MIT](./LICENSE). Published as [`flowyd`](https://www.npmjs.com/package/flowyd), pre-1.0 — API may still evolve. [Open an issue](https://github.com/zihung20/flowyd/issues/new/choose) for bugs or ideas.

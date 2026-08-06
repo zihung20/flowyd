@@ -1,16 +1,8 @@
 import type { IGuard, GuardContext } from '../types/index.js';
 
-/**
- * A composite guard that passes only when **every** child guard passes.
- * Short-circuits on the first failure (does not evaluate remaining guards).
- *
- * @template TPayload - The payload type shared by all child guards.
- */
+/** Passes only when every child guard passes; short-circuits on the first failure. */
 export class AndGuard<TPayload = unknown> implements IGuard<TPayload> {
-  /**
-   * @param guards - Two or more guards that must all return `true`.
-   * @throws {Error} If fewer than two guards are provided.
-   */
+  /** @throws {Error} If fewer than two guards are provided. */
   constructor(private readonly guards: ReadonlyArray<IGuard<TPayload>>) {
     if (guards.length < 2) {
       throw new Error('AndGuard requires at least two child guards');

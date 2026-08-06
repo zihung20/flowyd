@@ -5,7 +5,7 @@ Contributions are welcome — bug reports, ideas, docs fixes, and code. This is 
 ## Ground rules
 
 - **`pnpm` only.** Never `npm` or `yarn`. If a `package-lock.json` or `yarn.lock` appears, it's a mistake — delete it.
-- **Read [`CLAUDE.md`](./CLAUDE.md) first.** It's the authoritative project law: strict TypeScript (no `any`, no unguarded casts), Zod as the single source of truth for payload types, a one-way layer dependency rule, and TSDoc on every exported symbol. These override habit and convention.
+- **Read [`CLAUDE.md`](./CLAUDE.md) first.** It's the authoritative project law: strict TypeScript (no `any`, no unguarded casts), Zod as the single source of truth for payload types, a one-way layer dependency rule, and docs that earn their place instead of padding every symbol. These override habit and convention.
 
 ## Setup
 
@@ -28,7 +28,7 @@ pnpm lint && pnpm check:filemap && pnpm typecheck && pnpm test && pnpm build
 Then:
 
 - Add or update tests for your change (see the four Vitest projects in [`CLAUDE.md`](./CLAUDE.md) §2).
-- Give every new exported symbol a TSDoc block.
+- Document new exported symbols per [`CLAUDE.md`](./CLAUDE.md) §3 — only where the name/type doesn't already say it; public API entry points always get one real line.
 - Update docs if public behaviour changed — `flowyd/README.md`, the `docs/` site, and the version history in `CLAUDE.md` §5.
 
 ## Reporting bugs & ideas
